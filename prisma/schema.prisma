@@ -1,0 +1,223 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Patient {
+  mr               String    @id
+  consultationType String
+  patientName      String
+  parentName       String
+  gender           String
+  mobileNumber     String
+  address          String
+  district         String
+  state            String
+  pinCode          String
+  dob              DateTime?
+  age              Int?
+  bloodGroup       String?
+  status           String?
+  createdAt        DateTime  @default(now())
+
+  visits           Visit[]
+  opSheets         OPSheet[]
+  prescriptions    Prescription[]
+  nutritionAssessments NutritionAssessment[]
+  ayurcareTreatments  AyurcareTreatment[]
+  followUps        FollowUp[]
+  invoices         Invoice[]
+  documents        Document[]
+
+  @@unique([mobileNumber])
+  @@map("patients")
+}
+
+model Visit {
+  id                  String   @id @default(uuid())
+  patientMr           String
+  doctor              String?
+  dietitian           String?
+  appointmentDate     DateTime?
+  appointmentTimeSlot String?
+  status              String   @default("Waiting")
+  createdAt           DateTime @default(now())
+
+  patient             Patient       @relation(fields: [patientMr], references: [mr], onDelete: Cascade)
+  opSheet             OPSheet?
+
+  @@map("visits")
+}
+
+model OPSheet {
+  id                  String   @id @default(uuid())
+  patientMr           String
+  visitId             String   @unique
+  clinicalExamination String?
+  vitals              String?
+  diagnosis           String?
+  symptoms            String?
+  status              String?
+  createdAt           DateTime @default(now())
+
+  patient             Patient     @relation(fields: [patientMr], references: [mr], onDelete: Cascade)
+  visit               Visit       @relation(fields: [visitId], references: [id], onDelete: Cascade)
+  prescription        Prescription?
+
+  @@map("op_sheets")
+}
+
+model Prescription {
+  id             String   @id @default(uuid())
+  patientMr      String
+  opSheetId      String   @unique
+  diagnosis      String?
+  medicines      String?
+  advice         String?
+  followUp       String?
+  doctorSignature String?
+  createdAt      DateTime @default(now())
+
+  patient        Patient   @relation(fields: [patientMr], references: [mr], onDelete: Cascade)
+  opSheet        OPSheet   @relation(fields: [opSheetId], references: [id], onDelete: Cascade)
+
+  @@map("prescriptions")
+}
+
+model NutritionAssessment {
+  id              String    @id @default(uuid())
+  patientMr       String
+  assessmentDate  DateTime
+  program         String?
+  weight          Float?
+  bmi             Float?
+  bodyFat         Float?
+  dietPlan        String?
+  observations    String?
+  recommendations String?
+  notes           String?
+  reviewDate      DateTime?
+  dietitian       String?
+  createdAt       DateTime  @default(now())
+
+  patient Patient @relation(fields: [patientMr], references: [mr], onDelete: Cascade)
+
+  @@map("nutrition_assessments")
+}
+
+model AyurcareTreatment {
+  id             String    @id @default(uuid())
+  patientMr      String
+  diagnosis      String?
+  treatmentPlan  String?
+  medicines      String?
+  procedures     String?
+  therapies      String?
+  advice         String?
+  practitioner   String?
+  reviewDate     DateTime?
+  notes          String?
+  createdAt      DateTime @default(now())
+
+  patient Patient @relation(fields: [patientMr], references: [mr], onDelete: Cascade)
+
+  @@map("ayurcare_treatments")
+}
+
+model FollowUp {
+  id          String    @id @default(uuid())
+  patientMr   String
+  program     String?
+  reviewDate  DateTime?
+  dueDate     DateTime?
+  assignedTo  String?
+  priority    String?
+  status      String?
+  remarks     String?
+  createdAt   DateTime @default(now())
+
+  patient     Patient @relation(fields: [patientMr], references: [mr], onDelete: Cascade)
+
+  @@map("follow_ups")
+}
+
+model Invoice {
+  id              String    @id @default(uuid())
+  patientMr       String
+  invoiceNumber   String    @unique
+  invoiceDate     DateTime  @default(now())
+  consultationType String?
+  centerType      String?
+  subtotal        Float?
+  tax             Float?
+  grandTotal      Float?
+  paymentMethod   String?
+  paidAmount      Float?
+  balance         Float?
+  status          String?
+  remarks         String?
+  createdAt       DateTime  @default(now())
+
+  patient         Patient      @relation(fields: [patientMr], references: [mr], onDelete: Cascade)
+  items           InvoiceItem[]
+
+  @@map("invoices")
+}
+
+model InvoiceItem {
+  id          String  @id @default(uuid())
+  invoiceId   String
+  description String?
+  quantity    Float?
+  rate        Float?
+  discount    Float?
+  tax         Float?
+  subtotal    Float?
+
+  invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@map("invoice_items")
+}
+
+model Document {
+  id          String    @id @default(uuid())
+  patientMr   String
+  title       String?
+  category    String?
+  fileName    String
+  filePath    String
+  fileType    String?
+  uploadedBy  String?
+  remarks     String?
+  uploadedAt  DateTime  @default(now())
+
+  patient     Patient @relation(fields: [patientMr], references: [mr], onDelete: Cascade)
+
+  @@map("documents")
+}
+
+model Staff {
+  id         String   @id @default(uuid())
+  name       String
+  role       String
+  email      String?
+  phone      String?
+  centerType String?
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  @@map("staff")
+}
+
+model MRSequence {
+  id         String   @id @default(uuid())
+  centerType String   @unique
+  lastNumber Int      @default(0)
+  updatedAt  DateTime @default(now())
+
+  @@map("mr_sequences")
+}

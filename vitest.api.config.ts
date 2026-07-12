@@ -4,10 +4,9 @@ import path from 'path';
 export default defineConfig({
   test: {
     fileParallelism: false,
-    environment: 'jsdom',
+    environment: 'node',
     globals: true,
-    setupFiles: ['./vitest.setup.ts'],
-    include: ['**/*.test.{ts,tsx}', '!tests/api'],
+    include: ['tests/api/**/*.test.ts'],
     sequence: { concurrent: false },
   },
   resolve: {
