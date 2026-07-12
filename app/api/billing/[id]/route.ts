@@ -29,10 +29,10 @@ function mapInvoiceToFrontend(invoice: {
   tax: number
   paid: number
   paymentMethod: string | null
-  subtotal: number | null
-  grandTotal: number | null
-  balance: number | null
-  status: string | null
+  subtotal?: number | null
+  grandTotal?: number | null
+  balance?: number | null
+  status?: string | null
   items: { id: string; name: string; quantity: number; rate: number }[]
 }) {
   const totals = computeTotals(invoice.items, invoice.discount, invoice.tax, invoice.paid)

@@ -162,6 +162,10 @@ model Invoice {
   tax             Float     @default(0)
   paid            Float     @default(0)
   paymentMethod   String?
+  subtotal        Float?
+  grandTotal      Float?
+  balance         Float?
+  status          String?
   createdAt       DateTime @default(now())
 
   items           InvoiceItem[]

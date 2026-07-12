@@ -12,7 +12,6 @@ export async function GET(request: NextRequest, context: { params: Promise<{ mr:
         nutritionAssessments: true,
         ayurcareTreatments: true,
         followUps: true,
-        invoices: true,
         documents: true,
       },
     });
