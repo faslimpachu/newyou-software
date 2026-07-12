@@ -70,6 +70,19 @@ export interface ExistingPatient {
   tags: string[]
   visits: PreviousVisit[]
   bills: OutstandingBill[]
+  dob?: string
+  address?: string
+  allergies?: string
+  conditions?: string
+  medications?: string
+  email?: string
+  emergencyName?: string
+  emergencyPhone?: string
+  emergencyRelation?: string
+  smoking?: string
+  alcohol?: string
+  exercise?: string
+  diet?: string
 }
 
 export const existingPatients: ExistingPatient[] = [
