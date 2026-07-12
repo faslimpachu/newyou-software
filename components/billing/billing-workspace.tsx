@@ -582,14 +582,36 @@ function InvoiceModal({ invoice, onClose }: { invoice: Invoice; onClose: () => v
   const totals = computeTotals(invoice.items, invoice.discount, invoice.tax, invoice.paid)
   const letterhead = CENTERS[invoice.center]
 
-  const handlePrint = () => window.print()
+  const handlePrint = () => {
+    if (!printRef.current) return
+    const printWindow = window.open('', '_blank', 'noopener,noreferrer')
+    if (!printWindow) return
+    const content = printRef.current.innerHTML
+    printWindow.document.write(`<!doctype html><html><head><title>Invoice ${invoice.id}</title><style>@page{size:A4 portrait;margin:14mm}*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#17202a;font-size:12px}.header{border-bottom:2px solid #167b91;padding-bottom:12px;margin-bottom:16px;text-align:center}.clinic{font-size:22px;font-weight:700;color:#167b91}.address{color:#4b5563;margin-top:4px;font-size:11px}.title{font-size:16px;font-weight:700;text-transform:uppercase;margin:18px 0 10px}.meta{font-size:11px;margin-bottom:12px;color:#4b5563}.patient{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:10px;border:1px solid #b8c7cc;background:#f7fafb}.table{width:100%;border-collapse:collapse;margin-top:8px}.table th,.table td{border:1px solid #b8c7cc;padding:8px;text-align:left;font-size:11px}.table th{background:#edf5f6}.totals{width:100%;max-width:280px;margin-left:auto;margin-top:12px}.signature{display:grid;grid-template-columns:1fr 1fr;gap:80px;margin-top:100px;text-align:center}.signature div{border-top:1px solid #17202a;padding-top:8px}@media print{body{margin:0}}</style></head><body>${content}</body></html>`)
+    printWindow.document.close()
+    printWindow.focus()
+    printWindow.print()
+  }
 
   const handleExportPdf = async () => {
     if (!printRef.current) return
     setExporting(true)
     try {
-      const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([import('html2canvas'), import('jspdf')])
-      const canvas = await html2canvas(printRef.current, { scale: 2, backgroundColor: '#ffffff' })
+      const html2canvasModule = await import('html2canvas')
+      const jsPDFModule = await import('jspdf')
+      const html2canvas = html2canvasModule.default || html2canvasModule
+      const jsPDF = jsPDFModule.default || jsPDFModule
+      const canvas = await html2canvas(printRef.current, {
+        scale: 2,
+        backgroundColor: '#ffffff',
+        useCORS: true,
+        logging: false,
+        onclone: (clonedDoc) => {
+          const style = clonedDoc.createElement('style')
+          style.textContent = `* { color: rgb(0,0,0) !important; background-color: rgb(255,255,255) !important; border-color: rgb(128,128,128) !important; }`
+          clonedDoc.head.appendChild(style)
+        },
+      })
       const imgData = canvas.toDataURL('image/png')
       const pdf = new jsPDF('p', 'mm', 'a4')
       const pageWidth = pdf.internal.pageSize.getWidth()
@@ -598,6 +620,7 @@ function InvoiceModal({ invoice, onClose }: { invoice: Invoice; onClose: () => v
       pdf.save(`${invoice.id}-${invoice.patient.name.replace(/\s+/g, '_')}.pdf`)
     } catch (err) {
       console.error('PDF export failed. Ensure "jspdf" and "html2canvas" are installed.', err)
+      alert('PDF export failed. Please try again or use Print instead.')
     } finally {
       setExporting(false)
     }
@@ -605,22 +628,7 @@ function InvoiceModal({ invoice, onClose }: { invoice: Invoice; onClose: () => v
 
   return (
     <ModalShell onClose={onClose} wide>
-      <style>{`
-        @media print {
-          body * { visibility: hidden; }
-          #invoice-print-area, #invoice-print-area * { visibility: visible; }
-          #invoice-print-area {
-            position: absolute;
-            inset: 0;
-            width: 210mm;
-            min-height: 297mm;
-            margin: 0 auto;
-          }
-          @page { size: A4; margin: 12mm; }
-        }
-      `}</style>
-
-      <div className="flex items-center justify-between border-b px-6 py-4 print:hidden">
+      <div className="flex items-center justify-between border-b px-6 py-4">
         <div>
           <h2 className="font-display text-lg font-semibold">Invoice preview</h2>
           <p className="text-sm text-muted-foreground">{invoice.id} · A4 print-ready format</p>
@@ -640,11 +648,11 @@ function InvoiceModal({ invoice, onClose }: { invoice: Invoice; onClose: () => v
         </div>
       </div>
 
-      <div className="max-h-[80vh] overflow-y-auto bg-muted/30 px-6 py-6 print:max-h-none print:overflow-visible print:bg-transparent print:px-0 print:py-0">
+      <div className="max-h-[80vh] overflow-y-auto bg-muted/30 px-6 py-6">
         <div
           id="invoice-print-area"
           ref={printRef}
-          className="mx-auto w-full max-w-[210mm] bg-white p-10 text-black shadow-sm print:shadow-none"
+          className="mx-auto w-full max-w-[210mm] bg-white p-10 text-black shadow-sm"
           style={{ fontFamily: PRINT_FONT }}
         >
           <div className="border-b-2 border-black pb-4 text-center">

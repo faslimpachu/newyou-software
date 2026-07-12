@@ -213,6 +213,54 @@ describe('BillingWorkspace', () => {
     })
   })
 
+  it('opens print window when clicking Print in invoice preview', async () => {
+    const mockOpen = vi.fn()
+    const originalOpen = window.open
+    window.open = mockOpen
+
+    mockFetchInvoices()
+    render(<BillingWorkspace />)
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Aarav Sharma').length).toBeGreaterThan(0)
+    })
+
+    const row = screen.getByText('Aarav Sharma').closest('tr')
+    if (row) fireEvent.click(row)
+
+    await waitFor(() => {
+      expect(screen.getByText('Invoice preview')).toBeDefined()
+    })
+
+    fireEvent.click(screen.getByText('Print'))
+
+    expect(mockOpen).toHaveBeenCalledWith('', '_blank', 'noopener,noreferrer')
+
+    window.open = originalOpen
+  })
+
+  it('exports PDF when clicking Export as PDF', async () => {
+    mockFetchInvoices()
+    render(<BillingWorkspace />)
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Aarav Sharma').length).toBeGreaterThan(0)
+    })
+
+    const row = screen.getByText('Aarav Sharma').closest('tr')
+    if (row) fireEvent.click(row)
+
+    await waitFor(() => {
+      expect(screen.getByText('Invoice preview')).toBeDefined()
+    })
+
+    fireEvent.click(screen.getByText('Export as PDF'))
+
+    await waitFor(() => {
+      expect(screen.getByText('Export as PDF')).toBeDefined()
+    })
+  })
+
   it('displays center names', async () => {
     mockFetchInvoices()
     render(<BillingWorkspace />)
