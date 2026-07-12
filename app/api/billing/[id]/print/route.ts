@@ -1,6 +1,69 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
+function computeTotals(items: { name: string; quantity: number; rate: number }[], discount: number, tax: number, paid: number) {
+  const subtotal = items.reduce((sum, item) => sum + item.quantity * item.rate, 0)
+  const discountValue = subtotal * (discount / 100)
+  const taxable = subtotal - discountValue
+  const taxValue = taxable * (tax / 100)
+  const total = taxable + taxValue
+  const balance = Math.max(0, total - paid)
+  return { subtotal, discountValue, taxValue, total, balance }
+}
+
+function mapInvoiceToFrontend(invoice: {
+  id: number
+  invoiceNumber: string
+  center: string
+  billType: string
+  patientName: string
+  patientMrNumber: string
+  patientAge: string | null
+  patientDob: string | null
+  patientGender: string | null
+  patientBloodGroup: string | null
+  patientAddress: string | null
+  patientContact: string | null
+  invoiceDate: string
+  discount: number
+  tax: number
+  paid: number
+  paymentMethod: string | null
+  subtotal: number | null
+  grandTotal: number | null
+  balance: number | null
+  status: string | null
+  items: { id: string; name: string; quantity: number; rate: number }[]
+}) {
+  const totals = computeTotals(invoice.items, invoice.discount, invoice.tax, invoice.paid)
+  return {
+    id: invoice.invoiceNumber,
+    center: invoice.center as 'nutrition' | 'ayurcare',
+    billType: invoice.billType,
+    patient: {
+      name: invoice.patientName,
+      mrNumber: invoice.patientMrNumber,
+      age: invoice.patientAge || '',
+      dob: invoice.patientDob || '',
+      gender: invoice.patientGender || '',
+      bloodGroup: invoice.patientBloodGroup || '',
+      address: invoice.patientAddress || '',
+      contact: invoice.patientContact || '',
+    },
+    date: invoice.invoiceDate,
+    items: invoice.items.map((item) => ({
+      id: item.id,
+      name: item.name,
+      quantity: item.quantity,
+      rate: item.rate,
+    })),
+    discount: invoice.discount,
+    tax: invoice.tax,
+    paid: invoice.paid,
+    paymentMethod: invoice.paymentMethod || 'Cash',
+  }
+}
+
 export async function GET(
   _request: NextRequest,
   context: { params: Promise<{ id: string }> }
@@ -8,15 +71,15 @@ export async function GET(
   try {
     const { id } = await context.params;
     const invoice = await prisma.invoice.findUnique({
-      where: { id: decodeURIComponent(id) },
-      include: { patient: true, items: true },
+      where: { invoiceNumber: decodeURIComponent(id) },
+      include: { items: true },
     });
 
     if (!invoice) {
       return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
     }
 
-    return NextResponse.json({ invoice });
+    return NextResponse.json({ invoice: mapInvoiceToFrontend(invoice) });
   } catch (e) {
     console.error('Invoice print GET error', e);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

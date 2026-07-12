@@ -1,6 +1,16 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
+function computeTotals(items: { name: string; quantity: number; rate: number }[], discount: number, tax: number, paid: number) {
+  const subtotal = items.reduce((sum, item) => sum + item.quantity * item.rate, 0)
+  const discountValue = subtotal * (discount / 100)
+  const taxable = subtotal - discountValue
+  const taxValue = taxable * (tax / 100)
+  const total = taxable + taxValue
+  const balance = Math.max(0, total - paid)
+  return { subtotal, discountValue, taxValue, total, balance }
+}
+
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
@@ -10,7 +20,7 @@ export async function GET(request: Request) {
     const skip = (page - 1) * limit;
 
     const where: Record<string, unknown> = {};
-    if (patientMr) where.patientMr = patientMr;
+    if (patientMr) where.patientMrNumber = patientMr;
 
     const [invoices, total] = await Promise.all([
       prisma.invoice.findMany({
@@ -18,7 +28,7 @@ export async function GET(request: Request) {
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },
-        include: { patient: true, items: true },
+        include: { items: true },
       }),
       prisma.invoice.count({ where }),
     ]);
@@ -34,52 +44,59 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const {
-      patientMr,
-      consultationType,
-      centerType,
-      subtotal,
-      tax,
-      grandTotal,
-      paymentMethod,
-      paidAmount,
-      balance,
-      status,
-      remarks,
+      center,
+      billType,
+      patient,
       items,
+      discount,
+      tax,
+      paid,
+      paymentMethod,
     } = body;
 
-    if (!patientMr) {
-      return NextResponse.json({ error: 'patientMr is required' }, { status: 400 });
+    if (!center || !billType || !patient || !items?.length) {
+      return NextResponse.json({ error: 'center, billType, patient, and items are required' }, { status: 400 });
     }
 
-    const patient = await prisma.patient.findUnique({ where: { mr: patientMr } });
-    if (!patient) {
-      return NextResponse.json({ error: 'Patient not found' }, { status: 404 });
-    }
+    const totals = computeTotals(items, discount || 0, tax || 0, paid || 0);
 
     const lastInvoice = await prisma.invoice.findFirst({
-      orderBy: { createdAt: 'desc' },
-      select: { invoiceNumber: true },
+      orderBy: { id: 'desc' },
+      select: { id: true },
     });
 
-    const nextNum = lastInvoice ? parseInt(lastInvoice.invoiceNumber.replace(/\D/g, '') || '0') + 1 : 1;
-    const invoiceNumber = `INV-${String(nextNum).padStart(4, '0')}`;
+    const nextNum = lastInvoice ? lastInvoice.id + 1 : 1;
+    const invoiceNumber = `INV-${String(nextNum).padStart(5, '0')}`;
 
     const invoice = await prisma.invoice.create({
       data: {
         invoiceNumber,
-        patientMr,
-        consultationType,
-        centerType,
-        subtotal: subtotal ? Number(subtotal) : 0,
-        tax: tax ? Number(tax) : 0,
-        grandTotal: grandTotal ? Number(grandTotal) : 0,
-        paymentMethod,
-        paidAmount: paidAmount ? Number(paidAmount) : 0,
-        balance: balance ? Number(balance) : 0,
-        status,
-        remarks,
-        items: items?.length ? { create: items } : undefined,
+        center,
+        billType,
+        patientName: patient.name,
+        patientMrNumber: patient.mrNumber,
+        patientAge: patient.age,
+        patientDob: patient.dob || null,
+        patientGender: patient.gender,
+        patientBloodGroup: patient.bloodGroup,
+        patientAddress: patient.address,
+        patientContact: patient.contact,
+        invoiceDate: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+        discount: discount || 0,
+        tax: tax || 0,
+        paid: paid || 0,
+        paymentMethod: paymentMethod || 'Cash',
+        subtotal: totals.subtotal,
+        grandTotal: totals.total,
+        balance: totals.balance,
+        status: totals.balance > 0 ? 'Pending' : 'Paid',
+        items: {
+          create: items.map((item: { name: string; quantity: number; rate: number }) => ({
+            name: item.name,
+            quantity: item.quantity,
+            rate: item.rate,
+          })),
+        },
       },
       include: { items: true },
     });

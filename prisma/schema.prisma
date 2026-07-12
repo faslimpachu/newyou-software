@@ -30,7 +30,6 @@ model Patient {
   nutritionAssessments NutritionAssessment[]
   ayurcareTreatments  AyurcareTreatment[]
   followUps        FollowUp[]
-  invoices         Invoice[]
   documents        Document[]
 
   @@unique([mobileNumber])
@@ -146,45 +145,44 @@ model FollowUp {
 }
 
 model Invoice {
-  id              String    @id @default(uuid())
-  patientMr       String
-  invoiceNumber   String    @unique
-  invoiceDate     DateTime  @default(now())
-  consultationType String?
-  centerType      String?
-  subtotal        Float?
-  tax             Float?
-  grandTotal      Float?
+  id              Int      @id @default(autoincrement())
+  invoiceNumber   String   @unique
+  center          String
+  billType        String
+  patientName     String
+  patientMrNumber String
+  patientAge      String?
+  patientDob      String?
+  patientGender   String?
+  patientBloodGroup String?
+  patientAddress  String?
+  patientContact  String?
+  invoiceDate     String
+  discount        Float     @default(0)
+  tax             Float     @default(0)
+  paid            Float     @default(0)
   paymentMethod   String?
-  paidAmount      Float?
-  balance         Float?
-  status          String?
-  remarks         String?
-  createdAt       DateTime  @default(now())
+  createdAt       DateTime @default(now())
 
-  patient         Patient      @relation(fields: [patientMr], references: [mr], onDelete: Cascade)
   items           InvoiceItem[]
 
   @@map("invoices")
 }
 
 model InvoiceItem {
-  id          String  @id @default(uuid())
-  invoiceId   String
-  description String?
-  quantity    Float?
-  rate        Float?
-  discount    Float?
-  tax         Float?
-  subtotal    Float?
+  id        String  @id @default(uuid())
+  invoiceId Int
+  name      String
+  quantity  Float
+  rate      Float
 
-  invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 
   @@map("invoice_items")
 }
 
 model Document {
-  id          String    @id @default(uuid())
+  id          String   @id @default(uuid())
   patientMr   String
   title       String?
   category    String?
@@ -193,7 +191,7 @@ model Document {
   fileType    String?
   uploadedBy  String?
   remarks     String?
-  uploadedAt  DateTime  @default(now())
+  uploadedAt  DateTime @default(now())
 
   patient     Patient @relation(fields: [patientMr], references: [mr], onDelete: Cascade)
 
