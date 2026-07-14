@@ -121,13 +121,12 @@ export function PatientProfileEditor({ patient, center, onCancel, onSaved }: Pat
     setSaveError('')
     setSaving(true)
     try {
-      const [firstName, ...rest] = form.firstName.split(' ')
-      const lastName = rest.join(' ')
+      const fullName = `${form.firstName.trim()} ${form.lastName.trim()}`.trim()
       const response = await fetch(`/api/patients/${encodeURIComponent(patient.mr)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          patientName: `${firstName} ${lastName}`.trim(),
+          patientName: fullName || undefined,
           parentName: form.parentName,
           gender: form.gender,
           mobileNumber: form.mobile,
@@ -139,6 +138,16 @@ export function PatientProfileEditor({ patient, center, onCancel, onSaved }: Pat
           age: form.dob ? computeAge(form.dob) : undefined,
           bloodGroup: form.bloodGroup || undefined,
           doctor: form.doctor || undefined,
+          emergencyName: form.emergencyName || undefined,
+          emergencyPhone: form.emergencyPhone || undefined,
+          emergencyRelation: form.emergencyRelation || undefined,
+          allergies: form.allergies || undefined,
+          conditions: form.conditions || undefined,
+          medications: form.medications || undefined,
+          smoking: form.smoking || undefined,
+          alcohol: form.alcohol || undefined,
+          exercise: form.exercise || undefined,
+          diet: form.diet || undefined,
         }),
       })
       if (!response.ok) {

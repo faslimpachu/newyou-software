@@ -20,6 +20,16 @@ export async function POST(request: Request) {
       bloodGroup,
       doctor,
       dietitian,
+      emergencyName,
+      emergencyPhone,
+      emergencyRelation,
+      allergies,
+      conditions,
+      medications,
+      smoking,
+      alcohol,
+      exercise,
+      diet,
     } = body;
 
     if (!consultationType || !patientName || !parentName || !gender || !mobileNumber || !address || !district || !state || !pinCode) {
@@ -56,6 +66,16 @@ export async function POST(request: Request) {
         dob: dob ? new Date(dob) : undefined,
         age: age ? Number(age) : undefined,
         bloodGroup,
+        emergencyContactName: emergencyName || undefined,
+        emergencyContactPhone: emergencyPhone || undefined,
+        emergencyContactRelation: emergencyRelation || undefined,
+        allergies: allergies || undefined,
+        conditions: conditions || undefined,
+        medications: medications || undefined,
+        smoking: smoking || undefined,
+        alcohol: alcohol || undefined,
+        exercise: exercise || undefined,
+        diet: diet || undefined,
       },
     });
 

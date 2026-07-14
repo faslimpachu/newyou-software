@@ -65,6 +65,16 @@ export type ApiPatient = {
   opSheets?: ApiOPSheet[]
   prescriptions?: ApiPrescription[]
   documents?: ApiDocument[]
+  emergencyContactName?: string | null
+  emergencyContactPhone?: string | null
+  emergencyContactRelation?: string | null
+  allergies?: string | null
+  conditions?: string | null
+  medications?: string | null
+  smoking?: string | null
+  alcohol?: string | null
+  exercise?: string | null
+  diet?: string | null
 }
 
 export type PatientRecord = ExistingPatient & {
@@ -136,6 +146,16 @@ export function mapApiPatient(patient: ApiPatient): PatientRecord {
     apiOPSheets: patient.opSheets ?? [],
     apiPrescriptions: patient.prescriptions ?? [],
     apiDocuments: patient.documents ?? [],
+    allergies: patient.allergies ?? undefined,
+    conditions: patient.conditions ?? undefined,
+    medications: patient.medications ?? undefined,
+    emergencyName: patient.emergencyContactName ?? undefined,
+    emergencyPhone: patient.emergencyContactPhone ?? undefined,
+    emergencyRelation: patient.emergencyContactRelation ?? undefined,
+    smoking: patient.smoking ?? undefined,
+    alcohol: patient.alcohol ?? undefined,
+    exercise: patient.exercise ?? undefined,
+    diet: patient.diet ?? undefined,
   }
 }
 

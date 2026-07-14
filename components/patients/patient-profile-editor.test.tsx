@@ -51,9 +51,24 @@ describe('PatientProfileEditor', () => {
     await waitFor(() => expect(mockFetch).toHaveBeenCalledWith(`/api/patients/${encodeURIComponent(patient.mr)}`, expect.objectContaining({
       method: 'PATCH',
     })))
+
+    const callArgs = mockFetch.mock.calls[0][1] as any
+    const body = JSON.parse(callArgs.body)
+    expect(body.patientName).toBe('Aarav Sharma')
+    expect(body.mobileNumber).toBe('9845012345')
+
     await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1))
 
     mockFetch.mockRestore()
+  })
+
+  it('renders emergency contact, medical history, and lifestyle sections', () => {
+    render(<PatientProfileEditor patient={patient as any} center={center} onCancel={onCancel} onSaved={onSaved} />)
+
+    expect(screen.getByText('Emergency Contact')).toBeDefined()
+    expect(screen.getByText('Medical History')).toBeDefined()
+    expect(screen.getByText('Lifestyle')).toBeDefined()
+    expect(screen.getByText('Document known conditions before consultation')).toBeDefined()
   })
 
   it('shows error on failed save', async () => {

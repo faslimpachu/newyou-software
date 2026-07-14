@@ -22,6 +22,18 @@ model Patient {
   age              Int?
   bloodGroup       String?
   status           String?
+
+  emergencyContactName       String?
+  emergencyContactPhone      String?
+  emergencyContactRelation   String?
+  allergies                  String?
+  conditions                 String?
+  medications                String?
+  smoking                    String?
+  alcohol                    String?
+  exercise                   String?
+  diet                       String?
+
   createdAt        DateTime  @default(now())
 
   visits           Visit[]

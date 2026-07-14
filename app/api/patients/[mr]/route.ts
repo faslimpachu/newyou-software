@@ -46,6 +46,16 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ m
       age,
       bloodGroup,
       consultationType,
+      emergencyName,
+      emergencyPhone,
+      emergencyRelation,
+      allergies,
+      conditions,
+      medications,
+      smoking,
+      alcohol,
+      exercise,
+      diet,
     } = body;
 
     const data: Record<string, unknown> = {};
@@ -62,6 +72,16 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ m
     if (age !== undefined) data.age = age ? Number(age) : undefined;
     if (bloodGroup !== undefined) data.bloodGroup = bloodGroup;
     if (consultationType !== undefined) data.consultationType = consultationType;
+    if (emergencyName !== undefined) data.emergencyContactName = emergencyName;
+    if (emergencyPhone !== undefined) data.emergencyContactPhone = emergencyPhone;
+    if (emergencyRelation !== undefined) data.emergencyContactRelation = emergencyRelation;
+    if (allergies !== undefined) data.allergies = allergies;
+    if (conditions !== undefined) data.conditions = conditions;
+    if (medications !== undefined) data.medications = medications;
+    if (smoking !== undefined) data.smoking = smoking;
+    if (alcohol !== undefined) data.alcohol = alcohol;
+    if (exercise !== undefined) data.exercise = exercise;
+    if (diet !== undefined) data.diet = diet;
 
     const patient = await prisma.patient.update({
       where: { mr: decodeURIComponent(mr) },
