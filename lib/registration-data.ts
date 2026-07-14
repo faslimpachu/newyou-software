@@ -63,7 +63,7 @@ export interface ExistingPatient {
   parentName: string
   mobile: string
   age: number
-  gender: 'Male' | 'Female'
+  gender: 'Male' | 'Female' | 'Other' | 'Not specified'
   bloodGroup: string
   city: string
   lastVisit: string

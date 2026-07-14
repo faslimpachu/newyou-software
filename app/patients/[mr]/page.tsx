@@ -6,9 +6,8 @@ export function generateStaticParams() {
   return existingPatients.map((p) => ({ mr: p.mr }))
 }
 
-export default function PatientProfilePage({ params }: { params: { mr: string } }) {
-  'use client'
+export default function PatientProfilePage({ params, searchParams }: { params: { mr: string }; searchParams?: { new?: string } }) {
   const patient = existingPatients.find((p) => p.mr === params.mr) || null
   const center = patient ? centersByPrefix[patient.mr.slice(0, 2)] || 'Nutrition Center' : 'Nutrition Center'
-  return <DashboardShell><PatientProfile patient={patient} center={center} generatedMR={params.mr} /></DashboardShell>
+  return <DashboardShell><PatientProfile patient={patient} center={center} generatedMR={params.mr} justRegistered={searchParams?.new === '1'} /></DashboardShell>
 }
