@@ -32,15 +32,40 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ m
   try {
     const { mr } = await context.params;
     const body = await request.json();
-    const { status } = body;
+    const {
+      status,
+      patientName,
+      parentName,
+      gender,
+      mobileNumber,
+      address,
+      district,
+      state,
+      pinCode,
+      dob,
+      age,
+      bloodGroup,
+      consultationType,
+    } = body;
 
-    if (!status) {
-      return NextResponse.json({ error: 'Status is required' }, { status: 400 });
-    }
+    const data: Record<string, unknown> = {};
+    if (status !== undefined) data.status = status;
+    if (patientName !== undefined) data.patientName = patientName;
+    if (parentName !== undefined) data.parentName = parentName;
+    if (gender !== undefined) data.gender = gender;
+    if (mobileNumber !== undefined) data.mobileNumber = mobileNumber;
+    if (address !== undefined) data.address = address;
+    if (district !== undefined) data.district = district;
+    if (state !== undefined) data.state = state;
+    if (pinCode !== undefined) data.pinCode = pinCode;
+    if (dob !== undefined) data.dob = dob ? new Date(dob) : undefined;
+    if (age !== undefined) data.age = age ? Number(age) : undefined;
+    if (bloodGroup !== undefined) data.bloodGroup = bloodGroup;
+    if (consultationType !== undefined) data.consultationType = consultationType;
 
     const patient = await prisma.patient.update({
       where: { mr: decodeURIComponent(mr) },
-      data: { status },
+      data,
     });
 
     return NextResponse.json({ patient });

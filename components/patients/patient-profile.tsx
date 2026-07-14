@@ -14,6 +14,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 import { type ExistingPatient } from '@/lib/registration-data'
 import { mapApiPatient, readApiError, type ApiDocument, type ApiOPSheet, type ApiPatient, type ApiPrescription, type PatientRecord } from '@/lib/patient-api'
+import { PatientProfileEditor } from './patient-profile-editor'
 
 const measurements = ['Weight (kg)', 'Height (cm)', 'BMI', 'Body Fat (%)', 'Lean Mass (kg)', 'Waist (cm)', 'Hip (cm)', 'WHR', 'Muscle Mass (kg)', 'Water (%)', 'BMR (kcal)', 'Metabolic Age']
 const measurementColumns = ['Baseline', '1 Month', '2 Months', '3 Months', 'Change']
@@ -41,50 +42,52 @@ async function fetchPatientProfile(mr: string): Promise<PatientRecord> {
 }
 
 export function PatientProfile({ patient, center, generatedMR, justRegistered, onNewVisit }: PatientProfileProps) {
- const [loadedPatient, setLoadedPatient] = useState<PatientRecord | null>(patient)
- const [loading, setLoading] = useState(!patient && !!generatedMR)
- const [error, setError] = useState('')
+  const [loadedPatient, setLoadedPatient] = useState<PatientRecord | null>(patient)
+  const [loading, setLoading] = useState(!patient && !!generatedMR)
+  const [error, setError] = useState('')
+  const [editing, setEditing] = useState(false)
 
- useEffect(() => {
-  if (patient) {
-    setLoadedPatient(patient)
-    return
-  }
-  if (!generatedMR) return
-  let cancelled = false
-  setLoading(true)
-  setError('')
-  fetchPatientProfile(generatedMR)
-    .then((record) => {
-      if (!cancelled) setLoadedPatient(record)
-    })
-    .catch((err) => {
-      if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load patient')
-    })
-    .finally(() => {
-      if (!cancelled) setLoading(false)
-    })
-  return () => { cancelled = true }
- }, [generatedMR, patient])
+  useEffect(() => {
+    if (patient) {
+      setLoadedPatient(patient)
+      return
+    }
+    if (!generatedMR) return
+    let cancelled = false
+    setLoading(true)
+    setError('')
+    fetchPatientProfile(generatedMR)
+      .then((record) => {
+        if (!cancelled) setLoadedPatient(record)
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load patient')
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => { cancelled = true }
+  }, [generatedMR, patient])
 
- const p: PatientRecord = loadedPatient ?? { mr: generatedMR ?? 'MR-100618', name: 'New Patient', parentName: '', mobile: 'Not recorded', age: 0, gender: 'Not specified', bloodGroup: 'Not recorded', city: '', lastVisit: 'First visit', tags: [], visits: [], bills: [] }
- const print = () => openA4Print('Patient Details', p, center)
- const handleNewVisit = async () => {
-  if (onNewVisit) {
-    onNewVisit()
-    return
+  const p: PatientRecord = loadedPatient ?? { mr: generatedMR ?? 'MR-100618', name: 'New Patient', parentName: '', mobile: 'Not recorded', age: 0, gender: 'Not specified', bloodGroup: 'Not recorded', city: '', lastVisit: 'First visit', tags: [], visits: [], bills: [] }
+  const print = () => openA4Print('Patient Details', p, center)
+  const handleNewVisit = async () => {
+    if (onNewVisit) {
+      onNewVisit()
+      return
+    }
+    setError('')
+    const response = await fetch('/api/visits', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ patientMr: p.mr, doctor: p.apiVisits?.[0]?.doctor || undefined }) })
+    if (!response.ok) {
+      setError(await readApiError(response))
+      return
+    }
+    setLoadedPatient(await fetchPatientProfile(p.mr))
   }
-  setError('')
-  const response = await fetch('/api/visits', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ patientMr: p.mr, doctor: p.apiVisits?.[0]?.doctor || undefined }) })
-  if (!response.ok) {
-    setError(await readApiError(response))
-    return
-  }
-  setLoadedPatient(await fetchPatientProfile(p.mr))
- }
- if (loading) return <Card className="rounded-lg shadow-sm"><CardContent className="py-12 text-center text-sm text-muted-foreground">Loading patient profile...</CardContent></Card>
- if (error) return <Card className="rounded-lg shadow-sm"><CardContent className="py-12 text-center text-sm text-destructive">{error}</CardContent></Card>
- return <div className="grid gap-6 xl:grid-cols-[280px_1fr]"><aside><Card className="sticky top-20 rounded-lg shadow-sm"><CardContent className="p-5"><div className="flex size-16 items-center justify-center rounded-full bg-primary/10 text-xl font-semibold text-primary">{p.name.split(' ').map((part) => part[0]).join('')}</div><h2 className="mt-4 font-display text-xl font-semibold">{p.name}</h2><p className="mt-1 text-sm text-muted-foreground">{p.mr}</p><dl className="mt-6 space-y-3 border-t pt-5 text-sm"><Info label="Age / Gender" value={`${p.age || '-'} / ${p.gender}`}/><Info label="Blood group" value={p.bloodGroup}/><Info label="Phone" value={p.mobile}/><Info label="Last visit" value={p.lastVisit}/></dl><div className="mt-6 grid grid-cols-2 gap-2"><Button size="sm" onClick={handleNewVisit}><CalendarDays className="mr-2 size-4"/>New visit</Button><Button size="sm" variant="outline" onClick={handleNewVisit}><Pencil className="mr-2 size-4"/>Edit</Button></div></CardContent></Card></aside><main>{justRegistered && <div className="mb-5 flex flex-wrap items-center justify-between gap-4 rounded-lg border border-primary/30 bg-primary/5 px-5 py-4"><div className="flex items-start gap-3"><div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary"><Check className="size-4"/></div><div><p className="text-sm font-semibold text-primary">Registration successful</p><p className="text-sm text-muted-foreground">{p.name} has been registered under {center}. MR number <span className="font-mono font-medium text-foreground">{p.mr}</span> has been issued.</p></div></div><div className="flex flex-wrap gap-2"><Button size="sm" onClick={() => openA4Print('Prescription', p, center)}><FileText className="mr-2 size-4"/>Generate blank prescription</Button><Button size="sm" variant="outline" onClick={() => openA4Print('OP Registration Sheet', p, center)}><Printer className="mr-2 size-4"/>Print OP sheet</Button></div></div>}<div className="mb-4 flex flex-wrap justify-between gap-2"><div><h2 className="font-display text-xl font-semibold">Patient profile</h2><p className="mt-1 text-sm text-muted-foreground">{center} · Active outpatient record</p></div><div className="flex gap-2"><Button variant="outline" size="sm" onClick={print}><Printer className="mr-2 size-4"/>Print</Button><Button variant="outline" size="sm" onClick={print}><Download className="mr-2 size-4"/>Export PDF</Button></div></div><Tabs defaultValue={justRegistered ? 'prescriptions' : 'overview'}><div className="overflow-x-auto"><TabsList className="h-10 bg-muted/70"><TabsTrigger value="overview">Overview</TabsTrigger><TabsTrigger value="visits">Visits</TabsTrigger><TabsTrigger value="op">OP Sheet</TabsTrigger><TabsTrigger value="prescriptions">Prescriptions</TabsTrigger><TabsTrigger value="documents">Documents</TabsTrigger></TabsList></div><TabsContent value="overview" className="mt-5"><Overview patient={p}/></TabsContent><TabsContent value="visits" className="mt-5"><Visits patient={p}/></TabsContent><TabsContent value="op" className="mt-5"><OPSheet patient={p} center={center}/></TabsContent><TabsContent value="prescriptions" className="mt-5"><Prescription patient={p} center={center}/></TabsContent><TabsContent value="documents" className="mt-5"><Documents patient={p}/></TabsContent></Tabs></main></div>
+  if (loading) return <Card className="rounded-lg shadow-sm"><CardContent className="py-12 text-center text-sm text-muted-foreground">Loading patient profile...</CardContent></Card>
+  if (error) return <Card className="rounded-lg shadow-sm"><CardContent className="py-12 text-center text-sm text-destructive">{error}</CardContent></Card>
+  if (editing) return <PatientProfileEditor patient={p} center={center} onCancel={() => setEditing(false)} onSaved={(updated) => { setLoadedPatient(updated); setEditing(false) }} />
+   return <div className="grid gap-6 xl:grid-cols-[280px_1fr]"><aside><Card className="sticky top-20 rounded-lg shadow-sm"><CardContent className="p-5"><div className="flex size-16 items-center justify-center rounded-full bg-primary/10 text-xl font-semibold text-primary">{p.name.split(' ').map((part) => part[0]).join('')}</div><h2 className="mt-4 font-display text-xl font-semibold">{p.name}</h2><p className="mt-1 text-sm text-muted-foreground">{p.mr}</p><dl className="mt-6 space-y-3 border-t pt-5 text-sm"><Info label="Age / Gender" value={`${p.age || '-'} / ${p.gender}`}/><Info label="Blood group" value={p.bloodGroup}/><Info label="Phone" value={p.mobile}/><Info label="Last visit" value={p.lastVisit}/></dl><div className="mt-6 grid grid-cols-2 gap-2"><Button size="sm" onClick={handleNewVisit}><CalendarDays className="mr-2 size-4"/>New visit</Button><Button size="sm" variant="outline" onClick={() => setEditing(true)}><Pencil className="mr-2 size-4"/>Edit</Button></div></CardContent></Card></aside><main>{justRegistered && <div className="mb-5 flex flex-wrap items-center justify-between gap-4 rounded-lg border border-primary/30 bg-primary/5 px-5 py-4"><div className="flex items-start gap-3"><div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary"><Check className="size-4"/></div><div><p className="text-sm font-semibold text-primary">Registration successful</p><p className="text-sm text-muted-foreground">{p.name} has been registered under {center}. MR number <span className="font-mono font-medium text-foreground">{p.mr}</span> has been issued.</p></div></div><div className="flex flex-wrap gap-2"><Button size="sm" onClick={() => openA4Print('Prescription', p, center)}><FileText className="mr-2 size-4"/>Generate blank prescription</Button><Button size="sm" variant="outline" onClick={() => openA4Print('OP Registration Sheet', p, center)}><Printer className="mr-2 size-4"/>Print OP sheet</Button></div></div>}<div className="mb-4 flex flex-wrap justify-between gap-2"><div><h2 className="font-display text-xl font-semibold">Patient profile</h2><p className="mt-1 text-sm text-muted-foreground">{center} · Active outpatient record</p></div><div className="flex gap-2"><Button variant="outline" size="sm" onClick={print}><Printer className="mr-2 size-4"/>Print</Button><Button variant="outline" size="sm" onClick={print}><Download className="mr-2 size-4"/>Export PDF</Button></div></div><Tabs defaultValue={justRegistered ? 'prescriptions' : 'overview'}><div className="overflow-x-auto"><TabsList className="h-10 bg-muted/70"><TabsTrigger value="overview">Overview</TabsTrigger><TabsTrigger value="visits">Visits</TabsTrigger><TabsTrigger value="op">OP Sheet</TabsTrigger><TabsTrigger value="prescriptions">Prescriptions</TabsTrigger><TabsTrigger value="documents">Documents</TabsTrigger></TabsList></div><TabsContent value="overview" className="mt-5"><Overview patient={p}/></TabsContent><TabsContent value="visits" className="mt-5"><Visits patient={p}/></TabsContent><TabsContent value="op" className="mt-5"><OPSheet patient={p} center={center}/></TabsContent><TabsContent value="prescriptions" className="mt-5"><Prescription patient={p} center={center}/></TabsContent><TabsContent value="documents" className="mt-5"><Documents patient={p}/></TabsContent></Tabs></main></div>
 }function Info({ label, value, strong }: { label: string; value: string; strong?: boolean }) { return <div className="flex justify-between gap-3"><dt className="text-muted-foreground">{label}</dt><dd className={cn('text-right font-medium', strong && 'text-destructive')}>{value}</dd></div> }
 function Overview({ patient }: { patient: PatientRecord }) { return <div className="grid gap-5 lg:grid-cols-2"><Section title="Clinical summary"><div className="space-y-4 text-sm"><Info label="Primary center" value={patient.consultationType === 'AYURCARE' ? 'Ayurcare Center' : 'Nutrition Center'}/><Info label="Allergies" value={patient.allergies || 'Not recorded'}/><Info label="Chronic conditions" value={patient.conditions || 'Not recorded'}/><Info label="Current medications" value={patient.medications || 'Not recorded'}/></div></Section><Section title="Care activity"><div className="grid grid-cols-3 gap-3"><Metric label="Visits" value={String(patient.visits.length)} /><Metric label="Prescriptions" value={String(patient.apiPrescriptions?.length ?? 0)} /><Metric label="Documents" value={String(patient.apiDocuments?.length ?? 0)} /></div></Section><div className="lg:col-span-2"><Visits patient={patient}/></div></div> }
 function Metric({ label, value }: { label: string; value: string }) { return <div className="rounded-lg bg-muted p-3"><p className="text-lg font-semibold">{value}</p><p className="text-xs text-muted-foreground">{label}</p></div> }
