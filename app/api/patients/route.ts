@@ -29,6 +29,9 @@ export async function GET(request: Request) {
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },
+        include: {
+          visits: { orderBy: { createdAt: 'desc' } },
+        },
       }),
       prisma.patient.count({ where }),
     ]);

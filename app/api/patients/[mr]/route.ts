@@ -7,12 +7,13 @@ export async function GET(request: NextRequest, context: { params: Promise<{ mr:
     const patient = await prisma.patient.findUnique({
       where: { mr: decodeURIComponent(mr) },
       include: {
-        visits: true,
-        opSheets: { include: { prescription: true } },
+        visits: { orderBy: { createdAt: 'desc' } },
+        opSheets: { orderBy: { createdAt: 'desc' }, include: { visit: true, prescription: true } },
+        prescriptions: { orderBy: { createdAt: 'desc' }, include: { opSheet: { include: { visit: true } } } },
         nutritionAssessments: true,
         ayurcareTreatments: true,
         followUps: true,
-        documents: true,
+        documents: { orderBy: { uploadedAt: 'desc' } },
       },
     });
 

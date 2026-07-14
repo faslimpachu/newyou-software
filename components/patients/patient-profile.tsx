@@ -1,6 +1,6 @@
-'use client'
+﻿'use client'
 
-import { useState, type HTMLAttributes, type ReactNode } from 'react'
+import { useEffect, useState, type HTMLAttributes, type ReactNode } from 'react'
 import {
   ArrowLeft, CalendarDays, Check, Download, Eye, FileText, IndianRupee,
   Pencil, Plus, Printer, Stethoscope, Trash2, Upload,
@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 import { type ExistingPatient } from '@/lib/registration-data'
+import { mapApiPatient, readApiError, type ApiDocument, type ApiOPSheet, type ApiPatient, type ApiPrescription, type PatientRecord } from '@/lib/patient-api'
 
 const measurements = ['Weight (kg)', 'Height (cm)', 'BMI', 'Body Fat (%)', 'Lean Mass (kg)', 'Waist (cm)', 'Hip (cm)', 'WHR', 'Muscle Mass (kg)', 'Water (%)', 'BMR (kcal)', 'Metabolic Age']
 const measurementColumns = ['Baseline', '1 Month', '2 Months', '3 Months', 'Change']
@@ -25,24 +26,71 @@ function Section({ title, description, children }: { title: string; description?
   return <Card className="rounded-lg shadow-sm"><CardHeader className="border-b pb-4"><CardTitle className="text-base">{title}</CardTitle>{description && <CardDescription className="text-xs">{description}</CardDescription>}</CardHeader><CardContent className="pt-5">{children}</CardContent></Card>
 }
 type PatientProfileProps = {
-  patient: ExistingPatient | null
+  patient: PatientRecord | null
   center: string
   generatedMR?: string
   justRegistered?: boolean
   onNewVisit?: () => void
 }
 
-export function PatientProfile({ patient, center, generatedMR, justRegistered, onNewVisit = () => undefined }: PatientProfileProps) {
- const p: ExistingPatient = patient ?? { mr: generatedMR ?? 'MR-100618', name: 'New Patient', parentName: '', mobile: 'Not recorded', age: 0, gender: 'Not specified', bloodGroup: 'Not recorded', city: '', lastVisit: 'First visit', tags: [], visits: [], bills: [] }
- const print = () => openA4Print('Patient Details', p, center)
- return <div className="grid gap-6 xl:grid-cols-[280px_1fr]"><aside><Card className="sticky top-20 rounded-lg shadow-sm"><CardContent className="p-5"><div className="flex size-16 items-center justify-center rounded-full bg-primary/10 text-xl font-semibold text-primary">{p.name.split(' ').map((part) => part[0]).join('')}</div><h2 className="mt-4 font-display text-xl font-semibold">{p.name}</h2><p className="mt-1 text-sm text-muted-foreground">{p.mr}</p><dl className="mt-6 space-y-3 border-t pt-5 text-sm"><Info label="Age / Gender" value={`${p.age || '—'} / ${p.gender}`}/><Info label="Blood group" value={p.bloodGroup}/><Info label="Phone" value={p.mobile}/><Info label="Last visit" value={p.lastVisit}/></dl><div className="mt-6 grid grid-cols-2 gap-2"><Button size="sm" onClick={onNewVisit}><CalendarDays className="mr-2 size-4"/>New visit</Button><Button size="sm" variant="outline" onClick={onNewVisit}><Pencil className="mr-2 size-4"/>Edit</Button></div></CardContent></Card></aside><main>{justRegistered && <div className="mb-5 flex flex-wrap items-center justify-between gap-4 rounded-lg border border-primary/30 bg-primary/5 px-5 py-4"><div className="flex items-start gap-3"><div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary"><Check className="size-4"/></div><div><p className="text-sm font-semibold text-primary">Registration successful</p><p className="text-sm text-muted-foreground">{p.name} has been registered under {center}. MR number <span className="font-mono font-medium text-foreground">{p.mr}</span> has been issued.</p></div></div><div className="flex flex-wrap gap-2"><Button size="sm" onClick={() => openA4Print('Prescription', p, center)}><FileText className="mr-2 size-4"/>Generate blank prescription</Button><Button size="sm" variant="outline" onClick={() => openA4Print('OP Registration Sheet', p, center)}><Printer className="mr-2 size-4"/>Print OP sheet</Button></div></div>}<div className="mb-4 flex flex-wrap justify-between gap-2"><div><h2 className="font-display text-xl font-semibold">Patient profile</h2><p className="mt-1 text-sm text-muted-foreground">{center} · Active outpatient record</p></div><div className="flex gap-2"><Button variant="outline" size="sm" onClick={print}><Printer className="mr-2 size-4"/>Print</Button><Button variant="outline" size="sm" onClick={print}><Download className="mr-2 size-4"/>Export PDF</Button></div></div><Tabs defaultValue={justRegistered ? 'prescriptions' : 'overview'}><div className="overflow-x-auto"><TabsList className="h-10 bg-muted/70"><TabsTrigger value="overview">Overview</TabsTrigger><TabsTrigger value="visits">Visits</TabsTrigger><TabsTrigger value="op">OP Sheet</TabsTrigger><TabsTrigger value="prescriptions">Prescriptions</TabsTrigger><TabsTrigger value="documents">Documents</TabsTrigger></TabsList></div><TabsContent value="overview" className="mt-5"><Overview patient={p}/></TabsContent><TabsContent value="visits" className="mt-5"><Visits patient={p}/></TabsContent><TabsContent value="op" className="mt-5"><OPSheet patient={p} center={center}/></TabsContent><TabsContent value="prescriptions" className="mt-5"><Prescription patient={p} center={center}/></TabsContent><TabsContent value="documents" className="mt-5"><Documents patient={p}/></TabsContent></Tabs></main></div>
+async function fetchPatientProfile(mr: string): Promise<PatientRecord> {
+  const response = await fetch(`/api/patients/${encodeURIComponent(mr)}`)
+  if (!response.ok) throw new Error(await readApiError(response))
+  const body = await response.json() as { patient: ApiPatient }
+  return mapApiPatient(body.patient)
 }
-function Info({ label, value, strong }: { label: string; value: string; strong?: boolean }) { return <div className="flex justify-between gap-3"><dt className="text-muted-foreground">{label}</dt><dd className={cn('text-right font-medium', strong && 'text-destructive')}>{value}</dd></div> }
+
+export function PatientProfile({ patient, center, generatedMR, justRegistered, onNewVisit }: PatientProfileProps) {
+ const [loadedPatient, setLoadedPatient] = useState<PatientRecord | null>(patient)
+ const [loading, setLoading] = useState(!patient && !!generatedMR)
+ const [error, setError] = useState('')
+
+ useEffect(() => {
+  if (patient) {
+    setLoadedPatient(patient)
+    return
+  }
+  if (!generatedMR) return
+  let cancelled = false
+  setLoading(true)
+  setError('')
+  fetchPatientProfile(generatedMR)
+    .then((record) => {
+      if (!cancelled) setLoadedPatient(record)
+    })
+    .catch((err) => {
+      if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load patient')
+    })
+    .finally(() => {
+      if (!cancelled) setLoading(false)
+    })
+  return () => { cancelled = true }
+ }, [generatedMR, patient])
+
+ const p: PatientRecord = loadedPatient ?? { mr: generatedMR ?? 'MR-100618', name: 'New Patient', parentName: '', mobile: 'Not recorded', age: 0, gender: 'Not specified', bloodGroup: 'Not recorded', city: '', lastVisit: 'First visit', tags: [], visits: [], bills: [] }
+ const print = () => openA4Print('Patient Details', p, center)
+ const handleNewVisit = async () => {
+  if (onNewVisit) {
+    onNewVisit()
+    return
+  }
+  setError('')
+  const response = await fetch('/api/visits', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ patientMr: p.mr, doctor: p.apiVisits?.[0]?.doctor || undefined }) })
+  if (!response.ok) {
+    setError(await readApiError(response))
+    return
+  }
+  setLoadedPatient(await fetchPatientProfile(p.mr))
+ }
+ if (loading) return <Card className="rounded-lg shadow-sm"><CardContent className="py-12 text-center text-sm text-muted-foreground">Loading patient profile...</CardContent></Card>
+ if (error) return <Card className="rounded-lg shadow-sm"><CardContent className="py-12 text-center text-sm text-destructive">{error}</CardContent></Card>
+ return <div className="grid gap-6 xl:grid-cols-[280px_1fr]"><aside><Card className="sticky top-20 rounded-lg shadow-sm"><CardContent className="p-5"><div className="flex size-16 items-center justify-center rounded-full bg-primary/10 text-xl font-semibold text-primary">{p.name.split(' ').map((part) => part[0]).join('')}</div><h2 className="mt-4 font-display text-xl font-semibold">{p.name}</h2><p className="mt-1 text-sm text-muted-foreground">{p.mr}</p><dl className="mt-6 space-y-3 border-t pt-5 text-sm"><Info label="Age / Gender" value={`${p.age || '-'} / ${p.gender}`}/><Info label="Blood group" value={p.bloodGroup}/><Info label="Phone" value={p.mobile}/><Info label="Last visit" value={p.lastVisit}/></dl><div className="mt-6 grid grid-cols-2 gap-2"><Button size="sm" onClick={handleNewVisit}><CalendarDays className="mr-2 size-4"/>New visit</Button><Button size="sm" variant="outline" onClick={handleNewVisit}><Pencil className="mr-2 size-4"/>Edit</Button></div></CardContent></Card></aside><main>{justRegistered && <div className="mb-5 flex flex-wrap items-center justify-between gap-4 rounded-lg border border-primary/30 bg-primary/5 px-5 py-4"><div className="flex items-start gap-3"><div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary"><Check className="size-4"/></div><div><p className="text-sm font-semibold text-primary">Registration successful</p><p className="text-sm text-muted-foreground">{p.name} has been registered under {center}. MR number <span className="font-mono font-medium text-foreground">{p.mr}</span> has been issued.</p></div></div><div className="flex flex-wrap gap-2"><Button size="sm" onClick={() => openA4Print('Prescription', p, center)}><FileText className="mr-2 size-4"/>Generate blank prescription</Button><Button size="sm" variant="outline" onClick={() => openA4Print('OP Registration Sheet', p, center)}><Printer className="mr-2 size-4"/>Print OP sheet</Button></div></div>}<div className="mb-4 flex flex-wrap justify-between gap-2"><div><h2 className="font-display text-xl font-semibold">Patient profile</h2><p className="mt-1 text-sm text-muted-foreground">{center} · Active outpatient record</p></div><div className="flex gap-2"><Button variant="outline" size="sm" onClick={print}><Printer className="mr-2 size-4"/>Print</Button><Button variant="outline" size="sm" onClick={print}><Download className="mr-2 size-4"/>Export PDF</Button></div></div><Tabs defaultValue={justRegistered ? 'prescriptions' : 'overview'}><div className="overflow-x-auto"><TabsList className="h-10 bg-muted/70"><TabsTrigger value="overview">Overview</TabsTrigger><TabsTrigger value="visits">Visits</TabsTrigger><TabsTrigger value="op">OP Sheet</TabsTrigger><TabsTrigger value="prescriptions">Prescriptions</TabsTrigger><TabsTrigger value="documents">Documents</TabsTrigger></TabsList></div><TabsContent value="overview" className="mt-5"><Overview patient={p}/></TabsContent><TabsContent value="visits" className="mt-5"><Visits patient={p}/></TabsContent><TabsContent value="op" className="mt-5"><OPSheet patient={p} center={center}/></TabsContent><TabsContent value="prescriptions" className="mt-5"><Prescription patient={p} center={center}/></TabsContent><TabsContent value="documents" className="mt-5"><Documents patient={p}/></TabsContent></Tabs></main></div>
+}function Info({ label, value, strong }: { label: string; value: string; strong?: boolean }) { return <div className="flex justify-between gap-3"><dt className="text-muted-foreground">{label}</dt><dd className={cn('text-right font-medium', strong && 'text-destructive')}>{value}</dd></div> }
 function Overview({ patient }: { patient: ExistingPatient }) { return <div className="grid gap-5 lg:grid-cols-2"><Section title="Clinical summary"><div className="space-y-4 text-sm"><Info label="Primary center" value="Nutrition Center"/><Info label="Allergies" value="Not recorded"/><Info label="Chronic conditions" value="Not recorded"/><Info label="Current medications" value="Not recorded"/></div></Section><Section title="Care activity"><div className="grid grid-cols-3 gap-3"><Metric label="Visits" value={String(patient.visits.length)} /><Metric label="Prescriptions" value="0" /><Metric label="Documents" value="0" /></div></Section><div className="lg:col-span-2"><Visits patient={patient}/></div></div> }
 function Metric({ label, value }: { label: string; value: string }) { return <div className="rounded-lg bg-muted p-3"><p className="text-lg font-semibold">{value}</p><p className="text-xs text-muted-foreground">{label}</p></div> }
 
 /* ------------------------------------------------------------------ */
-/*  Visit history — short ID, patient, date/time, doctor, department,   */
+/*  Visit history â€” short ID, patient, date/time, doctor, department,   */
 /*  reason and status, newest first (Requirement 3)                     */
 /* ------------------------------------------------------------------ */
 
@@ -57,7 +105,7 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 /* ------------------------------------------------------------------ */
-/*  OP Sheet module — empty state, list with actions, create/edit form  */
+/*  OP Sheet module â€” empty state, list with actions, create/edit form  */
 /*  (OP Sheet Module requirements)                                      */
 /* ------------------------------------------------------------------ */
 
@@ -74,8 +122,39 @@ type OPSheetRecord = {
   measurementValues: Record<string, string[]>
 }
 
-function OPSheet({ patient, center }: { patient: ExistingPatient; center: string }) {
-  const [records, setRecords] = useState<OPSheetRecord[]>([])
+function formatRecordDate(value?: string | null) {
+  if (!value) return new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+}
+
+function parseJson<T>(value: string | null | undefined, fallback: T): T {
+  if (!value) return fallback
+  try {
+    return JSON.parse(value) as T
+  } catch {
+    return fallback
+  }
+}
+
+function mapOPSheetRecord(sheet: ApiOPSheet, center: string): OPSheetRecord {
+  return {
+    id: sheet.id,
+    visitId: sheet.visitId,
+    date: formatRecordDate(sheet.createdAt),
+    doctor: sheet.visit?.doctor || 'Not yet assigned',
+    department: center,
+    status: sheet.status || 'Completed',
+    clinicalNotes: sheet.clinicalExamination || '',
+    investigations: sheet.symptoms || '',
+    treatmentPlan: sheet.diagnosis || '',
+    measurementValues: parseJson<Record<string, string[]>>(sheet.vitals, {}),
+  }
+}
+
+function OPSheet({ patient, center }: { patient: PatientRecord; center: string }) {
+  const [records, setRecords] = useState<OPSheetRecord[]>(() => (patient.apiOPSheets ?? []).map((sheet) => mapOPSheetRecord(sheet, center)))
   const [mode, setMode] = useState<'list' | 'edit'>('list')
   const [activeId, setActiveId] = useState<string | null>(null)
   const [viewOnly, setViewOnly] = useState(false)
@@ -87,12 +166,29 @@ function OPSheet({ patient, center }: { patient: ExistingPatient; center: string
   const openView = (id: string) => { setActiveId(id); setViewOnly(true); setMode('edit') }
   const openEdit = (id: string) => { setActiveId(id); setViewOnly(false); setMode('edit') }
 
-  const handleSaveRecord = (record: OPSheetRecord) => {
-    setRecords((current) => {
-      const exists = current.some((r) => r.id === record.id)
-      const next = exists ? current.map((r) => (r.id === record.id ? record : r)) : [record, ...current]
-      return next
-    })
+  const handleSaveRecord = async (record: OPSheetRecord) => {
+    const existing = records.some((r) => r.id === record.id)
+    if (!existing) {
+      const response = await fetch('/api/op-sheets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          patientMr: patient.mr,
+          visitId: record.visitId,
+          clinicalExamination: record.clinicalNotes,
+          vitals: JSON.stringify(record.measurementValues),
+          diagnosis: record.treatmentPlan,
+          symptoms: record.investigations,
+        }),
+      })
+      if (response.ok) {
+        const body = await response.json() as { sheet: ApiOPSheet }
+        setRecords((current) => [mapOPSheetRecord(body.sheet, center), ...current])
+        setMode('list')
+        return
+      }
+    }
+    setRecords((current) => existing ? current.map((r) => (r.id === record.id ? record : r)) : [record, ...current])
     setMode('list')
   }
 
@@ -102,7 +198,7 @@ function OPSheet({ patient, center }: { patient: ExistingPatient; center: string
     return <OPSheetEditor
       patient={patient}
       center={center}
-      record={editing ?? { id: `OP-${Date.now().toString(36).toUpperCase()}`, visitId: latestVisit?.id ?? '—', date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }), doctor: latestVisit?.doctor ?? 'Not yet assigned', department: center, status: 'Draft', clinicalNotes: '', investigations: '', treatmentPlan: '', measurementValues: {} }}
+      record={editing ?? { id: `OP-${Date.now().toString(36).toUpperCase()}`, visitId: latestVisit?.id ?? 'â€”', date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }), doctor: latestVisit?.doctor ?? 'Not yet assigned', department: center, status: 'Draft', clinicalNotes: '', investigations: '', treatmentPlan: '', measurementValues: {} }}
       readOnly={viewOnly}
       onCancel={() => setMode('list')}
       onSave={handleSaveRecord}
@@ -111,7 +207,7 @@ function OPSheet({ patient, center }: { patient: ExistingPatient; center: string
 
   return <div className="space-y-4">
     <div className="flex flex-wrap items-center justify-between gap-2">
-      <div><h3 className="font-display text-xl font-semibold">OP Sheets</h3><p className="text-sm text-muted-foreground">{patient.name} · {patient.mr}</p></div>
+      <div><h3 className="font-display text-xl font-semibold">OP Sheets</h3><p className="text-sm text-muted-foreground">{patient.name} Â· {patient.mr}</p></div>
       <Button size="sm" onClick={openNew}><Plus className="mr-2 size-4"/>Create OP Sheet</Button>
     </div>
     {records.length === 0
@@ -156,7 +252,7 @@ function OPSheetEditor({ patient, center, record, readOnly, onCancel, onSave }: 
 
   return <div className="print-sheet space-y-5">
     <div className="flex flex-wrap justify-between gap-2">
-      <div><h3 className="font-display text-xl font-semibold">{readOnly ? 'View OP Sheet' : 'Out Patient Registration Sheet'}</h3><p className="text-sm text-muted-foreground">{patient.name} · {patient.mr} · Visit {record.visitId}</p></div>
+      <div><h3 className="font-display text-xl font-semibold">{readOnly ? 'View OP Sheet' : 'Out Patient Registration Sheet'}</h3><p className="text-sm text-muted-foreground">{patient.name} Â· {patient.mr} Â· Visit {record.visitId}</p></div>
       <div className="flex gap-2">
         <Button size="sm" variant="outline" onClick={onCancel}><ArrowLeft className="mr-2 size-4"/>Back to list</Button>
         <Button size="sm" variant="outline" onClick={doPrint}><Printer className="mr-2 size-4"/>Print</Button>
@@ -188,13 +284,14 @@ function OPSheetEditor({ patient, center, record, readOnly, onCancel, onSave }: 
 }
 
 /* ------------------------------------------------------------------ */
-/*  Prescription module — empty state, list with actions, create/edit   */
+/*  Prescription module â€” empty state, list with actions, create/edit   */
 /* ------------------------------------------------------------------ */
 
 type MedicineRow = { id: string; medicine: string; dosage: string; frequency: string; duration: string; instructions: string }
 type PrescriptionRecord = {
   id: string
   visitId: string
+  opSheetId?: string
   date: string
   doctor: string
   department: string
@@ -211,8 +308,24 @@ const blankMedicineRows = (): MedicineRow[] => [
   { id: `m-${Date.now()}-3`, medicine: '', dosage: '', frequency: '', duration: '', instructions: '' },
 ]
 
-function Prescription({ patient, center }: { patient: ExistingPatient; center: string }) {
-  const [records, setRecords] = useState<PrescriptionRecord[]>([])
+function mapPrescriptionRecord(prescription: ApiPrescription, center: string): PrescriptionRecord {
+  return {
+    id: prescription.id,
+    visitId: prescription.opSheet?.visitId || '—',
+    opSheetId: prescription.opSheetId,
+    date: formatRecordDate(prescription.createdAt),
+    doctor: prescription.opSheet?.visit?.doctor || 'Not yet assigned',
+    department: center,
+    status: 'Completed',
+    diagnosis: prescription.diagnosis || '',
+    medicines: parseJson<MedicineRow[]>(prescription.medicines, blankMedicineRows()),
+    advice: prescription.advice || '',
+    followUp: prescription.followUp || '',
+  }
+}
+
+function Prescription({ patient, center }: { patient: PatientRecord; center: string }) {
+  const [records, setRecords] = useState<PrescriptionRecord[]>(() => (patient.apiPrescriptions ?? []).map((prescription) => mapPrescriptionRecord(prescription, center)))
   const [mode, setMode] = useState<'list' | 'edit'>('list')
   const [activeId, setActiveId] = useState<string | null>(null)
   const [viewOnly, setViewOnly] = useState(false)
@@ -225,11 +338,30 @@ function Prescription({ patient, center }: { patient: ExistingPatient; center: s
   const openView = (id: string) => { setActiveId(id); setViewOnly(true); setMode('edit') }
   const openEdit = (id: string) => { setActiveId(id); setViewOnly(false); setMode('edit') }
 
-  const handleSaveRecord = (record: PrescriptionRecord) => {
-    setRecords((current) => {
-      const exists = current.some((r) => r.id === record.id)
-      return exists ? current.map((r) => (r.id === record.id ? record : r)) : [record, ...current]
-    })
+  const handleSaveRecord = async (record: PrescriptionRecord) => {
+    const existing = records.some((r) => r.id === record.id)
+    const opSheetId = record.opSheetId || patient.apiOPSheets?.[0]?.id
+    if (!existing && opSheetId) {
+      const response = await fetch('/api/prescriptions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          patientMr: patient.mr,
+          opSheetId,
+          diagnosis: record.diagnosis,
+          medicines: JSON.stringify(record.medicines),
+          advice: record.advice,
+          followUp: record.followUp,
+        }),
+      })
+      if (response.ok) {
+        const body = await response.json() as { prescription: ApiPrescription }
+        setRecords((current) => [mapPrescriptionRecord(body.prescription, center), ...current])
+        setMode('list')
+        return
+      }
+    }
+    setRecords((current) => existing ? current.map((r) => (r.id === record.id ? record : r)) : [record, ...current])
     setMode('list')
   }
 
@@ -239,7 +371,7 @@ function Prescription({ patient, center }: { patient: ExistingPatient; center: s
     return <PrescriptionEditor
       patient={patient}
       center={center}
-      record={editing ?? { id: `RX-${Date.now().toString(36).toUpperCase()}`, visitId: latestVisit?.id ?? '—', date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }), doctor: latestVisit?.doctor ?? 'Not yet assigned', department: center, status: 'Draft', diagnosis: '', medicines: blankMedicineRows(), advice: '', followUp: '' }}
+      record={editing ?? { id: `RX-${Date.now().toString(36).toUpperCase()}`, visitId: latestVisit?.id ?? '—', opSheetId: patient.apiOPSheets?.[0]?.id, date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }), doctor: latestVisit?.doctor ?? 'Not yet assigned', department: center, status: 'Draft', diagnosis: '', medicines: blankMedicineRows(), advice: '', followUp: '' }}
       readOnly={viewOnly}
       onCancel={() => setMode('list')}
       onSave={handleSaveRecord}
@@ -248,7 +380,7 @@ function Prescription({ patient, center }: { patient: ExistingPatient; center: s
 
   return <div className="space-y-4">
     <div className="flex flex-wrap items-center justify-between gap-2">
-      <div><h3 className="font-display text-xl font-semibold">Prescriptions</h3><p className="text-sm text-muted-foreground">{patient.name} · {patient.mr}</p></div>
+      <div><h3 className="font-display text-xl font-semibold">Prescriptions</h3><p className="text-sm text-muted-foreground">{patient.name} Â· {patient.mr}</p></div>
       <div className="flex gap-2"><Button variant="outline" size="sm" onClick={openBlank}><FileText className="mr-2 size-4"/>Blank prescription</Button><Button size="sm" onClick={openNew}><Plus className="mr-2 size-4"/>Create Prescription</Button></div>
     </div>
     {records.length === 0
@@ -330,7 +462,7 @@ function PrescriptionEditor({ patient, center, record, readOnly, onCancel, onSav
   </div>
 }
 
-function Bills({ patient }: { patient: ExistingPatient }) { const total = patient.bills.reduce((sum, bill) => sum + bill.amount, 0); return <div className="grid gap-5 lg:grid-cols-[1fr_280px]"><Card className="rounded-lg shadow-sm"><CardHeader><CardTitle>Invoices</CardTitle></CardHeader><CardContent>{patient.bills.length ? <div className="space-y-3">{patient.bills.map((bill) => <div className="flex items-center justify-between rounded-lg border p-4" key={bill.id}><div><p className="font-medium">{bill.id}</p><p className="mt-1 text-xs text-muted-foreground">{bill.date} · {bill.service}</p></div><div className="text-right"><p className="font-semibold">Rs. {bill.amount.toLocaleString()}</p><p className="mt-1 text-xs text-destructive">{bill.status}</p></div></div>)}</div> : <EmptyState title="No invoices for this patient" action="Create invoice"/>}</CardContent></Card><Card className="rounded-lg shadow-sm"><CardHeader><CardTitle>Account summary</CardTitle></CardHeader><CardContent><p className="text-xs text-muted-foreground">Outstanding balance</p><p className="mt-1 text-2xl font-semibold">Rs. {total.toLocaleString()}</p><Button className="mt-5 w-full" size="sm"><IndianRupee className="mr-2 size-4"/>Record payment</Button><Button className="mt-2 w-full" variant="outline" size="sm"><FileText className="mr-2 size-4"/>New invoice</Button></CardContent></Card></div> }
+function Bills({ patient }: { patient: ExistingPatient }) { const total = patient.bills.reduce((sum, bill) => sum + bill.amount, 0); return <div className="grid gap-5 lg:grid-cols-[1fr_280px]"><Card className="rounded-lg shadow-sm"><CardHeader><CardTitle>Invoices</CardTitle></CardHeader><CardContent>{patient.bills.length ? <div className="space-y-3">{patient.bills.map((bill) => <div className="flex items-center justify-between rounded-lg border p-4" key={bill.id}><div><p className="font-medium">{bill.id}</p><p className="mt-1 text-xs text-muted-foreground">{bill.date} Â· {bill.service}</p></div><div className="text-right"><p className="font-semibold">Rs. {bill.amount.toLocaleString()}</p><p className="mt-1 text-xs text-destructive">{bill.status}</p></div></div>)}</div> : <EmptyState title="No invoices for this patient" action="Create invoice"/>}</CardContent></Card><Card className="rounded-lg shadow-sm"><CardHeader><CardTitle>Account summary</CardTitle></CardHeader><CardContent><p className="text-xs text-muted-foreground">Outstanding balance</p><p className="mt-1 text-2xl font-semibold">Rs. {total.toLocaleString()}</p><Button className="mt-5 w-full" size="sm"><IndianRupee className="mr-2 size-4"/>Record payment</Button><Button className="mt-2 w-full" variant="outline" size="sm"><FileText className="mr-2 size-4"/>New invoice</Button></CardContent></Card></div> }
 function EmptyState({ title, action }: { title: string; action: string }) { return <div className="py-8 text-center"><p className="font-medium">{title}</p><Button size="sm" variant="outline" className="mt-3"><Plus className="mr-2 size-4"/>{action}</Button></div> }
 
 function ClinicHeader({ center }: { center: string }) {
@@ -339,35 +471,72 @@ function ClinicHeader({ center }: { center: string }) {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Medical Documents module — upload metadata, patient-aware list,     */
+/*  Medical Documents module â€” upload metadata, patient-aware list,     */
 /*  print/export/delete-with-confirmation (Medical Documents Module)    */
 /* ------------------------------------------------------------------ */
 
 type PatientDocument = {
+  id?: string
   title: string
   category: string
+  fileName: string
+  filePath: string
   date: string
   uploadedBy: string
   notes: string
 }
 
-function Documents({ patient }: { patient: ExistingPatient }) {
-  const [documents, setDocuments] = useState<PatientDocument[]>([])
+function mapPatientDocument(doc: ApiDocument): PatientDocument {
+  return {
+    id: doc.id,
+    title: doc.title || doc.fileName,
+    category: doc.category || 'Clinical report',
+    fileName: doc.fileName,
+    filePath: doc.filePath,
+    date: formatRecordDate(doc.uploadedAt),
+    uploadedBy: doc.uploadedBy || 'Reception desk',
+    notes: doc.remarks || '',
+  }
+}
+
+function Documents({ patient }: { patient: PatientRecord }) {
+  const [documents, setDocuments] = useState<PatientDocument[]>(() => (patient.apiDocuments ?? []).map(mapPatientDocument))
   const [title, setTitle] = useState('')
   const [category, setCategory] = useState('Clinical report')
   const [uploadedBy, setUploadedBy] = useState('')
   const [notes, setNotes] = useState('')
 
-  const add = () => {
+  const add = async () => {
     if (!title.trim()) return
-    setDocuments((items) => [{ title, category, date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }), uploadedBy: uploadedBy.trim() || 'Reception desk', notes }, ...items])
+    const response = await fetch(`/api/patients/${encodeURIComponent(patient.mr)}/documents`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title,
+        category,
+        fileName: title,
+        filePath: `metadata://${patient.mr}/${encodeURIComponent(title)}`,
+        fileType: 'metadata',
+        uploadedBy: uploadedBy.trim() || 'Reception desk',
+        remarks: notes,
+      }),
+    })
+    if (response.ok) {
+      const body = await response.json() as { document: ApiDocument }
+      setDocuments((items) => [mapPatientDocument(body.document), ...items])
+    } else {
+      setDocuments((items) => [{ title, category, fileName: title, filePath: '', date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }), uploadedBy: uploadedBy.trim() || 'Reception desk', notes }, ...items])
+    }
     setTitle('')
     setNotes('')
   }
 
-  const remove = (index: number) => {
+  const remove = async (index: number) => {
     const doc = documents[index]
     if (!window.confirm(`Delete "${doc.title}"? This cannot be undone.`)) return
+    if (doc.id) {
+      await fetch(`/api/patients/${encodeURIComponent(patient.mr)}/documents`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: doc.id }) })
+    }
     setDocuments((items) => items.filter((_, i) => i !== index))
   }
 
