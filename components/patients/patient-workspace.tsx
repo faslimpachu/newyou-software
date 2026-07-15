@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
-import { centerOptions, searchFields, type ConsultationCenter } from '@/lib/registration-data'
+import { centerOptions, searchFields, type ConsultationCenter, doctorsFor } from '@/lib/registration-data'
 import { consultationTypeFromCenter, mapApiPatient, readApiError, type ApiPatient, type PatientRecord } from '@/lib/patient-api'
 
 type Screen = 'choose' | 'search' | 'form'
@@ -25,32 +25,8 @@ const emptyForm: FormValues = {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Doctor directory â€” sample doctors per department (Requirement 1)   */
+/*  Helpers: age calculation, MR generation, form <-> patient mapping   */
 /* ------------------------------------------------------------------ */
-
-type Doctor = { id: string; name: string; qualification: string }
-
-// Four sample doctors are shown per department. The list swaps
-// automatically based on the department selected in step 1.
-const doctorsByCenter: Record<ConsultationCenter, Doctor[]> = {
-  nutrition: [
-    { id: 'doc-nu-1', name: 'Dr. Anjali Menon', qualification: 'Chief Dietitian, M.Sc Clinical Nutrition' },
-    { id: 'doc-nu-2', name: 'Dr. Rahul Varma', qualification: 'Nutrition Physician, MD' },
-    { id: 'doc-nu-3', name: 'Dr. Priya Nair', qualification: 'Sports Nutritionist, M.Sc' },
-    { id: 'doc-nu-4', name: 'Dr. Sandeep Kumar', qualification: 'Bariatric Consultant, MD' },
-  ],
-  ayurcare: [
-    { id: 'doc-ay-1', name: 'Dr. Krishnan Namboothiri', qualification: 'Chief Physician, BAMS, MD (Ayu)' },
-    { id: 'doc-ay-2', name: 'Dr. Lakshmi Warrier', qualification: 'Panchakarma Specialist, BAMS' },
-    { id: 'doc-ay-3', name: 'Dr. Arun Pillai', qualification: 'Ayurvedic Consultant, BAMS, MD' },
-    { id: 'doc-ay-4', name: 'Dr. Meera Thampi', qualification: 'Ayurvedic Physician, BAMS' },
-  ],
-}
-
-function doctorsFor(center: ConsultationCenter | null): Doctor[] {
-  if (!center) return [...doctorsByCenter.nutrition, ...doctorsByCenter.ayurcare].slice(0, 4)
-  return doctorsByCenter[center] ?? []
-}
 
 /* ------------------------------------------------------------------ */
 /*  Helpers: age calculation, MR generation, form <-> patient mapping   */

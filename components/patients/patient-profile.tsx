@@ -3,7 +3,7 @@
 import { useEffect, useState, type HTMLAttributes, type ReactNode } from 'react'
 import {
   ArrowLeft, CalendarDays, Check, Download, Eye, FileText, IndianRupee,
-  Pencil, Plus, Printer, Stethoscope, Trash2, Upload,
+  Pencil, Plus, Printer, Stethoscope, Trash2, Upload, X,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
-import { type ExistingPatient } from '@/lib/registration-data'
+import { type ExistingPatient, centerOptions, type ConsultationCenter, doctorsFor } from '@/lib/registration-data'
 import { mapApiPatient, readApiError, type ApiDocument, type ApiOPSheet, type ApiPatient, type ApiPrescription, type PatientRecord } from '@/lib/patient-api'
 import { PatientProfileEditor } from './patient-profile-editor'
 
@@ -46,6 +46,10 @@ export function PatientProfile({ patient, center, generatedMR, justRegistered, o
   const [loading, setLoading] = useState(!patient && !!generatedMR)
   const [error, setError] = useState('')
   const [editing, setEditing] = useState(false)
+  const [newVisitDialog, setNewVisitDialog] = useState(false)
+  const [selectedCenter, setSelectedCenter] = useState<ConsultationCenter | null>(null)
+  const [selectedDoctor, setSelectedDoctor] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
     if (patient) {
@@ -76,18 +80,90 @@ export function PatientProfile({ patient, center, generatedMR, justRegistered, o
       onNewVisit()
       return
     }
+    setSelectedCenter(null)
+    setSelectedDoctor('')
     setError('')
-    const response = await fetch('/api/visits', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ patientMr: p.mr, doctor: p.apiVisits?.[0]?.doctor || undefined }) })
-    if (!response.ok) {
-      setError(await readApiError(response))
-      return
+    setNewVisitDialog(true)
+  }
+
+  const handleCreateVisit = async () => {
+    if (!selectedCenter || !selectedDoctor) return
+    setSubmitting(true)
+    setError('')
+    setNewVisitDialog(false)
+    try {
+      const response = await fetch('/api/visits', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ patientMr: p.mr, doctor: selectedDoctor }) })
+      if (!response.ok) {
+        const err = await readApiError(response)
+        setError(err)
+        setSubmitting(false)
+        return
+      }
+      setLoadedPatient(await fetchPatientProfile(p.mr))
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to create visit'
+      setError(message)
+    } finally {
+      setSubmitting(false)
     }
-    setLoadedPatient(await fetchPatientProfile(p.mr))
   }
   if (loading) return <Card className="rounded-lg shadow-sm"><CardContent className="py-12 text-center text-sm text-muted-foreground">Loading patient profile...</CardContent></Card>
   if (error) return <Card className="rounded-lg shadow-sm"><CardContent className="py-12 text-center text-sm text-destructive">{error}</CardContent></Card>
   if (editing) return <PatientProfileEditor patient={p} center={center} onCancel={() => setEditing(false)} onSaved={(updated) => { setLoadedPatient(updated); setEditing(false) }} />
-   return <div className="grid gap-6 xl:grid-cols-[280px_1fr]"><aside><Card className="sticky top-20 rounded-lg shadow-sm"><CardContent className="p-5"><div className="flex size-16 items-center justify-center rounded-full bg-primary/10 text-xl font-semibold text-primary">{p.name.split(' ').map((part) => part[0]).join('')}</div><h2 className="mt-4 font-display text-xl font-semibold">{p.name}</h2><p className="mt-1 text-sm text-muted-foreground">{p.mr}</p><dl className="mt-6 space-y-3 border-t pt-5 text-sm"><Info label="Age / Gender" value={`${p.age || '-'} / ${p.gender}`}/><Info label="Blood group" value={p.bloodGroup}/><Info label="Phone" value={p.mobile}/><Info label="Last visit" value={p.lastVisit}/></dl><div className="mt-6 grid grid-cols-2 gap-2"><Button size="sm" onClick={handleNewVisit}><CalendarDays className="mr-2 size-4"/>New visit</Button><Button size="sm" variant="outline" onClick={() => setEditing(true)}><Pencil className="mr-2 size-4"/>Edit</Button></div></CardContent></Card></aside><main>{justRegistered && <div className="mb-5 flex flex-wrap items-center justify-between gap-4 rounded-lg border border-primary/30 bg-primary/5 px-5 py-4"><div className="flex items-start gap-3"><div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary"><Check className="size-4"/></div><div><p className="text-sm font-semibold text-primary">Registration successful</p><p className="text-sm text-muted-foreground">{p.name} has been registered under {center}. MR number <span className="font-mono font-medium text-foreground">{p.mr}</span> has been issued.</p></div></div><div className="flex flex-wrap gap-2"><Button size="sm" onClick={() => openA4Print('Prescription', p, center)}><FileText className="mr-2 size-4"/>Generate blank prescription</Button><Button size="sm" variant="outline" onClick={() => openA4Print('OP Registration Sheet', p, center)}><Printer className="mr-2 size-4"/>Print OP sheet</Button></div></div>}<div className="mb-4 flex flex-wrap justify-between gap-2"><div><h2 className="font-display text-xl font-semibold">Patient profile</h2><p className="mt-1 text-sm text-muted-foreground">{center} · Active outpatient record</p></div><div className="flex gap-2"><Button variant="outline" size="sm" onClick={print}><Printer className="mr-2 size-4"/>Print</Button><Button variant="outline" size="sm" onClick={print}><Download className="mr-2 size-4"/>Export PDF</Button></div></div><Tabs defaultValue={justRegistered ? 'prescriptions' : 'overview'}><div className="overflow-x-auto"><TabsList className="h-10 bg-muted/70"><TabsTrigger value="overview">Overview</TabsTrigger><TabsTrigger value="visits">Visits</TabsTrigger><TabsTrigger value="op">OP Sheet</TabsTrigger><TabsTrigger value="prescriptions">Prescriptions</TabsTrigger><TabsTrigger value="documents">Documents</TabsTrigger></TabsList></div><TabsContent value="overview" className="mt-5"><Overview patient={p}/></TabsContent><TabsContent value="visits" className="mt-5"><Visits patient={p}/></TabsContent><TabsContent value="op" className="mt-5"><OPSheet patient={p} center={center}/></TabsContent><TabsContent value="prescriptions" className="mt-5"><Prescription patient={p} center={center}/></TabsContent><TabsContent value="documents" className="mt-5"><Documents patient={p}/></TabsContent></Tabs></main></div>
+   return <>
+      <div className="grid gap-6 xl:grid-cols-[280px_1fr]"><aside><Card className="sticky top-20 rounded-lg shadow-sm"><CardContent className="p-5"><div className="flex size-16 items-center justify-center rounded-full bg-primary/10 text-xl font-semibold text-primary">{p.name.split(' ').map((part) => part[0]).join('')}</div><h2 className="mt-4 font-display text-xl font-semibold">{p.name}</h2><p className="mt-1 text-sm text-muted-foreground">{p.mr}</p><dl className="mt-6 space-y-3 border-t pt-5 text-sm"><Info label="Age / Gender" value={`${p.age || '-'} / ${p.gender}`}/><Info label="Blood group" value={p.bloodGroup}/><Info label="Phone" value={p.mobile}/><Info label="Last visit" value={p.lastVisit}/></dl><div className="mt-6 grid grid-cols-2 gap-2"><Button size="sm" onClick={handleNewVisit}><CalendarDays className="mr-2 size-4"/>New visit</Button><Button size="sm" variant="outline" onClick={() => setEditing(true)}><Pencil className="mr-2 size-4"/>Edit</Button></div></CardContent></Card></aside><main>{justRegistered && <div className="mb-5 flex flex-wrap items-center justify-between gap-4 rounded-lg border border-primary/30 bg-primary/5 px-5 py-4"><div className="flex items-start gap-3"><div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary"><Check className="size-4"/></div><div><p className="text-sm font-semibold text-primary">Registration successful</p><p className="text-sm text-muted-foreground">{p.name} has been registered under {center}. MR number <span className="font-mono font-medium text-foreground">{p.mr}</span> has been issued.</p></div></div><div className="flex flex-wrap gap-2"><Button size="sm" onClick={() => openA4Print('Prescription', p, center)}><FileText className="mr-2 size-4"/>Generate blank prescription</Button><Button size="sm" variant="outline" onClick={() => openA4Print('OP Registration Sheet', p, center)}><Printer className="mr-2 size-4"/>Print OP sheet</Button></div></div>}<div className="mb-4 flex flex-wrap justify-between gap-2"><div><h2 className="font-display text-xl font-semibold">Patient profile</h2><p className="mt-1 text-sm text-muted-foreground">{center} · Active outpatient record</p></div><div className="flex gap-2"><Button variant="outline" size="sm" onClick={print}><Printer className="mr-2 size-4"/>Print</Button><Button variant="outline" size="sm" onClick={print}><Download className="mr-2 size-4"/>Export PDF</Button></div></div><Tabs defaultValue={justRegistered ? 'prescriptions' : 'overview'}><div className="overflow-x-auto"><TabsList className="h-10 bg-muted/70"><TabsTrigger value="overview">Overview</TabsTrigger><TabsTrigger value="visits">Visits</TabsTrigger><TabsTrigger value="op">OP Sheet</TabsTrigger><TabsTrigger value="prescriptions">Prescriptions</TabsTrigger><TabsTrigger value="documents">Documents</TabsTrigger></TabsList></div><TabsContent value="overview" className="mt-5"><Overview patient={p}/></TabsContent><TabsContent value="visits" className="mt-5"><Visits patient={p}/></TabsContent><TabsContent value="op" className="mt-5"><OPSheet patient={p} center={center}/></TabsContent><TabsContent value="prescriptions" className="mt-5"><Prescription patient={p} center={center}/></TabsContent><TabsContent value="documents" className="mt-5"><Documents patient={p}/></TabsContent></Tabs></main></div>
+      {newVisitDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/20 p-4">
+          <Card className="w-full max-w-md rounded-lg shadow-xl">
+            <CardHeader className="flex-row items-center justify-between">
+              <div>
+                <CardTitle>New Visit</CardTitle>
+                <CardDescription>Select center and doctor for this visit.</CardDescription>
+              </div>
+              <Button size="icon-sm" variant="ghost" onClick={() => setNewVisitDialog(false)} aria-label="Close dialog">
+                <X className="size-4" />
+              </Button>
+            </CardHeader>
+            <CardContent className="grid gap-4">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-muted-foreground" htmlFor="new-visit-center">Center *</Label>
+                <select
+                  id="new-visit-center"
+                  value={selectedCenter ?? ''}
+                  onChange={(e) => { const v = e.target.value as ConsultationCenter; setSelectedCenter(v); setSelectedDoctor('') }}
+                  className="h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm"
+                >
+                  <option value="">Select center</option>
+                  {centerOptions.map((option) => (
+                    <option key={option.id} value={option.id}>{option.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-muted-foreground" htmlFor="new-visit-doctor">Doctor *</Label>
+                <select
+                  id="new-visit-doctor"
+                  value={selectedDoctor}
+                  onChange={(e) => setSelectedDoctor(e.target.value)}
+                  disabled={!selectedCenter}
+                  className="h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm disabled:opacity-50"
+                >
+                  <option value="">Select doctor</option>
+                  {doctorsFor(selectedCenter).map((doc) => (
+                    <option key={doc.id} value={doc.name}>{doc.name} - {doc.qualification}</option>
+                  ))}
+                </select>
+                {!selectedCenter && <p className="text-xs text-muted-foreground">Select a center first to see available doctors.</p>}
+              </div>
+              <div className="flex justify-end gap-2 border-t pt-4">
+                <Button variant="outline" size="sm" onClick={() => setNewVisitDialog(false)}>Cancel</Button>
+                <Button size="sm" onClick={handleCreateVisit} disabled={!selectedCenter || !selectedDoctor || submitting}>Create Visit</Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+    </>
 }function Info({ label, value, strong }: { label: string; value: string; strong?: boolean }) { return <div className="flex justify-between gap-3"><dt className="text-muted-foreground">{label}</dt><dd className={cn('text-right font-medium', strong && 'text-destructive')}>{value}</dd></div> }
 function Overview({ patient }: { patient: PatientRecord }) { return <div className="grid gap-5 lg:grid-cols-2"><Section title="Clinical summary"><div className="space-y-4 text-sm"><Info label="Primary center" value={patient.consultationType === 'AYURCARE' ? 'Ayurcare Center' : 'Nutrition Center'}/><Info label="Allergies" value={patient.allergies || 'Not recorded'}/><Info label="Chronic conditions" value={patient.conditions || 'Not recorded'}/><Info label="Current medications" value={patient.medications || 'Not recorded'}/></div></Section><Section title="Care activity"><div className="grid grid-cols-3 gap-3"><Metric label="Visits" value={String(patient.visits.length)} /><Metric label="Prescriptions" value={String(patient.apiPrescriptions?.length ?? 0)} /><Metric label="Documents" value={String(patient.apiDocuments?.length ?? 0)} /></div></Section><div className="lg:col-span-2"><Visits patient={patient}/></div></div> }
 function Metric({ label, value }: { label: string; value: string }) { return <div className="rounded-lg bg-muted p-3"><p className="text-lg font-semibold">{value}</p><p className="text-xs text-muted-foreground">{label}</p></div> }

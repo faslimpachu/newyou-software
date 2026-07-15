@@ -172,3 +172,25 @@ export const indianStates = [
 export const dietPatterns = ['Vegetarian', 'Non-Vegetarian', 'Eggetarian', 'Vegan', 'Jain']
 export const exerciseLevels = ['Sedentary', 'Light', 'Moderate', 'Active', 'Very Active']
 export const frequencyOptions = ['Never', 'Occasional', 'Regular', 'Former']
+
+export type Doctor = { id: string; name: string; qualification: string }
+
+export const doctorsByCenter: Record<ConsultationCenter, Doctor[]> = {
+  nutrition: [
+    { id: 'doc-nu-1', name: 'Dr. Anjali Menon', qualification: 'Chief Dietitian, M.Sc Clinical Nutrition' },
+    { id: 'doc-nu-2', name: 'Dr. Rahul Varma', qualification: 'Nutrition Physician, MD' },
+    { id: 'doc-nu-3', name: 'Dr. Priya Nair', qualification: 'Sports Nutritionist, M.Sc' },
+    { id: 'doc-nu-4', name: 'Dr. Sandeep Kumar', qualification: 'Bariatric Consultant, MD' },
+  ],
+  ayurcare: [
+    { id: 'doc-ay-1', name: 'Dr. Krishnan Namboothiri', qualification: 'Chief Physician, BAMS, MD (Ayu)' },
+    { id: 'doc-ay-2', name: 'Dr. Lakshmi Warrier', qualification: 'Panchakarma Specialist, BAMS' },
+    { id: 'doc-ay-3', name: 'Dr. Arun Pillai', qualification: 'Ayurvedic Consultant, BAMS, MD' },
+    { id: 'doc-ay-4', name: 'Dr. Meera Thampi', qualification: 'Ayurvedic Physician, BAMS' },
+  ],
+}
+
+export function doctorsFor(center: ConsultationCenter | null): Doctor[] {
+  if (!center) return [...doctorsByCenter.nutrition, ...doctorsByCenter.ayurcare].slice(0, 4)
+  return doctorsByCenter[center] ?? []
+}
