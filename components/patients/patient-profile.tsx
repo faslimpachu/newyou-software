@@ -261,20 +261,37 @@ function mapOPSheetRecord(sheet: ApiOPSheet, center: string): OPSheetRecord {
 }
 
 function OPSheet({ patient, center }: { patient: PatientRecord; center: string }) {
-  const [records, setRecords] = useState<OPSheetRecord[]>(() => (patient.apiOPSheets ?? []).map((sheet) => mapOPSheetRecord(sheet, center)))
+  const opSheetsByVisitId = ((patient.apiOPSheets ?? []) as ApiOPSheet[]).reduce<Map<string, OPSheetRecord>>((acc, sheet) => {
+    acc.set(sheet.visitId, mapOPSheetRecord(sheet, center))
+    return acc
+  }, new Map<string, OPSheetRecord>())
+
   const [mode, setMode] = useState<'list' | 'edit'>('list')
-  const [activeId, setActiveId] = useState<string | null>(null)
+  const [activeVisitId, setActiveVisitId] = useState<string | null>(null)
   const [viewOnly, setViewOnly] = useState(false)
 
-  const latestVisit = patient.visits[patient.visits.length - 1]
-  const editing = records.find((r) => r.id === activeId) ?? null
+  const editingRecord = activeVisitId ? opSheetsByVisitId.get(activeVisitId) ?? null : null
 
-  const openNew = () => { setActiveId(null); setViewOnly(false); setMode('edit') }
-  const openView = (id: string) => { setActiveId(id); setViewOnly(true); setMode('edit') }
-  const openEdit = (id: string) => { setActiveId(id); setViewOnly(false); setMode('edit') }
+  const openCreate = (visitId: string) => {
+    setActiveVisitId(visitId)
+    setViewOnly(false)
+    setMode('edit')
+  }
+
+  const openView = (visitId: string) => {
+    setActiveVisitId(visitId)
+    setViewOnly(true)
+    setMode('edit')
+  }
+
+  const openEdit = (visitId: string) => {
+    setActiveVisitId(visitId)
+    setViewOnly(false)
+    setMode('edit')
+  }
 
   const handleSaveRecord = async (record: OPSheetRecord) => {
-    const existing = records.some((r) => r.id === record.id)
+    const existing = opSheetsByVisitId.get(record.visitId)
     if (!existing) {
       const response = await fetch('/api/op-sheets', {
         method: 'POST',
@@ -301,29 +318,49 @@ function OPSheet({ patient, center }: { patient: PatientRecord; center: string }
 
   const printRecord = (record: OPSheetRecord) => openA4Print('OP Registration Sheet', patient, center, buildOPPrintContent(record))
 
+  const [records, setRecords] = useState<OPSheetRecord[]>(() => (patient.apiOPSheets ?? []).map((sheet) => mapOPSheetRecord(sheet, center)))
+
+  const getVisit = (visitId: string) => patient.visits.find((v) => v.id === visitId)
+
   if (mode === 'edit') {
+    const visit = activeVisitId ? getVisit(activeVisitId) : undefined
+    const blankRecord: OPSheetRecord = {
+      id: editingRecord?.id ?? `OP-${Date.now().toString(36).toUpperCase()}`,
+      visitId: activeVisitId ?? visit?.id ?? '—',
+      date: visit?.date ?? new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+      doctor: visit?.doctor ?? 'Not yet assigned',
+      department: center,
+      status: editingRecord?.status ?? 'Draft',
+      clinicalNotes: editingRecord?.clinicalNotes ?? '',
+      investigations: editingRecord?.investigations ?? '',
+      treatmentPlan: editingRecord?.treatmentPlan ?? '',
+      measurementValues: editingRecord?.measurementValues ?? {},
+    }
     return <OPSheetEditor
       patient={patient}
       center={center}
-      record={editing ?? { id: `OP-${Date.now().toString(36).toUpperCase()}`, visitId: latestVisit?.id ?? 'â€”', date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }), doctor: latestVisit?.doctor ?? 'Not yet assigned', department: center, status: 'Draft', clinicalNotes: '', investigations: '', treatmentPlan: '', measurementValues: {} }}
+      record={blankRecord}
       readOnly={viewOnly}
       onCancel={() => setMode('list')}
       onSave={handleSaveRecord}
     />
   }
 
-  return <div className="space-y-4">
-    <div className="flex flex-wrap items-center justify-between gap-2">
-      <div><h3 className="font-display text-xl font-semibold">OP Sheets</h3><p className="text-sm text-muted-foreground">{patient.name} Â· {patient.mr}</p></div>
-      <Button size="sm" onClick={openNew}><Plus className="mr-2 size-4"/>Create OP Sheet</Button>
-    </div>
-    {records.length === 0
-      ? <Card className="rounded-lg shadow-sm"><CardContent className="py-14 text-center"><FileText className="mx-auto size-6 text-muted-foreground"/><p className="mt-3 font-medium">No OP Sheets available for this patient.</p><Button size="sm" className="mt-4" onClick={openNew}><Plus className="mr-2 size-4"/>Create New OP Sheet</Button></CardContent></Card>
-      : <Card className="rounded-lg shadow-sm"><CardContent className="p-0"><div className="overflow-x-auto"><table className="w-full min-w-[820px] text-left text-sm"><thead className="border-y bg-muted/40 text-xs text-muted-foreground"><tr><th className="p-3 font-medium">Visit ID</th><th className="p-3 font-medium">Patient Name</th><th className="p-3 font-medium">Date of Consultation</th><th className="p-3 font-medium">Doctor Name</th><th className="p-3 font-medium">Department</th><th className="p-3 font-medium">Status</th><th className="p-3 font-medium text-right">Actions</th></tr></thead><tbody>{records.map((record) => <tr className="border-b" key={record.id}><td className="p-3 font-mono text-xs">{record.visitId}</td><td className="p-3">{patient.name}</td><td className="p-3">{record.date}</td><td className="p-3">{record.doctor}</td><td className="p-3">{record.department}</td><td className="p-3"><StatusBadge status={record.status}/></td><td className="p-3"><div className="flex justify-end gap-1"><Button variant="ghost" size="sm" onClick={() => openView(record.id)}><Eye className="mr-1 size-3.5"/>View</Button><Button variant="ghost" size="sm" onClick={() => openEdit(record.id)}><Pencil className="mr-1 size-3.5"/>Edit</Button><Button variant="ghost" size="sm" onClick={() => printRecord(record)}><Printer className="mr-1 size-3.5"/>Print</Button><Button variant="ghost" size="sm" onClick={() => printRecord(record)}><Download className="mr-1 size-3.5"/>Export</Button></div></td></tr>)}</tbody></table></div></CardContent></Card>}
-  </div>
-}
+  const sortedVisits = [...patient.visits].reverse()
 
-function buildOPPrintContent(record: OPSheetRecord): PrintContent {
+  return <div className="space-y-4">
+    <div>
+      <h3 className="font-display text-xl font-semibold">OP Sheets</h3>
+      <p className="text-sm text-muted-foreground">{patient.name} · {patient.mr}</p>
+    </div>
+    {sortedVisits.length === 0
+      ? <Card className="rounded-lg shadow-sm"><CardContent className="py-14 text-center"><FileText className="mx-auto size-6 text-muted-foreground"/><p className="mt-3 font-medium">No visits recorded for this patient.</p></CardContent></Card>
+      : <Card className="rounded-lg shadow-sm"><CardContent className="p-0"><div className="overflow-x-auto"><table className="w-full min-w-[820px] text-left text-sm"><thead className="border-y bg-muted/40 text-xs text-muted-foreground"><tr><th className="p-3 font-medium">Visit Date</th><th className="p-3 font-medium">Doctor</th><th className="p-3 font-medium">Department</th><th className="p-3 font-medium">OP Sheet</th><th className="p-3 font-medium text-right">Actions</th></tr></thead><tbody>{sortedVisits.map((visit) => {
+          const opRecord = opSheetsByVisitId.get(visit.id)
+          return <tr className="border-b" key={visit.id}><td className="p-3">{visit.date}</td><td className="p-3">{visit.doctor}</td><td className="p-3">{visit.center}</td><td className="p-3">{opRecord ? <span className="text-green-400 text-xs font-medium">✅ Created</span> : <span className="text-xs font-medium text-muted-foreground">❌ Not Created</span>}</td><td className="p-3"><div className="flex justify-end gap-1">{opRecord ? <><Button variant="ghost" size="sm" onClick={() => openView(visit.id)}><Eye className="mr-1 size-3.5"/>View</Button><Button variant="ghost" size="sm" onClick={() => openEdit(visit.id)}><Pencil className="mr-1 size-3.5"/>Edit</Button><Button variant="ghost" size="sm" onClick={() => printRecord(opRecord)}><Printer className="mr-1 size-3.5"/>Print</Button><Button variant="ghost" size="sm" onClick={() => printRecord(opRecord)}><Download className="mr-1 size-3.5"/>Export</Button></> : <Button size="sm" onClick={() => openCreate(visit.id)}><Plus className="mr-1 size-3.5"/>Create OP Sheet</Button>}</div></td></tr>}
+        )}</tbody></table></div></CardContent></Card>}
+  </div>
+}function buildOPPrintContent(record: OPSheetRecord): PrintContent {
   const rows = measurements
     .filter((name) => (record.measurementValues[name] ?? []).some((v) => v && v.trim()))
     .map((name) => [name, ...(record.measurementValues[name] ?? ['', '', '', '', ''])])
