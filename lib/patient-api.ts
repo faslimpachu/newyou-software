@@ -6,6 +6,7 @@ export type ApiVisit = {
   status?: string | null
   createdAt?: string
   appointmentDate?: string | null
+  center?: string | null
 }
 
 export type ApiOPSheet = {
@@ -115,11 +116,11 @@ function formatDateTime(value?: string | null) {
 }
 
 export function mapApiPatient(patient: ApiPatient): PatientRecord {
-  const center = centerNameFromConsultationType(patient.consultationType)
+  const defaultCenter = centerNameFromConsultationType(patient.consultationType)
   const visits = (patient.visits ?? []).map((visit) => ({
     id: visit.id,
     date: formatDateTime(visit.createdAt || visit.appointmentDate) || 'Not recorded',
-    center,
+    center: visit.center || defaultCenter,
     doctor: visit.doctor || 'Not yet assigned',
     reason: visit.status || 'Visit',
   }))

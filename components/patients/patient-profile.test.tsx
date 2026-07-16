@@ -100,4 +100,51 @@ describe('PatientProfile', () => {
       }))
     })
   })
+
+  it('edits visit status inline and calls PATCH API', async () => {
+    const apiPatient = {
+      mr: existingPatients[0].mr,
+      patientName: existingPatients[0].name,
+      parentName: existingPatients[0].parentName,
+      gender: existingPatients[0].gender,
+      mobileNumber: existingPatients[0].mobile,
+      address: '',
+      district: existingPatients[0].city,
+      state: '',
+      pinCode: '',
+      visits: existingPatients[0].visits.map((v) => ({ ...v, status: 'Completed' })),
+    }
+
+    const mockFetch = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ patient: apiPatient }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ patient: apiPatient }),
+      })
+
+    global.fetch = mockFetch
+
+    render(<PatientProfile patient={existingPatients[0]} center="Nutrition Center" />)
+
+    const editButtons = screen.getAllByRole('button', { name: /Edit status/ })
+    fireEvent.click(editButtons[0])
+
+    const select = screen.getByRole('combobox', { name: /Status/ })
+    fireEvent.change(select, { target: { value: 'Completed' } })
+
+    fireEvent.click(screen.getByRole('button', { name: /Save status/ }))
+
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/visits/'),
+        expect.objectContaining({
+          method: 'PATCH',
+          body: JSON.stringify({ status: 'Completed' }),
+        })
+      )
+    })
+  })
 })
