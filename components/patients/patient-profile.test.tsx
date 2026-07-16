@@ -229,7 +229,8 @@ describe('PatientProfile', () => {
 
     fireEvent.click(screen.getByRole('tab', { name: 'Prescriptions' }))
 
-    expect(screen.getByRole('button', { name: /Create OP Sheet/ })).toBeDefined()
+    expect(screen.getByText('Create OP Sheet first')).toBeDefined()
+    expect(screen.queryByRole('button', { name: /Create Prescription/ })).toBeNull()
   })
 
   it('shows Create Prescription when OP Sheet exists but no Prescription', async () => {
@@ -247,6 +248,42 @@ describe('PatientProfile', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Prescriptions' }))
 
     expect(screen.getByRole('button', { name: /Create Prescription/ })).toBeDefined()
+  })
+
+  it('does not show Create Prescription when no OP Sheet exists', async () => {
+    const patientWithVisit = {
+      ...existingPatients[0],
+      visits: [
+        { id: 'V-1', date: '01 Jan 2026', center: 'Nutrition Center', doctor: 'Dr. A', reason: 'Checkup' },
+      ],
+      apiOPSheets: [],
+      apiPrescriptions: [],
+    }
+
+    render(<PatientProfile patient={patientWithVisit} center="Nutrition Center" />)
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Prescriptions' }))
+
+    expect(screen.queryByRole('button', { name: /Create Prescription/ })).toBeNull()
+    expect(screen.getByText('Create OP Sheet first')).toBeDefined()
+  })
+
+  it('does not show Create Prescription when prescription already exists', async () => {
+    const patientWithOP = {
+      ...existingPatients[0],
+      visits: [
+        { id: 'V-1', date: '01 Jan 2026', center: 'Nutrition Center', doctor: 'Dr. A', reason: 'Checkup' },
+      ],
+      apiOPSheets: [{ id: 'OP-1', visitId: 'V-1', clinicalExamination: '', vitals: null, diagnosis: '', symptoms: '', status: null, createdAt: new Date().toISOString(), visit: undefined, prescription: null }],
+      apiPrescriptions: [{ id: 'RX-1', opSheetId: 'OP-1', diagnosis: '', medicines: '[]', advice: '', followUp: '', createdAt: new Date().toISOString(), opSheet: { id: 'OP-1', visitId: 'V-1', clinicalExamination: '', vitals: null, diagnosis: '', symptoms: '', status: null, createdAt: new Date().toISOString(), visit: undefined, prescription: null } }],
+    }
+
+    render(<PatientProfile patient={patientWithOP} center="Nutrition Center" />)
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Prescriptions' }))
+
+    expect(screen.queryByRole('button', { name: /Create Prescription/ })).toBeNull()
+    expect(screen.getByRole('button', { name: /View/ })).toBeDefined()
   })
 
   it('creates a prescription and refreshes the prescription list automatically', async () => {
