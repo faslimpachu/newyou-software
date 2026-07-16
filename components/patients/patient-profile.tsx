@@ -181,8 +181,49 @@ export function PatientProfile({ patient, center, generatedMR, justRegistered, o
         </div>
       )}
     </>
-}function Info({ label, value, strong }: { label: string; value: string; strong?: boolean }) { return <div className="flex justify-between gap-3"><dt className="text-muted-foreground">{label}</dt><dd className={cn('text-right font-medium', strong && 'text-destructive')}>{value}</dd></div> }
-function Overview({ patient, onUpdateStatus }: { patient: PatientRecord; onUpdateStatus?: (visitId: string, status: string) => void }) { return <div className="grid gap-5 lg:grid-cols-2"><Section title="Clinical summary"><div className="space-y-4 text-sm"><Info label="Allergies" value={patient.allergies || 'Not recorded'}/><Info label="Chronic conditions" value={patient.conditions || 'Not recorded'}/><Info label="Current medications" value={patient.medications || 'Not recorded'}/></div></Section><Section title="Care activity"><div className="grid grid-cols-3 gap-3"><Metric label="Visits" value={String(patient.visits.length)} /><Metric label="Prescriptions" value={String(patient.apiPrescriptions?.length ?? 0)} /><Metric label="Documents" value={String(patient.apiDocuments?.length ?? 0)} /></div></Section><div className="lg:col-span-2"><Visits patient={patient} onUpdateStatus={onUpdateStatus}/></div></div> }
+}function Info({ label, value, strong }: { label: string; value: string; strong?: boolean }) { return <div className="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:justify-between"><dt className="text-muted-foreground">{label}</dt><dd className={cn('text-sm font-medium text-foreground sm:text-right', strong && 'text-destructive')}>{value}</dd></div> }
+function Overview({ patient, onUpdateStatus }: { patient: PatientRecord; onUpdateStatus?: (visitId: string, status: string) => void }) {
+  const latestVisit = patient.visits[0]
+  const primaryCenter = patient.consultationType === 'AYURCARE' ? 'Ayurcare Center' : 'Nutrition Center'
+  return <div className="grid gap-5 lg:grid-cols-2">
+    <Section title="Lifestyle"><div className="grid gap-4 sm:grid-cols-2">
+      <Info label="Smoking" value={patient.smoking || 'Not recorded'} />
+      <Info label="Alcohol" value={patient.alcohol || 'Not recorded'} />
+      <Info label="Exercise" value={patient.exercise || 'Not recorded'} />
+      <Info label="Diet" value={patient.diet || 'Not recorded'} />
+    </div></Section>
+    <Section title="Care activity"><div className="grid grid-cols-3 gap-3"><Metric label="Visits" value={String(patient.visits.length)} /><Metric label="Prescriptions" value={String(patient.apiPrescriptions?.length ?? 0)} /><Metric label="Documents" value={String(patient.apiDocuments?.length ?? 0)} /></div></Section>
+    <Section title="Patient Information"><div className="grid gap-4">
+      <div className="space-y-4 text-sm">
+        <Info label="Full name" value={patient.name} strong />
+        <Info label="MR Number" value={patient.mr} strong />
+        <Info label="Age / Gender" value={`${patient.age || '-'} / ${patient.gender}`} />
+        <Info label="Blood group" value={patient.bloodGroup || 'Not recorded'} />
+        <Info label="Phone" value={patient.mobile} />
+        <Info label="Email" value={patient.email || 'Not recorded'} />
+      </div>
+      <div className="space-y-4 text-sm">
+        <Info label="Primary center" value={primaryCenter} />
+        <Info label="Address" value={patient.address || 'Not recorded'} />
+        <Info label="District" value={patient.city || 'Not recorded'} />
+        <Info label="State" value={patient.state || 'Not recorded'} />
+        <Info label="PIN code" value={patient.postalCode || 'Not recorded'} />
+        <Info label="Last visit" value={latestVisit ? `${latestVisit.date}` : 'Not recorded'} />
+      </div>
+    </div></Section>
+    <Section title="Medical Information"><div className="grid gap-4">
+      <div className="space-y-4 text-sm">
+        <Info label="Allergies" value={patient.allergies || 'Not recorded'} />
+        <Info label="Chronic conditions" value={patient.conditions || 'Not recorded'} />
+        <Info label="Current medications" value={patient.medications || 'Not recorded'} />
+      </div>
+      <div className="space-y-4 text-sm">
+        <Info label="Emergency contact" value={patient.emergencyName || 'Not recorded'} />
+        <Info label="Emergency phone" value={patient.emergencyPhone || 'Not recorded'} />
+        <Info label="Relationship" value={patient.emergencyRelation || 'Not recorded'} />
+      </div>
+    </div></Section>
+  </div> }
 function Metric({ label, value }: { label: string; value: string }) { return <div className="rounded-lg bg-muted p-3"><p className="text-lg font-semibold">{value}</p><p className="text-xs text-muted-foreground">{label}</p></div> }
 
 /* ------------------------------------------------------------------ */

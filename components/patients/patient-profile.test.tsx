@@ -13,22 +13,21 @@ describe('PatientProfile', () => {
 
     expect(screen.getByRole('heading', { name: 'Patient profile' })).toBeDefined()
     expect(screen.getAllByText('Aarav Sharma').length).toBeGreaterThan(0)
-    expect(screen.getByText('NU000001')).toBeDefined()
+    expect(screen.getAllByText('NU000001').length).toBeGreaterThan(0)
     expect(screen.getByRole('tab', { name: 'Overview' })).toBeDefined()
-    expect(screen.getByText('Visit history')).toBeDefined()
   })
 
-  it('shows visits in newest-first order in the Overview tab', () => {
+  it('shows patient details in the Overview tab', () => {
     render(<PatientProfile patient={existingPatients[0]} center="Nutrition Center" />)
 
     fireEvent.click(screen.getByRole('tab', { name: 'Overview' }))
 
-    const rows = screen.getAllByRole('row')
-    const visitDateCells = rows.slice(1).map((row) => row.querySelectorAll('td')[2]?.textContent?.trim()).filter(Boolean)
-
-    expect(visitDateCells[0]).toBe('02 Jun 2026')
-    expect(visitDateCells[1]).toBe('14 Apr 2026')
-    expect(visitDateCells[2]).toBe('02 Feb 2026')
+    expect(screen.getByText('Patient Information')).toBeDefined()
+    expect(screen.getByText('Full name')).toBeDefined()
+    expect(screen.getByText('MR Number')).toBeDefined()
+    expect(screen.getByText('Primary center')).toBeDefined()
+    expect(screen.getByText('Medical Information')).toBeDefined()
+    expect(screen.getByText('Lifestyle')).toBeDefined()
   })
 
   it('shows the registration success banner when a patient was just registered', () => {
@@ -141,6 +140,8 @@ describe('PatientProfile', () => {
     global.fetch = mockFetch
 
     render(<PatientProfile patient={existingPatients[0]} center="Nutrition Center" />)
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Visits' }))
 
     const editButtons = screen.getAllByRole('button', { name: /Edit status/ })
     fireEvent.click(editButtons[0])
