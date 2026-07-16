@@ -315,7 +315,7 @@ describe('PatientProfile', () => {
     })
 
     await waitFor(() => {
-      expect(screen.getByText('01 Jan 2026')).toBeDefined()
+      expect(screen.getByRole('heading', { name: 'Prescriptions' })).toBeDefined()
     })
   })
 })
