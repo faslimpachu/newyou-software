@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, type HTMLAttributes, type ReactNode } from 'react'
 import {
-  ArrowLeft, CalendarDays, Check, Download, Eye, FileText, IndianRupee,
+  ArrowLeft, CalendarDays, Check, CheckCircle2, Circle, Download, Eye, FileText, IndianRupee,
   Pencil, Plus, Printer, Stethoscope, Trash2, Upload, X,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -128,7 +128,7 @@ export function PatientProfile({ patient, center, generatedMR, justRegistered, o
   if (error) return <Card className="rounded-lg shadow-sm"><CardContent className="py-12 text-center text-sm text-destructive">{error}</CardContent></Card>
   if (editing) return <PatientProfileEditor patient={p} center={center} onCancel={() => setEditing(false)} onSaved={(updated) => { setLoadedPatient(updated); setEditing(false) }} />
   return <>
-    <div className="grid gap-6 xl:grid-cols-[280px_1fr]"><aside><Card className="sticky top-20 rounded-lg shadow-sm"><CardContent className="p-5"><div className="flex size-16 items-center justify-center rounded-full bg-primary/10 text-xl font-semibold text-primary">{p.name.split(' ').map((part) => part[0]).join('')}</div><h2 className="mt-4 font-display text-xl font-semibold">{p.name}</h2><p className="mt-1 text-sm text-muted-foreground">{p.mr}</p><dl className="mt-6 space-y-3 border-t pt-5 text-sm"><Info label="Age / Gender" value={`${p.age || '-'} / ${p.gender}`} /><Info label="Blood group" value={p.bloodGroup} /><Info label="Phone" value={p.mobile} /><Info label="Last visit" value={p.lastVisit} /></dl><div className="mt-6 grid grid-cols-2 gap-2"><Button size="sm" onClick={handleNewVisit}><CalendarDays className="mr-2 size-4" />New visit</Button><Button size="sm" variant="outline" onClick={() => setEditing(true)}><Pencil className="mr-2 size-4" />Edit</Button></div></CardContent></Card></aside><main>{justRegistered && <div className="mb-5 flex flex-wrap items-center justify-between gap-4 rounded-lg border border-primary/30 bg-primary/5 px-5 py-4"><div className="flex items-start gap-3"><div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary"><Check className="size-4" /></div><div><p className="text-sm font-semibold text-primary">Registration successful</p><p className="text-sm text-muted-foreground">{p.name} has been registered under {center}. MR number <span className="font-mono font-medium text-foreground">{p.mr}</span> has been issued.</p></div></div><div className="flex flex-wrap gap-2"><Button size="sm" onClick={() => openA4Print('Prescription', p, center)}><FileText className="mr-2 size-4" />Generate blank prescription</Button><Button size="sm" variant="outline" onClick={() => openA4Print('OP Registration Sheet', p, center)}><Printer className="mr-2 size-4" />Print OP sheet</Button></div></div>}<div className="mb-4 flex flex-wrap justify-between gap-2"><div><h2 className="font-display text-xl font-semibold">Patient profile</h2><p className="mt-1 text-sm text-muted-foreground">{center} � Active outpatient record</p></div><div className="flex gap-2"><Button variant="outline" size="sm" onClick={print}><Printer className="mr-2 size-4" />Print</Button></div></div><Tabs defaultValue={justRegistered ? 'prescriptions' : 'overview'}><div className="overflow-x-auto"><TabsList className="h-10 bg-muted/70"><TabsTrigger value="overview">Overview</TabsTrigger><TabsTrigger value="visits">Visits</TabsTrigger><TabsTrigger value="op">OP Sheet</TabsTrigger><TabsTrigger value="prescriptions">Prescriptions</TabsTrigger><TabsTrigger value="documents">Documents</TabsTrigger></TabsList></div><TabsContent value="overview" className="mt-5"><Overview patient={p} onUpdateStatus={handleUpdateStatus} /></TabsContent><TabsContent value="visits" className="mt-5"><Visits patient={p} onUpdateStatus={handleUpdateStatus} /></TabsContent><TabsContent value="op" className="mt-5"><OPSheet patient={p} center={center} onRefresh={refreshPatient} onUpdateStatus={handleUpdateStatus} /></TabsContent><TabsContent value="prescriptions" className="mt-5"><Prescription patient={p} center={center} onRefresh={refreshPatient} /></TabsContent><TabsContent value="documents" className="mt-5"><Documents patient={p} /></TabsContent></Tabs></main></div>
+    <div className="grid gap-6 xl:grid-cols-[280px_1fr]"><aside><Card className="sticky top-20 rounded-lg shadow-sm"><CardContent className="p-5"><div className="flex size-16 items-center justify-center rounded-full bg-primary/10 text-xl font-semibold text-primary">{p.name.split(' ').map((part) => part[0]).join('')}</div><h2 className="mt-4 font-display text-xl font-semibold">{p.name}</h2><p className="mt-1 text-sm text-muted-foreground">{p.mr}</p><dl className="mt-6 space-y-3 border-t pt-5 text-sm"><Info label="Age / Gender" value={`${p.age || '-'} / ${p.gender}`} /><Info label="Blood group" value={p.bloodGroup} /><Info label="Phone" value={p.mobile} /><Info label="Last visit" value={p.lastVisit} /></dl><div className="mt-6 grid grid-cols-2 gap-2"><Button size="sm" onClick={handleNewVisit}><CalendarDays className="mr-2 size-4" />New visit</Button><Button size="sm" variant="outline" onClick={() => setEditing(true)}><Pencil className="mr-2 size-4" />Edit</Button></div></CardContent></Card></aside><main>{justRegistered && <div className="mb-5 flex flex-wrap items-center justify-between gap-4 rounded-lg border border-primary/30 bg-primary/5 px-5 py-4"><div className="flex items-start gap-3"><div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary"><Check className="size-4" /></div><div><p className="text-sm font-semibold text-primary">Registration successful</p><p className="text-sm text-muted-foreground">{p.name} has been registered under {center}. MR number <span className="font-mono font-medium text-foreground">{p.mr}</span> has been issued.</p></div></div><div className="flex flex-wrap gap-2"><Button size="sm" onClick={() => openA4Print('Prescription', p, center)}><FileText className="mr-2 size-4" />Generate blank prescription</Button><Button size="sm" variant="outline" onClick={() => openA4Print('OP Registration Sheet', p, center)}><Printer className="mr-2 size-4" />Print OP sheet</Button></div></div>}<div className="mb-4 flex flex-wrap justify-between gap-2"><div><h2 className="font-display text-xl font-semibold">Patient profile</h2><p className="mt-1 text-sm text-muted-foreground">{center} ? Active outpatient record</p></div><div className="flex gap-2"><Button variant="outline" size="sm" onClick={print}><Printer className="mr-2 size-4" />Print</Button></div></div><Tabs defaultValue={justRegistered ? 'prescriptions' : 'overview'}><div className="overflow-x-auto"><TabsList className="h-10 bg-muted/70"><TabsTrigger value="overview">Overview</TabsTrigger><TabsTrigger value="visits">Visits</TabsTrigger><TabsTrigger value="op">OP Sheet</TabsTrigger><TabsTrigger value="prescriptions">Prescriptions</TabsTrigger><TabsTrigger value="documents">Documents</TabsTrigger></TabsList></div><TabsContent value="overview" className="mt-5"><Overview patient={p} onUpdateStatus={handleUpdateStatus} /></TabsContent><TabsContent value="visits" className="mt-5"><Visits patient={p} onUpdateStatus={handleUpdateStatus} /></TabsContent><TabsContent value="op" className="mt-5"><OPSheet patient={p} center={center} onRefresh={refreshPatient} onUpdateStatus={handleUpdateStatus} /></TabsContent><TabsContent value="prescriptions" className="mt-5"><Prescription patient={p} center={center} onRefresh={refreshPatient} /></TabsContent><TabsContent value="documents" className="mt-5"><Documents patient={p} /></TabsContent></Tabs></main></div>
     {newVisitDialog && (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/20 p-4">
         <Card className="w-full max-w-md rounded-lg shadow-xl">
@@ -228,7 +228,7 @@ function Overview({ patient, onUpdateStatus }: { patient: PatientRecord; onUpdat
 function Metric({ label, value }: { label: string; value: string }) { return <div className="rounded-lg bg-muted p-3"><p className="text-lg font-semibold">{value}</p><p className="text-xs text-muted-foreground">{label}</p></div> }
 
 /* ------------------------------------------------------------------ */
-/*  Visit history — short ID, patient, date/time, doctor, department,   */
+/*  Visit history � short ID, patient, date/time, doctor, department,   */
 /*  reason and status, newest first (Requirement 3)                     */
 /* ------------------------------------------------------------------ */
 
@@ -257,7 +257,7 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 /* ------------------------------------------------------------------ */
-/*  OP Sheet module — empty state, list with actions, create/edit form  */
+/*  OP Sheet module � empty state, list with actions, create/edit form  */
 /*  (OP Sheet Module requirements)                                      */
 /* ------------------------------------------------------------------ */
 
@@ -378,7 +378,7 @@ function OPSheet({ patient, center, onRefresh, onUpdateStatus }: { patient: Pati
     const visit = activeVisitId ? getVisit(activeVisitId) : undefined
     const blankRecord: OPSheetRecord = {
       id: editingRecord?.id ?? `OP-${Date.now().toString(36).toUpperCase()}`,
-      visitId: activeVisitId ?? visit?.id ?? '�',
+      visitId: activeVisitId ?? visit?.id ?? '?',
       date: visit?.date ?? new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
       doctor: visit?.doctor ?? 'Not yet assigned',
       department: center,
@@ -403,13 +403,13 @@ function OPSheet({ patient, center, onRefresh, onUpdateStatus }: { patient: Pati
   return <div className="space-y-4">
     <div>
       <h3 className="font-display text-xl font-semibold">OP Sheets</h3>
-      <p className="text-sm text-muted-foreground">{patient.name} � {patient.mr}</p>
+      <p className="text-sm text-muted-foreground">{patient.name} ? {patient.mr}</p>
     </div>
     {sortedVisits.length === 0
       ? <Card className="rounded-lg shadow-sm"><CardContent className="py-14 text-center"><FileText className="mx-auto size-6 text-muted-foreground" /><p className="mt-3 font-medium">No visits recorded for this patient.</p></CardContent></Card>
       : <Card className="rounded-lg shadow-sm"><CardContent className="p-0"><div className="overflow-x-auto"><table className="w-full min-w-[820px] text-left text-sm"><thead className="border-y bg-muted/40 text-xs text-muted-foreground"><tr><th className="p-3 font-medium">Visit Date</th><th className="p-3 font-medium">Doctor</th><th className="p-3 font-medium">Department</th><th className="p-3 font-medium">OP Sheet</th><th className="p-3 font-medium text-right">Actions</th></tr></thead><tbody>{sortedVisits.map((visit) => {
         const opRecord = opSheetsByVisitId.get(visit.id)
-        return <tr className="border-b" key={visit.id}><td className="p-3">{visit.date}</td><td className="p-3">{visit.doctor}</td><td className="p-3">{visit.center}</td><td className="p-3">{opRecord ? <span className="text-green-400 text-xs font-medium">? Created</span> : <span className="text-xs font-medium text-muted-foreground">? Not Created</span>}</td><td className="p-3"><div className="flex justify-end gap-1">{opRecord ? <><Button variant="ghost" size="sm" onClick={() => openView(visit.id)}><Eye className="mr-1 size-3.5" />View</Button><Button variant="ghost" size="sm" onClick={() => openEdit(visit.id)}><Pencil className="mr-1 size-3.5" />Edit</Button><Button variant="ghost" size="sm" onClick={() => printRecord(opRecord)}><Printer className="mr-1 size-3.5" />Print</Button></> : <Button size="sm" onClick={() => openCreate(visit.id)}><Plus className="mr-1 size-3.5" />Create OP Sheet</Button>}</div></td></tr>
+        return <tr className="border-b" key={visit.id}><td className="p-3">{visit.date}</td><td className="p-3">{visit.doctor}</td><td className="p-3">{visit.center}</td><td className="p-3">{opRecord ? <CheckCircle2 className="size-4 text-green-400" /> : <Circle className="size-4 text-muted-foreground" />}</td><td className="p-3"><div className="flex justify-end gap-1">{opRecord ? <><Button variant="ghost" size="sm" onClick={() => openView(visit.id)}><Eye className="mr-1 size-3.5" />View</Button><Button variant="ghost" size="sm" onClick={() => openEdit(visit.id)}><Pencil className="mr-1 size-3.5" />Edit</Button><Button variant="ghost" size="sm" onClick={() => printRecord(opRecord)}><Printer className="mr-1 size-3.5" />Print</Button></> : <Button size="sm" onClick={() => openCreate(visit.id)}><Plus className="mr-1 size-3.5" />Create OP Sheet</Button>}</div></td></tr>
       }
       )}</tbody></table></div></CardContent></Card>}
   </div>
@@ -449,7 +449,7 @@ function OPSheetEditor({ patient, center, record, readOnly, onCancel, onSave }: 
 
   return <div className="print-sheet space-y-5">
     <div className="flex flex-wrap justify-between gap-2">
-      <div><h3 className="font-display text-xl font-semibold">{readOnly ? 'View OP Sheet' : 'Out Patient Registration Sheet'}</h3><p className="text-sm text-muted-foreground">{patient.name} · {patient.mr} · Visit {record.visitId}</p></div>
+      <div><h3 className="font-display text-xl font-semibold">{readOnly ? 'View OP Sheet' : 'Out Patient Registration Sheet'}</h3><p className="text-sm text-muted-foreground">{patient.name} � {patient.mr} � Visit {record.visitId}</p></div>
       <div className="flex gap-2">
         <Button size="sm" variant="outline" onClick={onCancel}><ArrowLeft className="mr-2 size-4" />Back to list</Button>
         <Button size="sm" variant="outline" onClick={doPrint}><Printer className="mr-2 size-4" />Print</Button>
@@ -480,7 +480,7 @@ function OPSheetEditor({ patient, center, record, readOnly, onCancel, onSave }: 
 }
 
 /* ------------------------------------------------------------------ */
-/*  Prescription module — empty state, list with actions, create/edit   */
+/*  Prescription module � empty state, list with actions, create/edit   */
 /* ------------------------------------------------------------------ */
 
 type MedicineRow = { id: string; medicine: string; dosage: string; frequency: string; duration: string; instructions: string }
@@ -507,7 +507,7 @@ const blankMedicineRows = (): MedicineRow[] => [
 function mapPrescriptionRecord(prescription: ApiPrescription, center: string): PrescriptionRecord {
   return {
     id: prescription.id,
-    visitId: prescription.opSheet?.visitId || '�',
+    visitId: prescription.opSheet?.visitId || '?',
     opSheetId: prescription.opSheetId,
     date: formatRecordDate(prescription.createdAt),
     doctor: prescription.opSheet?.visit?.doctor || 'Not yet assigned',
@@ -599,7 +599,7 @@ function Prescription({ patient, center, onRefresh }: { patient: PatientRecord; 
     const visit = activeVisitId ? getVisit(activeVisitId) : undefined
     const blankRecord: PrescriptionRecord = {
       id: editingRecord?.id ?? `RX-${Date.now().toString(36).toUpperCase()}`,
-      visitId: activeVisitId ?? visit?.id ?? '�',
+      visitId: activeVisitId ?? visit?.id ?? '?',
       opSheetId: editingRecord?.opSheetId ?? patient.apiOPSheets?.find((s) => s.visitId === (activeVisitId ?? visit?.id))?.id,
       date: visit?.date ?? new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
       doctor: visit?.doctor ?? 'Not yet assigned',
@@ -625,14 +625,14 @@ function Prescription({ patient, center, onRefresh }: { patient: PatientRecord; 
   return <div className="space-y-4">
     <div>
       <h3 className="font-display text-xl font-semibold">Prescriptions</h3>
-      <p className="text-sm text-muted-foreground">{patient.name} � {patient.mr}</p>
+      <p className="text-sm text-muted-foreground">{patient.name} ? {patient.mr}</p>
     </div>
     {sortedVisits.length === 0
       ? <Card className="rounded-lg shadow-sm"><CardContent className="py-14 text-center"><Stethoscope className="mx-auto size-6 text-muted-foreground" /><p className="mt-3 font-medium">No visits recorded for this patient.</p></CardContent></Card>
       : <Card className="rounded-lg shadow-sm"><CardContent className="p-0"><div className="overflow-x-auto"><table className="w-full min-w-[820px] text-left text-sm"><thead className="border-y bg-muted/40 text-xs text-muted-foreground"><tr><th className="p-3 font-medium">Visit Date</th><th className="p-3 font-medium">Doctor</th><th className="p-3 font-medium">Department</th><th className="p-3 font-medium">OP Sheet</th><th className="p-3 font-medium">Prescription</th><th className="p-3 font-medium text-right">Actions</th></tr></thead><tbody>{sortedVisits.map((visit) => {
         const opSheet = opSheetsByVisitId.get(visit.id)
         const prescription = prescriptionsByVisitId.get(visit.id)
-        return <tr className="border-b" key={visit.id}><td className="p-3">{visit.date}</td><td className="p-3">{visit.doctor}</td><td className="p-3">{visit.center}</td><td className="p-3">{opSheet ? <span className="text-green-400 text-xs font-medium">? Created</span> : <span className="text-xs font-medium text-muted-foreground">? Not Created</span>}</td><td className="p-3">{opSheet ? (prescription ? <span className="text-green-400 text-xs font-medium">? Created</span> : <span className="text-xs font-medium text-muted-foreground">? Not Created</span>) : <span className="text-xs font-medium text-muted-foreground">�</span>}</td><td className="p-3"><div className="flex justify-end gap-1">{opSheet ? (prescription ? <><Button variant="ghost" size="sm" onClick={() => openView(visit.id)}><Eye className="mr-1 size-3.5" />View</Button><Button variant="ghost" size="sm" onClick={() => openEdit(visit.id)}><Pencil className="mr-1 size-3.5" />Edit</Button><Button variant="ghost" size="sm" onClick={() => printRecord(prescription)}><Printer className="mr-1 size-3.5" />Print</Button></> : <Button size="sm" onClick={() => openCreate(visit.id)}><Plus className="mr-1 size-3.5" />Create Prescription</Button>) : <span className="text-xs text-muted-foreground">Create OP Sheet first</span>}</div></td></tr>
+        return <tr className="border-b" key={visit.id}><td className="p-3">{visit.date}</td><td className="p-3">{visit.doctor}</td><td className="p-3">{visit.center}</td><td className="p-3">{opSheet ? <CheckCircle2 className="size-4 text-green-400" /> : <Circle className="size-4 text-muted-foreground" />}</td><td className="p-3">{opSheet ? (prescription ? <CheckCircle2 className="size-4 text-green-400" /> : <Circle className="size-4 text-muted-foreground" />) : <span className="text-xs font-medium text-muted-foreground">�</span>}</td><td className="p-3"><div className="flex justify-end gap-1">{opSheet ? (prescription ? <><Button variant="ghost" size="sm" onClick={() => openView(visit.id)}><Eye className="mr-1 size-3.5" />View</Button><Button variant="ghost" size="sm" onClick={() => openEdit(visit.id)}><Pencil className="mr-1 size-3.5" />Edit</Button><Button variant="ghost" size="sm" onClick={() => printRecord(prescription)}><Printer className="mr-1 size-3.5" />Print</Button></> : <Button size="sm" onClick={() => openCreate(visit.id)}><Plus className="mr-1 size-3.5" />Create Prescription</Button>) : <span className="text-xs text-muted-foreground">Create OP Sheet first</span>}</div></td></tr>
       }
       )}</tbody></table></div></CardContent></Card>}
   </div>
@@ -710,7 +710,7 @@ function PrescriptionEditor({ patient, center, record, readOnly, onCancel, onSav
   </div>
 }
 
-function Bills({ patient }: { patient: ExistingPatient }) { const total = patient.bills.reduce((sum, bill) => sum + bill.amount, 0); return <div className="grid gap-5 lg:grid-cols-[1fr_280px]"><Card className="rounded-lg shadow-sm"><CardHeader><CardTitle>Invoices</CardTitle></CardHeader><CardContent>{patient.bills.length ? <div className="space-y-3">{patient.bills.map((bill) => <div className="flex items-center justify-between rounded-lg border p-4" key={bill.id}><div><p className="font-medium">{bill.id}</p><p className="mt-1 text-xs text-muted-foreground">{bill.date} · {bill.service}</p></div><div className="text-right"><p className="font-semibold">Rs. {bill.amount.toLocaleString()}</p><p className="mt-1 text-xs text-destructive">{bill.status}</p></div></div>)}</div> : <EmptyState title="No invoices for this patient" action="Create invoice" />}</CardContent></Card><Card className="rounded-lg shadow-sm"><CardHeader><CardTitle>Account summary</CardTitle></CardHeader><CardContent><p className="text-xs text-muted-foreground">Outstanding balance</p><p className="mt-1 text-2xl font-semibold">Rs. {total.toLocaleString()}</p><Button className="mt-5 w-full" size="sm"><IndianRupee className="mr-2 size-4" />Record payment</Button><Button className="mt-2 w-full" variant="outline" size="sm"><FileText className="mr-2 size-4" />New invoice</Button></CardContent></Card></div> }
+function Bills({ patient }: { patient: ExistingPatient }) { const total = patient.bills.reduce((sum, bill) => sum + bill.amount, 0); return <div className="grid gap-5 lg:grid-cols-[1fr_280px]"><Card className="rounded-lg shadow-sm"><CardHeader><CardTitle>Invoices</CardTitle></CardHeader><CardContent>{patient.bills.length ? <div className="space-y-3">{patient.bills.map((bill) => <div className="flex items-center justify-between rounded-lg border p-4" key={bill.id}><div><p className="font-medium">{bill.id}</p><p className="mt-1 text-xs text-muted-foreground">{bill.date} � {bill.service}</p></div><div className="text-right"><p className="font-semibold">Rs. {bill.amount.toLocaleString()}</p><p className="mt-1 text-xs text-destructive">{bill.status}</p></div></div>)}</div> : <EmptyState title="No invoices for this patient" action="Create invoice" />}</CardContent></Card><Card className="rounded-lg shadow-sm"><CardHeader><CardTitle>Account summary</CardTitle></CardHeader><CardContent><p className="text-xs text-muted-foreground">Outstanding balance</p><p className="mt-1 text-2xl font-semibold">Rs. {total.toLocaleString()}</p><Button className="mt-5 w-full" size="sm"><IndianRupee className="mr-2 size-4" />Record payment</Button><Button className="mt-2 w-full" variant="outline" size="sm"><FileText className="mr-2 size-4" />New invoice</Button></CardContent></Card></div> }
 function EmptyState({ title, action }: { title: string; action: string }) { return <div className="py-8 text-center"><p className="font-medium">{title}</p><Button size="sm" variant="outline" className="mt-3"><Plus className="mr-2 size-4" />{action}</Button></div> }
 
 function ClinicHeader({ center }: { center: string }) {
@@ -719,7 +719,7 @@ function ClinicHeader({ center }: { center: string }) {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Medical Documents module — upload metadata, patient-aware list,     */
+/*  Medical Documents module � upload metadata, patient-aware list,     */
 /*  print/export/delete-with-confirmation (Medical Documents Module)    */
 /* ------------------------------------------------------------------ */
 
@@ -857,4 +857,5 @@ function openA4Print(title: string, patient: ExistingPatient | null, center: str
   printWindow.focus()
   printWindow.print()
 }
+
 
