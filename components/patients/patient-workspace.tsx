@@ -81,7 +81,7 @@ function Section({ title, description, children }: { title: string; description?
 
 export function PatientWorkspace() {
   const router = useRouter()
-  const [screen, setScreen] = useState<Screen>('choose')
+  const [screen, setScreen] = useState<Screen>('search')
   const [center, setCenter] = useState<ConsultationCenter | null>(null)
   const [searchField, setSearchField] = useState('mr')
   const [query, setQuery] = useState('')
@@ -122,14 +122,14 @@ export function PatientWorkspace() {
   const set = (key: string) => (value: string) => setForm((state) => ({ ...state, [key]: value }))
   const activeCenter = centerOptions.find((item) => item.id === center)
   const centerName = activeCenter?.name ?? 'Nutrition Center'
-  const goBack = () => { setSelected(null); setQuery(''); setSaved(false); setApiError(''); setScreen(screen === 'search' ? 'choose' : 'search') }
+  const goBack = () => { if (screen === 'choose') { setSelected(null); setQuery(''); setSaved(false); setApiError(''); setScreen('search') } else if (screen === 'form') { setSaved(false); setApiError(''); setScreen('choose') } }
 
   const handleRegistrationSave = (patient: PatientRecord) => {
     setSaved(true)
     router.push(`/patients/${encodeURIComponent(patient.mr)}?new=1`)
   }
 
-  const startNewRegistration = () => { setSelected(null); setForm(emptyForm); setSaved(false); setApiError(''); setScreen('form') }
+  const startNewRegistration = () => { setSelected(null); setForm(emptyForm); setSaved(false); setApiError(''); setScreen('choose') }
 
   const startFollowUpVisit = () => {
     if (selected) setForm(prefillForm(selected))
@@ -141,12 +141,12 @@ export function PatientWorkspace() {
   return <div className="mx-auto max-w-[1500px] pb-24">
     <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
       <div><div className="mb-2 flex items-center gap-2 text-xs text-muted-foreground"><span>Patient Care</span><ChevronRight className="size-3"/><span className="text-foreground">Registration</span></div><h1 className="font-display text-2xl font-semibold">Patient Registration</h1><p className="mt-1 text-sm text-muted-foreground">Create an outpatient visit or continue care for an existing patient.</p></div>
-      {screen !== 'choose' && <Button variant="outline" size="sm" onClick={goBack}><ArrowLeft className="mr-2 size-4"/>Back</Button>}
+      {screen !== 'search' && <Button variant="outline" size="sm" onClick={goBack}><ArrowLeft className="mr-2 size-4"/>Back</Button>}
     </div>
-    <div className="mb-7 flex items-center gap-2"><Step active={screen === 'choose'} complete={!!center && screen !== 'choose'} n="1" label="Consultation"/><div className="h-px flex-1 bg-border"/><Step active={screen === 'search'} complete={screen === 'form'} n="2" label="Patient lookup"/><div className="h-px flex-1 bg-border"/><Step active={screen === 'form'} n="3" label="Registration"/></div>
-    {screen === 'choose' && <div className="grid max-w-4xl grid-cols-1 gap-5 md:grid-cols-2">{centerOptions.map((option) => { const Icon = option.icon; return <button key={option.id} type="button" onClick={() => { setCenter(option.id); setScreen('search') }} className="group rounded-lg border bg-card p-6 text-left shadow-sm transition hover:border-primary hover:shadow-md focus:outline-none focus:ring-2 focus:ring-ring"><div className="mb-5 flex size-11 items-center justify-center rounded-lg bg-primary/10 text-primary"><Icon className="size-5"/></div><h2 className="font-display text-lg font-semibold">{option.name}</h2><p className="mt-1 text-sm font-medium text-primary">{option.tagline}</p><p className="mt-4 text-sm leading-6 text-muted-foreground">{option.description}</p><div className="mt-5 flex flex-wrap gap-2">{option.services.map((service) => <span key={service} className="rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">{service}</span>)}</div><div className="mt-6 flex items-center text-sm font-semibold text-primary">Select center <ChevronRight className="ml-1 size-4 transition-transform group-hover:translate-x-1"/></div></button> })}</div>}
-    {screen === 'search' && <SearchPanel center={centerName} searchField={searchField} setSearchField={setSearchField} query={query} setQuery={setQuery} matches={matches} loading={loadingPatients} error={apiError} onSelect={(patient) => router.push(`/patients/${encodeURIComponent(patient.mr)}`)} onNew={startNewRegistration} />}
-    {screen === 'form' && <RegistrationForm form={form} set={set} center={center} centerName={centerName} existingPatient={selected} saved={saved} onCancel={() => setScreen('search')} onSave={handleRegistrationSave} onError={setApiError} />}
+    <div className="mb-7 flex items-center gap-2"><Step active={screen === 'search'} complete={screen !== 'search'} n="1" label="Patient lookup"/><div className="h-px flex-1 bg-border"/><Step active={screen === 'choose'} complete={!!center && screen !== 'choose'} n="2" label="Consultation"/><div className="h-px flex-1 bg-border"/><Step active={screen === 'form'} n="3" label="Registration"/></div>
+    {screen === 'choose' && <div className="grid max-w-4xl grid-cols-1 gap-5 md:grid-cols-2">{centerOptions.map((option) => { const Icon = option.icon; return <button key={option.id} type="button" onClick={() => { setCenter(option.id); setScreen('form') }} className="group rounded-lg border bg-card p-6 text-left shadow-sm transition hover:border-primary hover:shadow-md focus:outline-none focus:ring-2 focus:ring-ring"><div className="mb-5 flex size-11 items-center justify-center rounded-lg bg-primary/10 text-primary"><Icon className="size-5"/></div><h2 className="font-display text-lg font-semibold">{option.name}</h2><p className="mt-1 text-sm font-medium text-primary">{option.tagline}</p><p className="mt-4 text-sm leading-6 text-muted-foreground">{option.description}</p><div className="mt-5 flex flex-wrap gap-2">{option.services.map((service) => <span key={service} className="rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">{service}</span>)}</div><div className="mt-6 flex items-center text-sm font-semibold text-primary">Select center <ChevronRight className="ml-1 size-4 transition-transform group-hover:translate-x-1"/></div></button> })}</div>}
+    {screen === 'search' && <SearchPanel center={centerName} searchField={searchField} setSearchField={setSearchField} query={query} setQuery={setQuery} matches={matches} loading={loadingPatients} error={apiError} onSelect={(patient) => { setSelected(patient); setScreen('choose') }} onNew={startNewRegistration} />}
+    {screen === 'form' && <RegistrationForm form={form} set={set} center={center} centerName={centerName} existingPatient={selected} saved={saved} onCancel={() => setScreen('choose')} onSave={handleRegistrationSave} onError={setApiError} />}
     {apiError && screen === 'form' && <p className="mt-4 text-sm text-destructive">{apiError}</p>}
   </div>
 }
