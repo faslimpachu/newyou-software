@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useEffect, useState, type HTMLAttributes, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type HTMLAttributes, type ReactNode } from 'react'
 import {
   ArrowLeft, CalendarDays, Check, Download, Eye, FileText, IndianRupee,
   Pencil, Plus, Printer, Stethoscope, Trash2, Upload, X,
@@ -261,10 +261,17 @@ function mapOPSheetRecord(sheet: ApiOPSheet, center: string): OPSheetRecord {
 }
 
 function OPSheet({ patient, center }: { patient: PatientRecord; center: string }) {
-  const opSheetsByVisitId = ((patient.apiOPSheets ?? []) as ApiOPSheet[]).reduce<Map<string, OPSheetRecord>>((acc, sheet) => {
-    acc.set(sheet.visitId, mapOPSheetRecord(sheet, center))
-    return acc
-  }, new Map<string, OPSheetRecord>())
+  const [records, setRecords] = useState<OPSheetRecord[]>(() => (patient.apiOPSheets ?? []).map((sheet) => mapOPSheetRecord(sheet, center)))
+
+  useEffect(() => {
+    setRecords((patient.apiOPSheets ?? []).map((sheet) => mapOPSheetRecord(sheet, center)))
+  }, [patient.apiOPSheets, center])
+
+  const opSheetsByVisitId = useMemo(() => {
+    const map = new Map<string, OPSheetRecord>()
+    records.forEach((record) => map.set(record.visitId, record))
+    return map
+  }, [records])
 
   const [mode, setMode] = useState<'list' | 'edit'>('list')
   const [activeVisitId, setActiveVisitId] = useState<string | null>(null)
@@ -317,8 +324,6 @@ function OPSheet({ patient, center }: { patient: PatientRecord; center: string }
   }
 
   const printRecord = (record: OPSheetRecord) => openA4Print('OP Registration Sheet', patient, center, buildOPPrintContent(record))
-
-  const [records, setRecords] = useState<OPSheetRecord[]>(() => (patient.apiOPSheets ?? []).map((sheet) => mapOPSheetRecord(sheet, center)))
 
   const getVisit = (visitId: string) => patient.visits.find((v) => v.id === visitId)
 
