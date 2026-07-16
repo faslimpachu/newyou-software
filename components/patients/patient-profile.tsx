@@ -191,7 +191,7 @@ function Metric({ label, value }: { label: string; value: string }) { return <di
 /* ------------------------------------------------------------------ */
 
 function Visits({ patient, onUpdateStatus }: { patient: PatientRecord; onUpdateStatus?: (visitId: string, status: string) => void }) {
-  const sorted = [...patient.visits].reverse()
+  const sorted = [...patient.visits]
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editStatus, setEditStatus] = useState('')
 
@@ -356,7 +356,7 @@ function OPSheet({ patient, center, onRefresh, onUpdateStatus }: { patient: Pati
     />
   }
 
-  const sortedVisits = [...patient.visits].reverse()
+  const sortedVisits = [...patient.visits]
 
   return <div className="space-y-4">
     <div>
@@ -578,7 +578,7 @@ function Prescription({ patient, center, onRefresh }: { patient: PatientRecord; 
     />
   }
 
-  const sortedVisits = [...patient.visits].reverse()
+  const sortedVisits = [...patient.visits]
 
   return <div className="space-y-4">
     <div>

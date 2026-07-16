@@ -18,6 +18,19 @@ describe('PatientProfile', () => {
     expect(screen.getByText('Visit history')).toBeDefined()
   })
 
+  it('shows visits in newest-first order in the Overview tab', () => {
+    render(<PatientProfile patient={existingPatients[0]} center="Nutrition Center" />)
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Overview' }))
+
+    const rows = screen.getAllByRole('row')
+    const visitDateCells = rows.slice(1).map((row) => row.querySelectorAll('td')[2]?.textContent?.trim()).filter(Boolean)
+
+    expect(visitDateCells[0]).toBe('02 Jun 2026')
+    expect(visitDateCells[1]).toBe('14 Apr 2026')
+    expect(visitDateCells[2]).toBe('02 Feb 2026')
+  })
+
   it('shows the registration success banner when a patient was just registered', () => {
     render(<PatientProfile patient={existingPatients[0]} center="Nutrition Center" justRegistered />)
 
