@@ -163,6 +163,11 @@ describe('PatientProfile', () => {
       apiOPSheets: [],
     }
 
+    const refreshedPatient = {
+      ...patientWithOP,
+      apiOPSheets: [{ id: 'OP-1', visitId: 'V-1', clinicalExamination: '', vitals: null, diagnosis: '', symptoms: '', status: null, createdAt: new Date().toISOString(), visit: undefined, prescription: null }],
+    }
+
     const mockFetch = vi.fn()
       .mockResolvedValueOnce({
         ok: true,
@@ -172,8 +177,18 @@ describe('PatientProfile', () => {
         ok: true,
         json: async () => ({
           patient: {
-            ...patientWithOP,
-            apiOPSheets: [{ id: 'OP-1', visitId: 'V-1', clinicalExamination: '', vitals: null, diagnosis: '', symptoms: '', status: null, createdAt: new Date().toISOString(), visit: undefined, prescription: null }],
+            mr: refreshedPatient.mr,
+            consultationType: 'NUTRITION',
+            patientName: refreshedPatient.name,
+            parentName: refreshedPatient.parentName,
+            gender: refreshedPatient.gender,
+            mobileNumber: refreshedPatient.mobile,
+            address: '',
+            district: refreshedPatient.city,
+            state: '',
+            pinCode: '',
+            visits: refreshedPatient.visits.map((v) => ({ ...v, createdAt: new Date().toISOString() })),
+            apiOPSheets: refreshedPatient.apiOPSheets,
           },
         }),
       })
@@ -232,5 +247,75 @@ describe('PatientProfile', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Prescriptions' }))
 
     expect(screen.getByRole('button', { name: /Create Prescription/ })).toBeDefined()
+  })
+
+  it('creates a prescription and refreshes the prescription list automatically', async () => {
+    const opSheet = { id: 'OP-1', visitId: 'V-1', clinicalExamination: '', vitals: null, diagnosis: '', symptoms: '', status: null, createdAt: new Date().toISOString(), visit: undefined, prescription: null }
+    const patientWithOP = {
+      ...existingPatients[0],
+      visits: [
+        { id: 'V-1', date: '01 Jan 2026', center: 'Nutrition Center', doctor: 'Dr. A', reason: 'Checkup' },
+      ],
+      apiOPSheets: [opSheet],
+      apiPrescriptions: [],
+    }
+
+    const refreshedPatient = {
+      ...patientWithOP,
+      apiPrescriptions: [{ id: 'RX-1', opSheetId: 'OP-1', diagnosis: '', medicines: '[]', advice: '', followUp: '', createdAt: new Date().toISOString(), opSheet }],
+    }
+
+    const mockFetch = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ prescription: { id: 'RX-1', opSheetId: 'OP-1', diagnosis: '', medicines: '[]', advice: '', followUp: '', createdAt: new Date().toISOString(), opSheet } }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          patient: {
+            mr: refreshedPatient.mr,
+            consultationType: 'NUTRITION',
+            patientName: refreshedPatient.name,
+            parentName: refreshedPatient.parentName,
+            gender: refreshedPatient.gender,
+            mobileNumber: refreshedPatient.mobile,
+            address: '',
+            district: refreshedPatient.city,
+            state: '',
+            pinCode: '',
+            age: refreshedPatient.age,
+            bloodGroup: refreshedPatient.bloodGroup,
+            status: refreshedPatient.tags?.[0],
+            dob: refreshedPatient.dob,
+            visits: refreshedPatient.visits.map((v) => ({ ...v, createdAt: new Date().toISOString() })),
+            opSheets: refreshedPatient.apiOPSheets,
+            prescriptions: refreshedPatient.apiPrescriptions,
+          },
+        }),
+      })
+
+    global.fetch = mockFetch
+
+    render(<PatientProfile patient={patientWithOP} center="Nutrition Center" />)
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Prescriptions' }))
+    fireEvent.click(screen.getByRole('button', { name: /Create Prescription/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Save/ }))
+
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledWith('/api/prescriptions', expect.objectContaining({
+        method: 'POST',
+        body: expect.stringContaining('"patientMr":"NU000001"'),
+      }))
+    })
+
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledWith('/api/patients/NU000001')
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('01 Jan 2026')).toBeDefined()
+    })
   })
 })

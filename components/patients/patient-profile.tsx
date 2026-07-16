@@ -121,11 +121,14 @@ export function PatientProfile({ patient, center, generatedMR, justRegistered, o
     }
     setLoadedPatient(await fetchPatientProfile(p.mr))
   }
+  const refreshPatient = async () => {
+    setLoadedPatient(await fetchPatientProfile(p.mr))
+  }
   if (loading) return <Card className="rounded-lg shadow-sm"><CardContent className="py-12 text-center text-sm text-muted-foreground">Loading patient profile...</CardContent></Card>
   if (error) return <Card className="rounded-lg shadow-sm"><CardContent className="py-12 text-center text-sm text-destructive">{error}</CardContent></Card>
   if (editing) return <PatientProfileEditor patient={p} center={center} onCancel={() => setEditing(false)} onSaved={(updated) => { setLoadedPatient(updated); setEditing(false) }} />
    return <>
-      <div className="grid gap-6 xl:grid-cols-[280px_1fr]"><aside><Card className="sticky top-20 rounded-lg shadow-sm"><CardContent className="p-5"><div className="flex size-16 items-center justify-center rounded-full bg-primary/10 text-xl font-semibold text-primary">{p.name.split(' ').map((part) => part[0]).join('')}</div><h2 className="mt-4 font-display text-xl font-semibold">{p.name}</h2><p className="mt-1 text-sm text-muted-foreground">{p.mr}</p><dl className="mt-6 space-y-3 border-t pt-5 text-sm"><Info label="Age / Gender" value={`${p.age || '-'} / ${p.gender}`}/><Info label="Blood group" value={p.bloodGroup}/><Info label="Phone" value={p.mobile}/><Info label="Last visit" value={p.lastVisit}/></dl><div className="mt-6 grid grid-cols-2 gap-2"><Button size="sm" onClick={handleNewVisit}><CalendarDays className="mr-2 size-4"/>New visit</Button><Button size="sm" variant="outline" onClick={() => setEditing(true)}><Pencil className="mr-2 size-4"/>Edit</Button></div></CardContent></Card></aside><main>{justRegistered && <div className="mb-5 flex flex-wrap items-center justify-between gap-4 rounded-lg border border-primary/30 bg-primary/5 px-5 py-4"><div className="flex items-start gap-3"><div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary"><Check className="size-4"/></div><div><p className="text-sm font-semibold text-primary">Registration successful</p><p className="text-sm text-muted-foreground">{p.name} has been registered under {center}. MR number <span className="font-mono font-medium text-foreground">{p.mr}</span> has been issued.</p></div></div><div className="flex flex-wrap gap-2"><Button size="sm" onClick={() => openA4Print('Prescription', p, center)}><FileText className="mr-2 size-4"/>Generate blank prescription</Button><Button size="sm" variant="outline" onClick={() => openA4Print('OP Registration Sheet', p, center)}><Printer className="mr-2 size-4"/>Print OP sheet</Button></div></div>}<div className="mb-4 flex flex-wrap justify-between gap-2"><div><h2 className="font-display text-xl font-semibold">Patient profile</h2><p className="mt-1 text-sm text-muted-foreground">{center} · Active outpatient record</p></div><div className="flex gap-2"><Button variant="outline" size="sm" onClick={print}><Printer className="mr-2 size-4"/>Print</Button><Button variant="outline" size="sm" onClick={print}><Download className="mr-2 size-4"/>Export PDF</Button></div></div><Tabs defaultValue={justRegistered ? 'prescriptions' : 'overview'}><div className="overflow-x-auto"><TabsList className="h-10 bg-muted/70"><TabsTrigger value="overview">Overview</TabsTrigger><TabsTrigger value="visits">Visits</TabsTrigger><TabsTrigger value="op">OP Sheet</TabsTrigger><TabsTrigger value="prescriptions">Prescriptions</TabsTrigger><TabsTrigger value="documents">Documents</TabsTrigger></TabsList></div><TabsContent value="overview" className="mt-5"><Overview patient={p} onUpdateStatus={handleUpdateStatus}/></TabsContent><TabsContent value="visits" className="mt-5"><Visits patient={p} onUpdateStatus={handleUpdateStatus}/></TabsContent><TabsContent value="op" className="mt-5"><OPSheet patient={p} center={center}/></TabsContent><TabsContent value="prescriptions" className="mt-5"><Prescription patient={p} center={center}/></TabsContent><TabsContent value="documents" className="mt-5"><Documents patient={p}/></TabsContent></Tabs></main></div>
+      <div className="grid gap-6 xl:grid-cols-[280px_1fr]"><aside><Card className="sticky top-20 rounded-lg shadow-sm"><CardContent className="p-5"><div className="flex size-16 items-center justify-center rounded-full bg-primary/10 text-xl font-semibold text-primary">{p.name.split(' ').map((part) => part[0]).join('')}</div><h2 className="mt-4 font-display text-xl font-semibold">{p.name}</h2><p className="mt-1 text-sm text-muted-foreground">{p.mr}</p><dl className="mt-6 space-y-3 border-t pt-5 text-sm"><Info label="Age / Gender" value={`${p.age || '-'} / ${p.gender}`}/><Info label="Blood group" value={p.bloodGroup}/><Info label="Phone" value={p.mobile}/><Info label="Last visit" value={p.lastVisit}/></dl><div className="mt-6 grid grid-cols-2 gap-2"><Button size="sm" onClick={handleNewVisit}><CalendarDays className="mr-2 size-4"/>New visit</Button><Button size="sm" variant="outline" onClick={() => setEditing(true)}><Pencil className="mr-2 size-4"/>Edit</Button></div></CardContent></Card></aside><main>{justRegistered && <div className="mb-5 flex flex-wrap items-center justify-between gap-4 rounded-lg border border-primary/30 bg-primary/5 px-5 py-4"><div className="flex items-start gap-3"><div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary"><Check className="size-4"/></div><div><p className="text-sm font-semibold text-primary">Registration successful</p><p className="text-sm text-muted-foreground">{p.name} has been registered under {center}. MR number <span className="font-mono font-medium text-foreground">{p.mr}</span> has been issued.</p></div></div><div className="flex flex-wrap gap-2"><Button size="sm" onClick={() => openA4Print('Prescription', p, center)}><FileText className="mr-2 size-4"/>Generate blank prescription</Button><Button size="sm" variant="outline" onClick={() => openA4Print('OP Registration Sheet', p, center)}><Printer className="mr-2 size-4"/>Print OP sheet</Button></div></div>}<div className="mb-4 flex flex-wrap justify-between gap-2"><div><h2 className="font-display text-xl font-semibold">Patient profile</h2><p className="mt-1 text-sm text-muted-foreground">{center} · Active outpatient record</p></div><div className="flex gap-2"><Button variant="outline" size="sm" onClick={print}><Printer className="mr-2 size-4"/>Print</Button><Button variant="outline" size="sm" onClick={print}><Download className="mr-2 size-4"/>Export PDF</Button></div></div><Tabs defaultValue={justRegistered ? 'prescriptions' : 'overview'}><div className="overflow-x-auto"><TabsList className="h-10 bg-muted/70"><TabsTrigger value="overview">Overview</TabsTrigger><TabsTrigger value="visits">Visits</TabsTrigger><TabsTrigger value="op">OP Sheet</TabsTrigger><TabsTrigger value="prescriptions">Prescriptions</TabsTrigger><TabsTrigger value="documents">Documents</TabsTrigger></TabsList></div><TabsContent value="overview" className="mt-5"><Overview patient={p} onUpdateStatus={handleUpdateStatus}/></TabsContent><TabsContent value="visits" className="mt-5"><Visits patient={p} onUpdateStatus={handleUpdateStatus}/></TabsContent><TabsContent value="op" className="mt-5"><OPSheet patient={p} center={center} onRefresh={refreshPatient}/></TabsContent><TabsContent value="prescriptions" className="mt-5"><Prescription patient={p} center={center} onRefresh={refreshPatient}/></TabsContent><TabsContent value="documents" className="mt-5"><Documents patient={p}/></TabsContent></Tabs></main></div>
       {newVisitDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/20 p-4">
           <Card className="w-full max-w-md rounded-lg shadow-xl">
@@ -260,7 +263,7 @@ function mapOPSheetRecord(sheet: ApiOPSheet, center: string): OPSheetRecord {
   }
 }
 
-function OPSheet({ patient, center }: { patient: PatientRecord; center: string }) {
+function OPSheet({ patient, center, onRefresh }: { patient: PatientRecord; center: string; onRefresh?: () => void }) {
   const [records, setRecords] = useState<OPSheetRecord[]>(() => (patient.apiOPSheets ?? []).map((sheet) => mapOPSheetRecord(sheet, center)))
 
   useEffect(() => {
@@ -316,6 +319,7 @@ function OPSheet({ patient, center }: { patient: PatientRecord; center: string }
         const body = await response.json() as { sheet: ApiOPSheet }
         setRecords((current) => [mapOPSheetRecord(body.sheet, center), ...current])
         setMode('list')
+        onRefresh?.()
         return
       }
     }
@@ -473,7 +477,7 @@ function mapPrescriptionRecord(prescription: ApiPrescription, center: string): P
   }
 }
 
-function Prescription({ patient, center }: { patient: PatientRecord; center: string }) {
+function Prescription({ patient, center, onRefresh }: { patient: PatientRecord; center: string; onRefresh?: () => void }) {
   const [records, setRecords] = useState<PrescriptionRecord[]>(() => (patient.apiPrescriptions ?? []).map((prescription) => mapPrescriptionRecord(prescription, center)))
 
   useEffect(() => {
@@ -535,11 +539,13 @@ function Prescription({ patient, center }: { patient: PatientRecord; center: str
         const body = await response.json() as { prescription: ApiPrescription }
         setRecords((current) => [mapPrescriptionRecord(body.prescription, center), ...current])
         setMode('list')
+        onRefresh?.()
         return
       }
     }
     setRecords((current) => existing ? current.map((r) => (r.id === record.id ? record : r)) : [record, ...current])
     setMode('list')
+    onRefresh?.()
   }
 
   const printRecord = (record: PrescriptionRecord) => openA4Print('Prescription', patient, center, buildPrescriptionPrintContent(record))
