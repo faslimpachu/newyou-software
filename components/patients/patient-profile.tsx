@@ -186,13 +186,13 @@ function Overview({ patient, onUpdateStatus }: { patient: PatientRecord; onUpdat
   const latestVisit = patient.visits[0]
   const primaryCenter = patient.consultationType === 'AYURCARE' ? 'Ayurcare Center' : 'Nutrition Center'
   return <div className="grid gap-5 lg:grid-cols-2">
+    <Section title="Care activity"><div className="grid grid-cols-3 gap-3"><Metric label="Visits" value={String(patient.visits.length)} /><Metric label="Prescriptions" value={String(patient.apiPrescriptions?.length ?? 0)} /><Metric label="Documents" value={String(patient.apiDocuments?.length ?? 0)} /></div></Section>
     <Section title="Lifestyle"><div className="grid gap-4 sm:grid-cols-2">
       <Info label="Smoking" value={patient.smoking || 'Not recorded'} />
       <Info label="Alcohol" value={patient.alcohol || 'Not recorded'} />
       <Info label="Exercise" value={patient.exercise || 'Not recorded'} />
       <Info label="Diet" value={patient.diet || 'Not recorded'} />
     </div></Section>
-    <Section title="Care activity"><div className="grid grid-cols-3 gap-3"><Metric label="Visits" value={String(patient.visits.length)} /><Metric label="Prescriptions" value={String(patient.apiPrescriptions?.length ?? 0)} /><Metric label="Documents" value={String(patient.apiDocuments?.length ?? 0)} /></div></Section>
     <Section title="Patient Information"><div className="grid gap-4">
       <div className="space-y-4 text-sm">
         <Info label="Full name" value={patient.name} strong />
