@@ -193,4 +193,44 @@ describe('PatientProfile', () => {
       }))
     })
   })
+
+  it('shows Prescription tab with visit-centric table', async () => {
+    render(<PatientProfile patient={existingPatients[0]} center="Nutrition Center" />)
+
+    expect(screen.getByRole('tab', { name: 'Prescriptions' })).toBeDefined()
+  })
+
+  it('shows Create OP Sheet when no OP Sheet exists for a visit in Prescription tab', async () => {
+    const patientWithVisit = {
+      ...existingPatients[0],
+      visits: [
+        { id: 'V-1', date: '01 Jan 2026', center: 'Nutrition Center', doctor: 'Dr. A', reason: 'Checkup' },
+      ],
+      apiOPSheets: [],
+      apiPrescriptions: [],
+    }
+
+    render(<PatientProfile patient={patientWithVisit} center="Nutrition Center" />)
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Prescriptions' }))
+
+    expect(screen.getByRole('button', { name: /Create OP Sheet/ })).toBeDefined()
+  })
+
+  it('shows Create Prescription when OP Sheet exists but no Prescription', async () => {
+    const patientWithOP = {
+      ...existingPatients[0],
+      visits: [
+        { id: 'V-1', date: '01 Jan 2026', center: 'Nutrition Center', doctor: 'Dr. A', reason: 'Checkup' },
+      ],
+      apiOPSheets: [{ id: 'OP-1', visitId: 'V-1', clinicalExamination: '', vitals: null, diagnosis: '', symptoms: '', status: null, createdAt: new Date().toISOString(), visit: undefined, prescription: null }],
+      apiPrescriptions: [],
+    }
+
+    render(<PatientProfile patient={patientWithOP} center="Nutrition Center" />)
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Prescriptions' }))
+
+    expect(screen.getByRole('button', { name: /Create Prescription/ })).toBeDefined()
+  })
 })

@@ -475,21 +475,49 @@ function mapPrescriptionRecord(prescription: ApiPrescription, center: string): P
 
 function Prescription({ patient, center }: { patient: PatientRecord; center: string }) {
   const [records, setRecords] = useState<PrescriptionRecord[]>(() => (patient.apiPrescriptions ?? []).map((prescription) => mapPrescriptionRecord(prescription, center)))
+
+  useEffect(() => {
+    setRecords((patient.apiPrescriptions ?? []).map((prescription) => mapPrescriptionRecord(prescription, center)))
+  }, [patient.apiPrescriptions, center])
+
+  const prescriptionsByVisitId = ((patient.apiPrescriptions ?? []) as ApiPrescription[]).reduce<Map<string, PrescriptionRecord>>((acc, prescription) => {
+    const record = mapPrescriptionRecord(prescription, center)
+    acc.set(record.visitId, record)
+    return acc
+  }, new Map<string, PrescriptionRecord>())
+
+  const opSheetsByVisitId = ((patient.apiOPSheets ?? []) as ApiOPSheet[]).reduce<Map<string, ApiOPSheet>>((acc, sheet) => {
+    acc.set(sheet.visitId, sheet)
+    return acc
+  }, new Map<string, ApiOPSheet>())
+
   const [mode, setMode] = useState<'list' | 'edit'>('list')
-  const [activeId, setActiveId] = useState<string | null>(null)
+  const [activeVisitId, setActiveVisitId] = useState<string | null>(null)
   const [viewOnly, setViewOnly] = useState(false)
 
-  const latestVisit = patient.visits[patient.visits.length - 1]
-  const editing = records.find((r) => r.id === activeId) ?? null
+  const editingRecord = activeVisitId ? prescriptionsByVisitId.get(activeVisitId) ?? null : null
 
-  const openNew = () => { setActiveId(null); setViewOnly(false); setMode('edit') }
-  const openBlank = () => { setActiveId(null); setViewOnly(false); setMode('edit') }
-  const openView = (id: string) => { setActiveId(id); setViewOnly(true); setMode('edit') }
-  const openEdit = (id: string) => { setActiveId(id); setViewOnly(false); setMode('edit') }
+  const openCreate = (visitId: string) => {
+    setActiveVisitId(visitId)
+    setViewOnly(false)
+    setMode('edit')
+  }
+
+  const openView = (visitId: string) => {
+    setActiveVisitId(visitId)
+    setViewOnly(true)
+    setMode('edit')
+  }
+
+  const openEdit = (visitId: string) => {
+    setActiveVisitId(visitId)
+    setViewOnly(false)
+    setMode('edit')
+  }
 
   const handleSaveRecord = async (record: PrescriptionRecord) => {
-    const existing = records.some((r) => r.id === record.id)
-    const opSheetId = record.opSheetId || patient.apiOPSheets?.[0]?.id
+    const existing = prescriptionsByVisitId.get(record.visitId)
+    const opSheetId = record.opSheetId || patient.apiOPSheets?.find((s) => s.visitId === record.visitId)?.id
     if (!existing && opSheetId) {
       const response = await fetch('/api/prescriptions', {
         method: 'POST',
@@ -516,28 +544,49 @@ function Prescription({ patient, center }: { patient: PatientRecord; center: str
 
   const printRecord = (record: PrescriptionRecord) => openA4Print('Prescription', patient, center, buildPrescriptionPrintContent(record))
 
+  const getVisit = (visitId: string) => patient.visits.find((v) => v.id === visitId)
+
   if (mode === 'edit') {
+    const visit = activeVisitId ? getVisit(activeVisitId) : undefined
+    const blankRecord: PrescriptionRecord = {
+      id: editingRecord?.id ?? `RX-${Date.now().toString(36).toUpperCase()}`,
+      visitId: activeVisitId ?? visit?.id ?? '—',
+      opSheetId: editingRecord?.opSheetId ?? patient.apiOPSheets?.find((s) => s.visitId === (activeVisitId ?? visit?.id))?.id,
+      date: visit?.date ?? new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+      doctor: visit?.doctor ?? 'Not yet assigned',
+      department: center,
+      status: editingRecord?.status ?? 'Draft',
+      diagnosis: editingRecord?.diagnosis ?? '',
+      medicines: editingRecord?.medicines ?? blankMedicineRows(),
+      advice: editingRecord?.advice ?? '',
+      followUp: editingRecord?.followUp ?? '',
+    }
     return <PrescriptionEditor
       patient={patient}
       center={center}
-      record={editing ?? { id: `RX-${Date.now().toString(36).toUpperCase()}`, visitId: latestVisit?.id ?? '—', opSheetId: patient.apiOPSheets?.[0]?.id, date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }), doctor: latestVisit?.doctor ?? 'Not yet assigned', department: center, status: 'Draft', diagnosis: '', medicines: blankMedicineRows(), advice: '', followUp: '' }}
+      record={blankRecord}
       readOnly={viewOnly}
       onCancel={() => setMode('list')}
       onSave={handleSaveRecord}
     />
   }
 
+  const sortedVisits = [...patient.visits].reverse()
+
   return <div className="space-y-4">
-    <div className="flex flex-wrap items-center justify-between gap-2">
-      <div><h3 className="font-display text-xl font-semibold">Prescriptions</h3><p className="text-sm text-muted-foreground">{patient.name} Â· {patient.mr}</p></div>
-      <div className="flex gap-2"><Button variant="outline" size="sm" onClick={openBlank}><FileText className="mr-2 size-4"/>Blank prescription</Button><Button size="sm" onClick={openNew}><Plus className="mr-2 size-4"/>Create Prescription</Button></div>
+    <div>
+      <h3 className="font-display text-xl font-semibold">Prescriptions</h3>
+      <p className="text-sm text-muted-foreground">{patient.name} · {patient.mr}</p>
     </div>
-    {records.length === 0
-      ? <Card className="rounded-lg shadow-sm"><CardContent className="py-14 text-center"><Stethoscope className="mx-auto size-6 text-muted-foreground"/><p className="mt-3 font-medium">No Prescriptions available for this patient.</p><Button size="sm" className="mt-4" onClick={openNew}><Plus className="mr-2 size-4"/>Create New Prescription</Button></CardContent></Card>
-      : <Card className="rounded-lg shadow-sm"><CardContent className="p-0"><div className="overflow-x-auto"><table className="w-full min-w-[820px] text-left text-sm"><thead className="border-y bg-muted/40 text-xs text-muted-foreground"><tr><th className="p-3 font-medium">Visit ID</th><th className="p-3 font-medium">Patient Name</th><th className="p-3 font-medium">Consultation Date</th><th className="p-3 font-medium">Doctor Name</th><th className="p-3 font-medium">Department</th><th className="p-3 font-medium">Status</th><th className="p-3 font-medium text-right">Actions</th></tr></thead><tbody>{records.map((record) => <tr className="border-b" key={record.id}><td className="p-3 font-mono text-xs">{record.visitId}</td><td className="p-3">{patient.name}</td><td className="p-3">{record.date}</td><td className="p-3">{record.doctor}</td><td className="p-3">{record.department}</td><td className="p-3"><StatusBadge status={record.status}/></td><td className="p-3"><div className="flex justify-end gap-1"><Button variant="ghost" size="sm" onClick={() => openView(record.id)}><Eye className="mr-1 size-3.5"/>View</Button><Button variant="ghost" size="sm" onClick={() => openEdit(record.id)}><Pencil className="mr-1 size-3.5"/>Edit</Button><Button variant="ghost" size="sm" onClick={() => printRecord(record)}><Printer className="mr-1 size-3.5"/>Print</Button><Button variant="ghost" size="sm" onClick={() => printRecord(record)}><Download className="mr-1 size-3.5"/>Export</Button></div></td></tr>)}</tbody></table></div></CardContent></Card>}
+    {sortedVisits.length === 0
+      ? <Card className="rounded-lg shadow-sm"><CardContent className="py-14 text-center"><Stethoscope className="mx-auto size-6 text-muted-foreground"/><p className="mt-3 font-medium">No visits recorded for this patient.</p></CardContent></Card>
+      : <Card className="rounded-lg shadow-sm"><CardContent className="p-0"><div className="overflow-x-auto"><table className="w-full min-w-[820px] text-left text-sm"><thead className="border-y bg-muted/40 text-xs text-muted-foreground"><tr><th className="p-3 font-medium">Visit Date</th><th className="p-3 font-medium">Doctor</th><th className="p-3 font-medium">Department</th><th className="p-3 font-medium">OP Sheet</th><th className="p-3 font-medium">Prescription</th><th className="p-3 font-medium text-right">Actions</th></tr></thead><tbody>{sortedVisits.map((visit) => {
+          const opSheet = opSheetsByVisitId.get(visit.id)
+          const prescription = prescriptionsByVisitId.get(visit.id)
+          return <tr className="border-b" key={visit.id}><td className="p-3">{visit.date}</td><td className="p-3">{visit.doctor}</td><td className="p-3">{visit.center}</td><td className="p-3">{opSheet ? <span className="text-green-400 text-xs font-medium">✅ Created</span> : <span className="text-xs font-medium text-muted-foreground">❌ Not Created</span>}</td><td className="p-3">{opSheet ? (prescription ? <span className="text-green-400 text-xs font-medium">✅ Created</span> : <span className="text-xs font-medium text-muted-foreground">❌ Not Created</span>) : <span className="text-xs font-medium text-muted-foreground">—</span>}</td><td className="p-3"><div className="flex justify-end gap-1">{opSheet ? (prescription ? <><Button variant="ghost" size="sm" onClick={() => openView(visit.id)}><Eye className="mr-1 size-3.5"/>View</Button><Button variant="ghost" size="sm" onClick={() => openEdit(visit.id)}><Pencil className="mr-1 size-3.5"/>Edit</Button><Button variant="ghost" size="sm" onClick={() => printRecord(prescription)}><Printer className="mr-1 size-3.5"/>Print</Button><Button variant="ghost" size="sm" onClick={() => printRecord(prescription)}><Download className="mr-1 size-3.5"/>Export</Button></> : <Button size="sm" onClick={() => openCreate(visit.id)}><Plus className="mr-1 size-3.5"/>Create Prescription</Button>) : <Button size="sm" onClick={() => openCreate(visit.id)}><Plus className="mr-1 size-3.5"/>Create OP Sheet</Button>}</div></td></tr>}
+        )}</tbody></table></div></CardContent></Card>}
   </div>
 }
-
 function buildPrescriptionPrintContent(record: PrescriptionRecord): PrintContent {
   return {
     columns: ['Medicine', 'Dosage', 'Frequency', 'Duration', 'Instructions'],
