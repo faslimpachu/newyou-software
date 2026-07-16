@@ -175,6 +175,29 @@ describe('PatientProfile', () => {
       })
       .mockResolvedValueOnce({
         ok: true,
+        json: async () => ({ patient: { id: 'V-1', status: 'Active' } }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          patient: {
+            mr: refreshedPatient.mr,
+            consultationType: 'NUTRITION',
+            patientName: refreshedPatient.name,
+            parentName: refreshedPatient.parentName,
+            gender: refreshedPatient.gender,
+            mobileNumber: refreshedPatient.mobile,
+            address: '',
+            district: refreshedPatient.city,
+            state: '',
+            pinCode: '',
+            visits: refreshedPatient.visits.map((v) => ({ ...v, createdAt: new Date().toISOString() })),
+            apiOPSheets: refreshedPatient.apiOPSheets,
+          },
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
         json: async () => ({
           patient: {
             mr: refreshedPatient.mr,
@@ -205,6 +228,85 @@ describe('PatientProfile', () => {
       expect(mockFetch).toHaveBeenCalledWith('/api/op-sheets', expect.objectContaining({
         method: 'POST',
         body: JSON.stringify({ patientMr: 'NU000001', visitId: 'V-1', clinicalExamination: '', vitals: '{}', diagnosis: '', symptoms: '' }),
+      }))
+    })
+  })
+
+  it('sets visit status to Active automatically when first OP Sheet is created', async () => {
+    const patientWithOP = {
+      ...existingPatients[0],
+      visits: [
+        { id: 'V-1', date: '01 Jan 2026', center: 'Nutrition Center', doctor: 'Dr. A', reason: 'Checkup' },
+      ],
+      apiOPSheets: [],
+    }
+
+    const refreshedPatient = {
+      ...patientWithOP,
+      visits: [{ ...patientWithOP.visits[0], status: 'Active' }],
+      apiOPSheets: [{ id: 'OP-1', visitId: 'V-1', clinicalExamination: '', vitals: null, diagnosis: '', symptoms: '', status: null, createdAt: new Date().toISOString(), visit: undefined, prescription: null }],
+    }
+
+    const mockFetch = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ sheet: { id: 'OP-1', visitId: 'V-1' } }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ patient: { id: 'V-1', status: 'Active' } }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          patient: {
+            mr: refreshedPatient.mr,
+            consultationType: 'NUTRITION',
+            patientName: refreshedPatient.name,
+            parentName: refreshedPatient.parentName,
+            gender: refreshedPatient.gender,
+            mobileNumber: refreshedPatient.mobile,
+            address: '',
+            district: refreshedPatient.city,
+            state: '',
+            pinCode: '',
+            visits: refreshedPatient.visits.map((v) => ({ ...v, createdAt: new Date().toISOString() })),
+            apiOPSheets: refreshedPatient.apiOPSheets,
+          },
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          patient: {
+            mr: refreshedPatient.mr,
+            consultationType: 'NUTRITION',
+            patientName: refreshedPatient.name,
+            parentName: refreshedPatient.parentName,
+            gender: refreshedPatient.gender,
+            mobileNumber: refreshedPatient.mobile,
+            address: '',
+            district: refreshedPatient.city,
+            state: '',
+            pinCode: '',
+            visits: refreshedPatient.visits.map((v) => ({ ...v, createdAt: new Date().toISOString() })),
+            apiOPSheets: refreshedPatient.apiOPSheets,
+          },
+        }),
+      })
+
+    global.fetch = mockFetch
+
+    render(<PatientProfile patient={patientWithOP} center="Nutrition Center" />)
+
+    fireEvent.click(screen.getByRole('tab', { name: 'OP Sheet' }))
+    fireEvent.click(screen.getByRole('button', { name: /Create OP Sheet/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Save/ }))
+
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledWith('/api/visits/V-1', expect.objectContaining({
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'Active' }),
       }))
     })
   })
