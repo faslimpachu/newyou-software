@@ -31,7 +31,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { patientMr, doctor, dietitian, appointmentDate, appointmentTimeSlot } = body;
+    const { patientMr, doctor, dietitian, appointmentDate, appointmentTimeSlot, center } = body;
 
     if (!patientMr) {
       return NextResponse.json({ error: 'Patient MR is required' }, { status: 400 });
@@ -52,6 +52,7 @@ export async function POST(request: Request) {
         dietitian: dietitian || null,
         appointmentDate: appointmentDate ? new Date(appointmentDate) : undefined,
         appointmentTimeSlot: appointmentTimeSlot || null,
+        center: center || null,
         status: 'Waiting',
       },
     });

@@ -91,8 +91,9 @@ export function PatientProfile({ patient, center, generatedMR, justRegistered, o
     setSubmitting(true)
     setError('')
     setNewVisitDialog(false)
+    const centerName = centerOptions.find((option) => option.id === selectedCenter)?.name ?? selectedCenter
     try {
-      const response = await fetch('/api/visits', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ patientMr: p.mr, doctor: selectedDoctor }) })
+      const response = await fetch('/api/visits', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ patientMr: p.mr, doctor: selectedDoctor, center: centerName }) })
       if (!response.ok) {
         const err = await readApiError(response)
         setError(err)

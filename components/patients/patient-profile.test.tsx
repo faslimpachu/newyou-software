@@ -96,7 +96,7 @@ describe('PatientProfile', () => {
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith('/api/visits', expect.objectContaining({
         method: 'POST',
-        body: JSON.stringify({ patientMr: 'NU000001', doctor: 'Dr. Anjali Menon' }),
+        body: JSON.stringify({ patientMr: 'NU000001', doctor: 'Dr. Anjali Menon', center: 'Nutrition Center' }),
       }))
     })
   })

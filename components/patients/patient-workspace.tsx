@@ -167,7 +167,7 @@ function RegistrationForm({ form, set, center, centerName, existingPatient, save
     onError('')
     try {
       if (existingPatient) {
-        const response = await fetch('/api/visits', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ patientMr: existingPatient.mr, doctor: form.doctor }) })
+        const response = await fetch('/api/visits', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ patientMr: existingPatient.mr, doctor: form.doctor, center: centerName }) })
         if (!response.ok) throw new Error(await readApiError(response))
         onSave(existingPatient)
         return

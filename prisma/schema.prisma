@@ -56,6 +56,7 @@ model Visit {
   appointmentDate     DateTime?
   appointmentTimeSlot String?
   status              String   @default("Waiting")
+  center              String?
   createdAt           DateTime @default(now())
 
   patient             Patient       @relation(fields: [patientMr], references: [mr], onDelete: Cascade)
