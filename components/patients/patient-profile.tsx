@@ -127,61 +127,61 @@ export function PatientProfile({ patient, center, generatedMR, justRegistered, o
   if (loading) return <Card className="rounded-lg shadow-sm"><CardContent className="py-12 text-center text-sm text-muted-foreground">Loading patient profile...</CardContent></Card>
   if (error) return <Card className="rounded-lg shadow-sm"><CardContent className="py-12 text-center text-sm text-destructive">{error}</CardContent></Card>
   if (editing) return <PatientProfileEditor patient={p} center={center} onCancel={() => setEditing(false)} onSaved={(updated) => { setLoadedPatient(updated); setEditing(false) }} />
-   return <>
-      <div className="grid gap-6 xl:grid-cols-[280px_1fr]"><aside><Card className="sticky top-20 rounded-lg shadow-sm"><CardContent className="p-5"><div className="flex size-16 items-center justify-center rounded-full bg-primary/10 text-xl font-semibold text-primary">{p.name.split(' ').map((part) => part[0]).join('')}</div><h2 className="mt-4 font-display text-xl font-semibold">{p.name}</h2><p className="mt-1 text-sm text-muted-foreground">{p.mr}</p><dl className="mt-6 space-y-3 border-t pt-5 text-sm"><Info label="Age / Gender" value={`${p.age || '-'} / ${p.gender}`}/><Info label="Blood group" value={p.bloodGroup}/><Info label="Phone" value={p.mobile}/><Info label="Last visit" value={p.lastVisit}/></dl><div className="mt-6 grid grid-cols-2 gap-2"><Button size="sm" onClick={handleNewVisit}><CalendarDays className="mr-2 size-4"/>New visit</Button><Button size="sm" variant="outline" onClick={() => setEditing(true)}><Pencil className="mr-2 size-4"/>Edit</Button></div></CardContent></Card></aside><main>{justRegistered && <div className="mb-5 flex flex-wrap items-center justify-between gap-4 rounded-lg border border-primary/30 bg-primary/5 px-5 py-4"><div className="flex items-start gap-3"><div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary"><Check className="size-4"/></div><div><p className="text-sm font-semibold text-primary">Registration successful</p><p className="text-sm text-muted-foreground">{p.name} has been registered under {center}. MR number <span className="font-mono font-medium text-foreground">{p.mr}</span> has been issued.</p></div></div><div className="flex flex-wrap gap-2"><Button size="sm" onClick={() => openA4Print('Prescription', p, center)}><FileText className="mr-2 size-4"/>Generate blank prescription</Button><Button size="sm" variant="outline" onClick={() => openA4Print('OP Registration Sheet', p, center)}><Printer className="mr-2 size-4"/>Print OP sheet</Button></div></div>}<div className="mb-4 flex flex-wrap justify-between gap-2"><div><h2 className="font-display text-xl font-semibold">Patient profile</h2><p className="mt-1 text-sm text-muted-foreground">{center} · Active outpatient record</p></div><div className="flex gap-2"><Button variant="outline" size="sm" onClick={print}><Printer className="mr-2 size-4"/>Print</Button><Button variant="outline" size="sm" onClick={print}><Download className="mr-2 size-4"/>Export PDF</Button></div></div><Tabs defaultValue={justRegistered ? 'prescriptions' : 'overview'}><div className="overflow-x-auto"><TabsList className="h-10 bg-muted/70"><TabsTrigger value="overview">Overview</TabsTrigger><TabsTrigger value="visits">Visits</TabsTrigger><TabsTrigger value="op">OP Sheet</TabsTrigger><TabsTrigger value="prescriptions">Prescriptions</TabsTrigger><TabsTrigger value="documents">Documents</TabsTrigger></TabsList></div><TabsContent value="overview" className="mt-5"><Overview patient={p} onUpdateStatus={handleUpdateStatus}/></TabsContent><TabsContent value="visits" className="mt-5"><Visits patient={p} onUpdateStatus={handleUpdateStatus}/></TabsContent><TabsContent value="op" className="mt-5"><OPSheet patient={p} center={center} onRefresh={refreshPatient} onUpdateStatus={handleUpdateStatus}/></TabsContent><TabsContent value="prescriptions" className="mt-5"><Prescription patient={p} center={center} onRefresh={refreshPatient}/></TabsContent><TabsContent value="documents" className="mt-5"><Documents patient={p}/></TabsContent></Tabs></main></div>
-      {newVisitDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/20 p-4">
-          <Card className="w-full max-w-md rounded-lg shadow-xl">
-            <CardHeader className="flex-row items-center justify-between">
-              <div>
-                <CardTitle>New Visit</CardTitle>
-                <CardDescription>Select center and doctor for this visit.</CardDescription>
-              </div>
-              <Button size="icon-sm" variant="ghost" onClick={() => setNewVisitDialog(false)} aria-label="Close dialog">
-                <X className="size-4" />
-              </Button>
-            </CardHeader>
-            <CardContent className="grid gap-4">
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium text-muted-foreground" htmlFor="new-visit-center">Center *</Label>
-                <select
-                  id="new-visit-center"
-                  value={selectedCenter ?? ''}
-                  onChange={(e) => { const v = e.target.value as ConsultationCenter; setSelectedCenter(v); setSelectedDoctor('') }}
-                  className="h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm"
-                >
-                  <option value="">Select center</option>
-                  {centerOptions.map((option) => (
-                    <option key={option.id} value={option.id}>{option.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium text-muted-foreground" htmlFor="new-visit-doctor">Doctor *</Label>
-                <select
-                  id="new-visit-doctor"
-                  value={selectedDoctor}
-                  onChange={(e) => setSelectedDoctor(e.target.value)}
-                  disabled={!selectedCenter}
-                  className="h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm disabled:opacity-50"
-                >
-                  <option value="">Select doctor</option>
-                  {doctorsFor(selectedCenter).map((doc) => (
-                    <option key={doc.id} value={doc.name}>{doc.name} - {doc.qualification}</option>
-                  ))}
-                </select>
-                {!selectedCenter && <p className="text-xs text-muted-foreground">Select a center first to see available doctors.</p>}
-              </div>
-              <div className="flex justify-end gap-2 border-t pt-4">
-                <Button variant="outline" size="sm" onClick={() => setNewVisitDialog(false)}>Cancel</Button>
-                <Button size="sm" onClick={handleCreateVisit} disabled={!selectedCenter || !selectedDoctor || submitting}>Create Visit</Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-    </>
-}function Info({ label, value, strong }: { label: string; value: string; strong?: boolean }) { return <div className="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:justify-between"><dt className="text-muted-foreground">{label}</dt><dd className={cn('text-sm font-medium text-foreground sm:text-right', strong && 'text-destructive')}>{value}</dd></div> }
+  return <>
+    <div className="grid gap-6 xl:grid-cols-[280px_1fr]"><aside><Card className="sticky top-20 rounded-lg shadow-sm"><CardContent className="p-5"><div className="flex size-16 items-center justify-center rounded-full bg-primary/10 text-xl font-semibold text-primary">{p.name.split(' ').map((part) => part[0]).join('')}</div><h2 className="mt-4 font-display text-xl font-semibold">{p.name}</h2><p className="mt-1 text-sm text-muted-foreground">{p.mr}</p><dl className="mt-6 space-y-3 border-t pt-5 text-sm"><Info label="Age / Gender" value={`${p.age || '-'} / ${p.gender}`} /><Info label="Blood group" value={p.bloodGroup} /><Info label="Phone" value={p.mobile} /><Info label="Last visit" value={p.lastVisit} /></dl><div className="mt-6 grid grid-cols-2 gap-2"><Button size="sm" onClick={handleNewVisit}><CalendarDays className="mr-2 size-4" />New visit</Button><Button size="sm" variant="outline" onClick={() => setEditing(true)}><Pencil className="mr-2 size-4" />Edit</Button></div></CardContent></Card></aside><main>{justRegistered && <div className="mb-5 flex flex-wrap items-center justify-between gap-4 rounded-lg border border-primary/30 bg-primary/5 px-5 py-4"><div className="flex items-start gap-3"><div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary"><Check className="size-4" /></div><div><p className="text-sm font-semibold text-primary">Registration successful</p><p className="text-sm text-muted-foreground">{p.name} has been registered under {center}. MR number <span className="font-mono font-medium text-foreground">{p.mr}</span> has been issued.</p></div></div><div className="flex flex-wrap gap-2"><Button size="sm" onClick={() => openA4Print('Prescription', p, center)}><FileText className="mr-2 size-4" />Generate blank prescription</Button><Button size="sm" variant="outline" onClick={() => openA4Print('OP Registration Sheet', p, center)}><Printer className="mr-2 size-4" />Print OP sheet</Button></div></div>}<div className="mb-4 flex flex-wrap justify-between gap-2"><div><h2 className="font-display text-xl font-semibold">Patient profile</h2><p className="mt-1 text-sm text-muted-foreground">{center} · Active outpatient record</p></div><div className="flex gap-2"><Button variant="outline" size="sm" onClick={print}><Printer className="mr-2 size-4" />Print</Button><Button variant="outline" size="sm" onClick={print}><Download className="mr-2 size-4" />Export PDF</Button></div></div><Tabs defaultValue={justRegistered ? 'prescriptions' : 'overview'}><div className="overflow-x-auto"><TabsList className="h-10 bg-muted/70"><TabsTrigger value="overview">Overview</TabsTrigger><TabsTrigger value="visits">Visits</TabsTrigger><TabsTrigger value="op">OP Sheet</TabsTrigger><TabsTrigger value="prescriptions">Prescriptions</TabsTrigger><TabsTrigger value="documents">Documents</TabsTrigger></TabsList></div><TabsContent value="overview" className="mt-5"><Overview patient={p} onUpdateStatus={handleUpdateStatus} /></TabsContent><TabsContent value="visits" className="mt-5"><Visits patient={p} onUpdateStatus={handleUpdateStatus} /></TabsContent><TabsContent value="op" className="mt-5"><OPSheet patient={p} center={center} onRefresh={refreshPatient} onUpdateStatus={handleUpdateStatus} /></TabsContent><TabsContent value="prescriptions" className="mt-5"><Prescription patient={p} center={center} onRefresh={refreshPatient} /></TabsContent><TabsContent value="documents" className="mt-5"><Documents patient={p} /></TabsContent></Tabs></main></div>
+    {newVisitDialog && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/20 p-4">
+        <Card className="w-full max-w-md rounded-lg shadow-xl">
+          <CardHeader className="flex-row items-center justify-between">
+            <div>
+              <CardTitle>New Visit</CardTitle>
+              <CardDescription>Select center and doctor for this visit.</CardDescription>
+            </div>
+            <Button size="icon-sm" variant="ghost" onClick={() => setNewVisitDialog(false)} aria-label="Close dialog">
+              <X className="size-4" />
+            </Button>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-muted-foreground" htmlFor="new-visit-center">Center *</Label>
+              <select
+                id="new-visit-center"
+                value={selectedCenter ?? ''}
+                onChange={(e) => { const v = e.target.value as ConsultationCenter; setSelectedCenter(v); setSelectedDoctor('') }}
+                className="h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm"
+              >
+                <option value="">Select center</option>
+                {centerOptions.map((option) => (
+                  <option key={option.id} value={option.id}>{option.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-muted-foreground" htmlFor="new-visit-doctor">Doctor *</Label>
+              <select
+                id="new-visit-doctor"
+                value={selectedDoctor}
+                onChange={(e) => setSelectedDoctor(e.target.value)}
+                disabled={!selectedCenter}
+                className="h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm disabled:opacity-50"
+              >
+                <option value="">Select doctor</option>
+                {doctorsFor(selectedCenter).map((doc) => (
+                  <option key={doc.id} value={doc.name}>{doc.name} - {doc.qualification}</option>
+                ))}
+              </select>
+              {!selectedCenter && <p className="text-xs text-muted-foreground">Select a center first to see available doctors.</p>}
+            </div>
+            <div className="flex justify-end gap-2 border-t pt-4">
+              <Button variant="outline" size="sm" onClick={() => setNewVisitDialog(false)}>Cancel</Button>
+              <Button size="sm" onClick={handleCreateVisit} disabled={!selectedCenter || !selectedDoctor || submitting}>Create Visit</Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )}
+  </>
+} function Info({ label, value, strong }: { label: string; value: string; strong?: boolean }) { return <div className="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:justify-between"><dt className="text-muted-foreground">{label}</dt><dd className={cn('text-sm font-medium text-foreground sm:text-right', strong && 'text-destructive')}>{value}</dd></div> }
 function Overview({ patient, onUpdateStatus }: { patient: PatientRecord; onUpdateStatus?: (visitId: string, status: string) => void }) {
   const latestVisit = patient.visits[0]
   const primaryCenter = patient.consultationType === 'AYURCARE' ? 'Ayurcare Center' : 'Nutrition Center'
@@ -223,7 +223,8 @@ function Overview({ patient, onUpdateStatus }: { patient: PatientRecord; onUpdat
         <Info label="Relationship" value={patient.emergencyRelation || 'Not recorded'} />
       </div>
     </div></Section>
-  </div> }
+  </div>
+}
 function Metric({ label, value }: { label: string; value: string }) { return <div className="rounded-lg bg-muted p-3"><p className="text-lg font-semibold">{value}</p><p className="text-xs text-muted-foreground">{label}</p></div> }
 
 /* ------------------------------------------------------------------ */
@@ -247,7 +248,7 @@ function Visits({ patient, onUpdateStatus }: { patient: PatientRecord; onUpdateS
     await onUpdateStatus(visitId, editStatus.trim())
   }
 
-  return <Card className="rounded-lg shadow-sm"><CardHeader><CardTitle>Visit history</CardTitle><CardDescription>Latest visit appears first. Click a row to open full visit details.</CardDescription></CardHeader><CardContent>{sorted.length ? <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="border-y bg-muted/40 text-xs text-muted-foreground"><tr><th className="p-3 font-medium">Date & time</th><th className="p-3 font-medium">Doctor</th><th className="p-3 font-medium">Department</th><th className="p-3 font-medium">Status</th></tr></thead><tbody>{sorted.map((visit, index) => <tr className={cn('border-b hover:bg-muted/40', index === 0 && 'bg-primary/5')} key={visit.id}><td className="p-3">{visit.date}</td><td className="p-3">{visit.doctor}</td><td className="p-3">{visit.center}</td><td className="p-3">                {editingId === visit.id ? <div className="flex items-center gap-2"><select value={editStatus} onChange={(e) => setEditStatus(e.target.value)} aria-label="Status" className="h-7 rounded-md border border-input bg-background px-2 text-xs"><option value="Waiting">Waiting</option><option value="Active">Active</option><option value="Completed">Completed</option><option value="Cancelled">Cancelled</option></select><Button size="icon-sm" onClick={() => saveStatus(visit.id)} aria-label="Save status"><Check className="size-3.5"/></Button></div> : <div className="flex items-center gap-2"><StatusBadge status={visit.reason}/><Button size="icon-sm" variant="ghost" onClick={() => startEdit(visit.id, visit.reason)} aria-label="Edit status"><Pencil className="size-3.5"/></Button></div>}</td></tr>)}</tbody></table></div> : <EmptyState title="No visits recorded" action="Create first visit"/>}</CardContent></Card>
+  return <Card className="rounded-lg shadow-sm"><CardHeader><CardTitle>Visit history</CardTitle><CardDescription>Latest visit appears first. Click a row to open full visit details.</CardDescription></CardHeader><CardContent>{sorted.length ? <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="border-y bg-muted/40 text-xs text-muted-foreground"><tr><th className="p-3 font-medium">Date & time</th><th className="p-3 font-medium">Doctor</th><th className="p-3 font-medium">Department</th><th className="p-3 font-medium">Status</th></tr></thead><tbody>{sorted.map((visit, index) => <tr className={cn('border-b hover:bg-muted/40', index === 0 && 'bg-primary/5')} key={visit.id}><td className="p-3">{visit.date}</td><td className="p-3">{visit.doctor}</td><td className="p-3">{visit.center}</td><td className="p-3">                {editingId === visit.id ? <div className="flex items-center gap-2"><select value={editStatus} onChange={(e) => setEditStatus(e.target.value)} aria-label="Status" className="h-7 rounded-md border border-input bg-background px-2 text-xs"><option value="Waiting">Waiting</option><option value="Active">Active</option><option value="Completed">Completed</option><option value="Cancelled">Cancelled</option></select><Button size="icon-sm" onClick={() => saveStatus(visit.id)} aria-label="Save status"><Check className="size-3.5" /></Button></div> : <div className="flex items-center gap-2"><StatusBadge status={visit.reason} /><Button size="icon-sm" variant="ghost" onClick={() => startEdit(visit.id, visit.reason)} aria-label="Edit status"><Pencil className="size-3.5" /></Button></div>}</td></tr>)}</tbody></table></div> : <EmptyState title="No visits recorded" action="Create first visit" />}</CardContent></Card>
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -405,13 +406,14 @@ function OPSheet({ patient, center, onRefresh, onUpdateStatus }: { patient: Pati
       <p className="text-sm text-muted-foreground">{patient.name} · {patient.mr}</p>
     </div>
     {sortedVisits.length === 0
-      ? <Card className="rounded-lg shadow-sm"><CardContent className="py-14 text-center"><FileText className="mx-auto size-6 text-muted-foreground"/><p className="mt-3 font-medium">No visits recorded for this patient.</p></CardContent></Card>
+      ? <Card className="rounded-lg shadow-sm"><CardContent className="py-14 text-center"><FileText className="mx-auto size-6 text-muted-foreground" /><p className="mt-3 font-medium">No visits recorded for this patient.</p></CardContent></Card>
       : <Card className="rounded-lg shadow-sm"><CardContent className="p-0"><div className="overflow-x-auto"><table className="w-full min-w-[820px] text-left text-sm"><thead className="border-y bg-muted/40 text-xs text-muted-foreground"><tr><th className="p-3 font-medium">Visit Date</th><th className="p-3 font-medium">Doctor</th><th className="p-3 font-medium">Department</th><th className="p-3 font-medium">OP Sheet</th><th className="p-3 font-medium text-right">Actions</th></tr></thead><tbody>{sortedVisits.map((visit) => {
-          const opRecord = opSheetsByVisitId.get(visit.id)
-          return <tr className="border-b" key={visit.id}><td className="p-3">{visit.date}</td><td className="p-3">{visit.doctor}</td><td className="p-3">{visit.center}</td><td className="p-3">{opRecord ? <span className="text-green-400 text-xs font-medium">✅ Created</span> : <span className="text-xs font-medium text-muted-foreground">❌ Not Created</span>}</td><td className="p-3"><div className="flex justify-end gap-1">{opRecord ? <><Button variant="ghost" size="sm" onClick={() => openView(visit.id)}><Eye className="mr-1 size-3.5"/>View</Button><Button variant="ghost" size="sm" onClick={() => openEdit(visit.id)}><Pencil className="mr-1 size-3.5"/>Edit</Button><Button variant="ghost" size="sm" onClick={() => printRecord(opRecord)}><Printer className="mr-1 size-3.5"/>Print</Button></> : <Button size="sm" onClick={() => openCreate(visit.id)}><Plus className="mr-1 size-3.5"/>Create OP Sheet</Button>}</div></td></tr>}
-        )}</tbody></table></div></CardContent></Card>}
+        const opRecord = opSheetsByVisitId.get(visit.id)
+        return <tr className="border-b" key={visit.id}><td className="p-3">{visit.date}</td><td className="p-3">{visit.doctor}</td><td className="p-3">{visit.center}</td><td className="p-3">{opRecord ? <span className="text-green-400 text-xs font-medium">✅ Created</span> : <span className="text-xs font-medium text-muted-foreground">❌ Not Created</span>}</td><td className="p-3"><div className="flex justify-end gap-1">{opRecord ? <><Button variant="ghost" size="sm" onClick={() => openView(visit.id)}><Eye className="mr-1 size-3.5" />View</Button><Button variant="ghost" size="sm" onClick={() => openEdit(visit.id)}><Pencil className="mr-1 size-3.5" />Edit</Button><Button variant="ghost" size="sm" onClick={() => printRecord(opRecord)}><Printer className="mr-1 size-3.5" />Print</Button></> : <Button size="sm" onClick={() => openCreate(visit.id)}><Plus className="mr-1 size-3.5" />Create OP Sheet</Button>}</div></td></tr>
+      }
+      )}</tbody></table></div></CardContent></Card>}
   </div>
-}function buildOPPrintContent(record: OPSheetRecord): PrintContent {
+} function buildOPPrintContent(record: OPSheetRecord): PrintContent {
   const rows = measurements
     .filter((name) => (record.measurementValues[name] ?? []).some((v) => v && v.trim()))
     .map((name) => [name, ...(record.measurementValues[name] ?? ['', '', '', '', ''])])
@@ -449,13 +451,13 @@ function OPSheetEditor({ patient, center, record, readOnly, onCancel, onSave }: 
     <div className="flex flex-wrap justify-between gap-2">
       <div><h3 className="font-display text-xl font-semibold">{readOnly ? 'View OP Sheet' : 'Out Patient Registration Sheet'}</h3><p className="text-sm text-muted-foreground">{patient.name} Â· {patient.mr} Â· Visit {record.visitId}</p></div>
       <div className="flex gap-2">
-        <Button size="sm" variant="outline" onClick={onCancel}><ArrowLeft className="mr-2 size-4"/>Back to list</Button>
-        <Button size="sm" variant="outline" onClick={doPrint}><Printer className="mr-2 size-4"/>Print</Button>
-        {!readOnly && <Button size="sm" onClick={handleSave}><Check className="mr-2 size-4"/>Save</Button>}
+        <Button size="sm" variant="outline" onClick={onCancel}><ArrowLeft className="mr-2 size-4" />Back to list</Button>
+        <Button size="sm" variant="outline" onClick={doPrint}><Printer className="mr-2 size-4" />Print</Button>
+        {!readOnly && <Button size="sm" onClick={handleSave}><Check className="mr-2 size-4" />Save</Button>}
       </div>
     </div>
     <Section title="Clinical examination" description="Detailed clinical notes">
-      <Textarea className="min-h-64 resize-y" disabled={readOnly} value={clinicalNotes} onChange={(e) => setClinicalNotes(e.target.value)} placeholder="Document clinical examination findings, assessment and observations..."/>
+      <Textarea className="min-h-64 resize-y" disabled={readOnly} value={clinicalNotes} onChange={(e) => setClinicalNotes(e.target.value)} placeholder="Document clinical examination findings, assessment and observations..." />
     </Section>
     <Section title="Baseline measurements" description="Record and compare treatment progress">
       <div className="overflow-x-auto">
@@ -464,15 +466,15 @@ function OPSheetEditor({ patient, center, record, readOnly, onCancel, onSave }: 
           <tbody>{measurements.map((measurement) => <tr className="border-b" key={measurement}>
             <td className="p-2 font-medium">{measurement}</td>
             {measurementColumns.map((_, i) => <td className="p-1.5" key={i}>
-              <Input className="h-7 min-w-24" disabled={readOnly} aria-label={`${measurement} ${measurementColumns[i]}`} value={measurementValues[measurement]?.[i] ?? ''} onChange={(e) => setMeasurement(measurement, i, e.target.value)}/>
+              <Input className="h-7 min-w-24" disabled={readOnly} aria-label={`${measurement} ${measurementColumns[i]}`} value={measurementValues[measurement]?.[i] ?? ''} onChange={(e) => setMeasurement(measurement, i, e.target.value)} />
             </td>)}
           </tr>)}</tbody>
         </table>
       </div>
     </Section>
     <div className="grid gap-5 md:grid-cols-2">
-      <Section title="Investigations"><Textarea disabled={readOnly} placeholder="Test, finding and date" className="min-h-28" value={investigations} onChange={(e) => setInvestigations(e.target.value)}/></Section>
-      <Section title="Treatment plan & follow-up"><Textarea disabled={readOnly} placeholder="Plan, advice and next review date" className="min-h-28" value={treatmentPlan} onChange={(e) => setTreatmentPlan(e.target.value)}/></Section>
+      <Section title="Investigations"><Textarea disabled={readOnly} placeholder="Test, finding and date" className="min-h-28" value={investigations} onChange={(e) => setInvestigations(e.target.value)} /></Section>
+      <Section title="Treatment plan & follow-up"><Textarea disabled={readOnly} placeholder="Plan, advice and next review date" className="min-h-28" value={treatmentPlan} onChange={(e) => setTreatmentPlan(e.target.value)} /></Section>
     </div>
   </div>
 }
@@ -626,12 +628,13 @@ function Prescription({ patient, center, onRefresh }: { patient: PatientRecord; 
       <p className="text-sm text-muted-foreground">{patient.name} · {patient.mr}</p>
     </div>
     {sortedVisits.length === 0
-      ? <Card className="rounded-lg shadow-sm"><CardContent className="py-14 text-center"><Stethoscope className="mx-auto size-6 text-muted-foreground"/><p className="mt-3 font-medium">No visits recorded for this patient.</p></CardContent></Card>
+      ? <Card className="rounded-lg shadow-sm"><CardContent className="py-14 text-center"><Stethoscope className="mx-auto size-6 text-muted-foreground" /><p className="mt-3 font-medium">No visits recorded for this patient.</p></CardContent></Card>
       : <Card className="rounded-lg shadow-sm"><CardContent className="p-0"><div className="overflow-x-auto"><table className="w-full min-w-[820px] text-left text-sm"><thead className="border-y bg-muted/40 text-xs text-muted-foreground"><tr><th className="p-3 font-medium">Visit Date</th><th className="p-3 font-medium">Doctor</th><th className="p-3 font-medium">Department</th><th className="p-3 font-medium">OP Sheet</th><th className="p-3 font-medium">Prescription</th><th className="p-3 font-medium text-right">Actions</th></tr></thead><tbody>{sortedVisits.map((visit) => {
-          const opSheet = opSheetsByVisitId.get(visit.id)
-          const prescription = prescriptionsByVisitId.get(visit.id)
-           return <tr className="border-b" key={visit.id}><td className="p-3">{visit.date}</td><td className="p-3">{visit.doctor}</td><td className="p-3">{visit.center}</td><td className="p-3">{opSheet ? <span className="text-green-400 text-xs font-medium">✅ Created</span> : <span className="text-xs font-medium text-muted-foreground">❌ Not Created</span>}</td><td className="p-3">{opSheet ? (prescription ? <span className="text-green-400 text-xs font-medium">✅ Created</span> : <span className="text-xs font-medium text-muted-foreground">❌ Not Created</span>) : <span className="text-xs font-medium text-muted-foreground">—</span>}</td><td className="p-3"><div className="flex justify-end gap-1">{opSheet ? (prescription ? <><Button variant="ghost" size="sm" onClick={() => openView(visit.id)}><Eye className="mr-1 size-3.5"/>View</Button><Button variant="ghost" size="sm" onClick={() => openEdit(visit.id)}><Pencil className="mr-1 size-3.5"/>Edit</Button><Button variant="ghost" size="sm" onClick={() => printRecord(prescription)}><Printer className="mr-1 size-3.5"/>Print</Button></> : <Button size="sm" onClick={() => openCreate(visit.id)}><Plus className="mr-1 size-3.5"/>Create Prescription</Button>) : <span className="text-xs text-muted-foreground">Create OP Sheet first</span>}</div></td></tr>}
-        )}</tbody></table></div></CardContent></Card>}
+        const opSheet = opSheetsByVisitId.get(visit.id)
+        const prescription = prescriptionsByVisitId.get(visit.id)
+        return <tr className="border-b" key={visit.id}><td className="p-3">{visit.date}</td><td className="p-3">{visit.doctor}</td><td className="p-3">{visit.center}</td><td className="p-3">{opSheet ? <span className="text-green-400 text-xs font-medium">✅ Created</span> : <span className="text-xs font-medium text-muted-foreground">❌ Not Created</span>}</td><td className="p-3">{opSheet ? (prescription ? <span className="text-green-400 text-xs font-medium">✅ Created</span> : <span className="text-xs font-medium text-muted-foreground">❌ Not Created</span>) : <span className="text-xs font-medium text-muted-foreground">—</span>}</td><td className="p-3"><div className="flex justify-end gap-1">{opSheet ? (prescription ? <><Button variant="ghost" size="sm" onClick={() => openView(visit.id)}><Eye className="mr-1 size-3.5" />View</Button><Button variant="ghost" size="sm" onClick={() => openEdit(visit.id)}><Pencil className="mr-1 size-3.5" />Edit</Button><Button variant="ghost" size="sm" onClick={() => printRecord(prescription)}><Printer className="mr-1 size-3.5" />Print</Button></> : <Button size="sm" onClick={() => openCreate(visit.id)}><Plus className="mr-1 size-3.5" />Create Prescription</Button>) : <span className="text-xs text-muted-foreground">Create OP Sheet first</span>}</div></td></tr>
+      }
+      )}</tbody></table></div></CardContent></Card>}
   </div>
 }
 function buildPrescriptionPrintContent(record: PrescriptionRecord): PrintContent {
@@ -665,12 +668,12 @@ function PrescriptionEditor({ patient, center, record, readOnly, onCancel, onSav
 
   return <div className="print-sheet">
     <div className="flex items-start justify-between border-b-2 border-primary pb-5">
-      <ClinicHeader center={center}/>
+      <ClinicHeader center={center} />
       <div className="flex gap-2">
-        <Button variant="outline" size="sm" onClick={onCancel}><ArrowLeft className="mr-2 size-4"/>Back to list</Button>
-        <Button variant="outline" size="sm" onClick={doPrint}><Printer className="mr-2 size-4"/>Print</Button>
-        <Button variant="outline" size="sm" onClick={doBlank}><FileText className="mr-2 size-4"/>Blank sheet</Button>
-        {!readOnly && <Button size="sm" onClick={handleSave}><Check className="mr-2 size-4"/>Save</Button>}
+        <Button variant="outline" size="sm" onClick={onCancel}><ArrowLeft className="mr-2 size-4" />Back to list</Button>
+        <Button variant="outline" size="sm" onClick={doPrint}><Printer className="mr-2 size-4" />Print</Button>
+        <Button variant="outline" size="sm" onClick={doBlank}><FileText className="mr-2 size-4" />Blank sheet</Button>
+        {!readOnly && <Button size="sm" onClick={handleSave}><Check className="mr-2 size-4" />Save</Button>}
       </div>
     </div>
     <div className="grid grid-cols-2 gap-4 py-5 text-sm">
@@ -679,26 +682,26 @@ function PrescriptionEditor({ patient, center, record, readOnly, onCancel, onSav
       <p><b>Age / Sex:</b> {patient.age} / {patient.gender}</p>
       <p><b>Date:</b> {record.date}</p>
     </div>
-    <Section title="Diagnosis"><Textarea disabled={readOnly} placeholder="Clinical diagnosis" value={diagnosis} onChange={(e) => setDiagnosis(e.target.value)}/></Section>
+    <Section title="Diagnosis"><Textarea disabled={readOnly} placeholder="Clinical diagnosis" value={diagnosis} onChange={(e) => setDiagnosis(e.target.value)} /></Section>
     <div className="mt-5">
       <Section title="Prescription">
         <table className="w-full text-sm">
           <thead className="bg-muted text-xs text-muted-foreground"><tr>{['Medicine', 'Dosage', 'Frequency', 'Duration', 'Instructions', ''].map((x) => <th key={x} className="p-3 text-left">{x}</th>)}</tr></thead>
           <tbody>{medicines.map((row) => <tr key={row.id} className="border-b">
-            <td className="p-2"><Input className="h-7" disabled={readOnly} aria-label="Medicine" value={row.medicine} onChange={(e) => updateRow(row.id, 'medicine', e.target.value)}/></td>
-            <td className="p-2"><Input className="h-7" disabled={readOnly} aria-label="Dosage" value={row.dosage} onChange={(e) => updateRow(row.id, 'dosage', e.target.value)}/></td>
-            <td className="p-2"><Input className="h-7" disabled={readOnly} aria-label="Frequency" value={row.frequency} onChange={(e) => updateRow(row.id, 'frequency', e.target.value)}/></td>
-            <td className="p-2"><Input className="h-7" disabled={readOnly} aria-label="Duration" value={row.duration} onChange={(e) => updateRow(row.id, 'duration', e.target.value)}/></td>
-            <td className="p-2"><Input className="h-7" disabled={readOnly} aria-label="Instructions" value={row.instructions} onChange={(e) => updateRow(row.id, 'instructions', e.target.value)}/></td>
-            <td className="p-2 text-right">{!readOnly && <Button variant="ghost" size="sm" onClick={() => removeRow(row.id)}><Trash2 className="size-3.5"/></Button>}</td>
+            <td className="p-2"><Input className="h-7" disabled={readOnly} aria-label="Medicine" value={row.medicine} onChange={(e) => updateRow(row.id, 'medicine', e.target.value)} /></td>
+            <td className="p-2"><Input className="h-7" disabled={readOnly} aria-label="Dosage" value={row.dosage} onChange={(e) => updateRow(row.id, 'dosage', e.target.value)} /></td>
+            <td className="p-2"><Input className="h-7" disabled={readOnly} aria-label="Frequency" value={row.frequency} onChange={(e) => updateRow(row.id, 'frequency', e.target.value)} /></td>
+            <td className="p-2"><Input className="h-7" disabled={readOnly} aria-label="Duration" value={row.duration} onChange={(e) => updateRow(row.id, 'duration', e.target.value)} /></td>
+            <td className="p-2"><Input className="h-7" disabled={readOnly} aria-label="Instructions" value={row.instructions} onChange={(e) => updateRow(row.id, 'instructions', e.target.value)} /></td>
+            <td className="p-2 text-right">{!readOnly && <Button variant="ghost" size="sm" onClick={() => removeRow(row.id)}><Trash2 className="size-3.5" /></Button>}</td>
           </tr>)}</tbody>
         </table>
-        {!readOnly && <Button variant="outline" size="sm" className="mt-3" onClick={addRow}><Plus className="mr-2 size-4"/>Add medicine</Button>}
+        {!readOnly && <Button variant="outline" size="sm" className="mt-3" onClick={addRow}><Plus className="mr-2 size-4" />Add medicine</Button>}
       </Section>
     </div>
     <div className="mt-5 grid gap-5 md:grid-cols-2">
-      <Section title="Advice"><Textarea disabled={readOnly} className="min-h-24" value={advice} onChange={(e) => setAdvice(e.target.value)}/></Section>
-      <Section title="Follow-up"><Field label="Next visit" type="date" value={followUp} onChange={setFollowUp}/></Section>
+      <Section title="Advice"><Textarea disabled={readOnly} className="min-h-24" value={advice} onChange={(e) => setAdvice(e.target.value)} /></Section>
+      <Section title="Follow-up"><Field label="Next visit" type="date" value={followUp} onChange={setFollowUp} /></Section>
     </div>
     <div className="mt-16 grid grid-cols-2 gap-10 text-center text-sm">
       <div className="border-t pt-2">Doctor signature</div>
@@ -707,12 +710,12 @@ function PrescriptionEditor({ patient, center, record, readOnly, onCancel, onSav
   </div>
 }
 
-function Bills({ patient }: { patient: ExistingPatient }) { const total = patient.bills.reduce((sum, bill) => sum + bill.amount, 0); return <div className="grid gap-5 lg:grid-cols-[1fr_280px]"><Card className="rounded-lg shadow-sm"><CardHeader><CardTitle>Invoices</CardTitle></CardHeader><CardContent>{patient.bills.length ? <div className="space-y-3">{patient.bills.map((bill) => <div className="flex items-center justify-between rounded-lg border p-4" key={bill.id}><div><p className="font-medium">{bill.id}</p><p className="mt-1 text-xs text-muted-foreground">{bill.date} Â· {bill.service}</p></div><div className="text-right"><p className="font-semibold">Rs. {bill.amount.toLocaleString()}</p><p className="mt-1 text-xs text-destructive">{bill.status}</p></div></div>)}</div> : <EmptyState title="No invoices for this patient" action="Create invoice"/>}</CardContent></Card><Card className="rounded-lg shadow-sm"><CardHeader><CardTitle>Account summary</CardTitle></CardHeader><CardContent><p className="text-xs text-muted-foreground">Outstanding balance</p><p className="mt-1 text-2xl font-semibold">Rs. {total.toLocaleString()}</p><Button className="mt-5 w-full" size="sm"><IndianRupee className="mr-2 size-4"/>Record payment</Button><Button className="mt-2 w-full" variant="outline" size="sm"><FileText className="mr-2 size-4"/>New invoice</Button></CardContent></Card></div> }
-function EmptyState({ title, action }: { title: string; action: string }) { return <div className="py-8 text-center"><p className="font-medium">{title}</p><Button size="sm" variant="outline" className="mt-3"><Plus className="mr-2 size-4"/>{action}</Button></div> }
+function Bills({ patient }: { patient: ExistingPatient }) { const total = patient.bills.reduce((sum, bill) => sum + bill.amount, 0); return <div className="grid gap-5 lg:grid-cols-[1fr_280px]"><Card className="rounded-lg shadow-sm"><CardHeader><CardTitle>Invoices</CardTitle></CardHeader><CardContent>{patient.bills.length ? <div className="space-y-3">{patient.bills.map((bill) => <div className="flex items-center justify-between rounded-lg border p-4" key={bill.id}><div><p className="font-medium">{bill.id}</p><p className="mt-1 text-xs text-muted-foreground">{bill.date} Â· {bill.service}</p></div><div className="text-right"><p className="font-semibold">Rs. {bill.amount.toLocaleString()}</p><p className="mt-1 text-xs text-destructive">{bill.status}</p></div></div>)}</div> : <EmptyState title="No invoices for this patient" action="Create invoice" />}</CardContent></Card><Card className="rounded-lg shadow-sm"><CardHeader><CardTitle>Account summary</CardTitle></CardHeader><CardContent><p className="text-xs text-muted-foreground">Outstanding balance</p><p className="mt-1 text-2xl font-semibold">Rs. {total.toLocaleString()}</p><Button className="mt-5 w-full" size="sm"><IndianRupee className="mr-2 size-4" />Record payment</Button><Button className="mt-2 w-full" variant="outline" size="sm"><FileText className="mr-2 size-4" />New invoice</Button></CardContent></Card></div> }
+function EmptyState({ title, action }: { title: string; action: string }) { return <div className="py-8 text-center"><p className="font-medium">{title}</p><Button size="sm" variant="outline" className="mt-3"><Plus className="mr-2 size-4" />{action}</Button></div> }
 
 function ClinicHeader({ center }: { center: string }) {
   const nutrition = center.toLowerCase().includes('nutrition')
-  return <div><h3 className="font-display text-2xl font-semibold">{nutrition ? 'NEW YOU' : 'Ayurcare Center'}</h3>{nutrition && <p className="mt-1 text-sm font-medium text-primary">Lose Weight. Choose Health.</p>}<p className="mt-1 text-xs text-muted-foreground">{nutrition ? 'Centre for Professional Weight Management' : 'Jubilee Bazar'}<br/>Onden Road, Kannur - 670001, Kerala<br/>PH: 8111999581 / 8111999582</p></div>
+  return <div><h3 className="font-display text-2xl font-semibold">{nutrition ? 'NEW YOU' : 'Ayurcare Center'}</h3>{nutrition && <p className="mt-1 text-sm font-medium text-primary">Lose Weight. Choose Health.</p>}<p className="mt-1 text-xs text-muted-foreground">{nutrition ? 'Centre for Professional Weight Management' : 'Jubilee Bazar'}<br />Onden Road, Kannur - 670001, Kerala<br />PH: 8111999581 / 8111999582</p></div>
 }
 
 /* ------------------------------------------------------------------ */
@@ -795,7 +798,7 @@ function Documents({ patient }: { patient: PatientRecord }) {
     sections: [{ label: 'Notes', value: doc.notes }],
   })
 
-  return <Card className="rounded-lg shadow-sm"><CardHeader className="flex-row items-center justify-between"><div><CardTitle>Documents</CardTitle><CardDescription>Clinical reports, scans, images, and supporting records for {patient.name}.</CardDescription></div><Button size="sm" onClick={add}><Upload className="mr-2 size-4"/>Upload document</Button></CardHeader><CardContent><div className="mb-5 grid gap-3 md:grid-cols-2"><Input placeholder="Document title" value={title} onChange={(e) => setTitle(e.target.value)}/><select className="h-8 rounded-lg border border-input bg-background px-2.5 text-sm" value={category} onChange={(e) => setCategory(e.target.value)}><option>Clinical report</option><option>Lab report</option><option>Prescription</option><option>Identity document</option><option>Scanned report</option></select><Input placeholder="Uploaded by" value={uploadedBy} onChange={(e) => setUploadedBy(e.target.value)}/><Input placeholder="Notes (optional)" value={notes} onChange={(e) => setNotes(e.target.value)}/></div>{documents.length ? <div className="overflow-x-auto"><table className="w-full min-w-[760px] text-sm"><thead className="border-y bg-muted/40 text-xs text-muted-foreground"><tr><th className="p-3 text-left">File Name</th><th className="p-3 text-left">Document Type</th><th className="p-3 text-left">Patient Name</th><th className="p-3 text-left">Upload Date</th><th className="p-3 text-left">Uploaded By</th><th className="p-3 text-right">Actions</th></tr></thead><tbody>{documents.map((document, index) => <tr key={`${document.title}-${index}`} className="border-b"><td className="p-3 font-medium">{document.title}</td><td className="p-3">{document.category}</td><td className="p-3">{patient.name}</td><td className="p-3">{document.date}</td><td className="p-3">{document.uploadedBy}</td><td className="p-3 text-right"><div className="flex justify-end gap-1"><Button variant="ghost" size="sm"><Eye className="mr-1 size-3.5"/>View</Button><Button variant="ghost" size="sm"><Download className="mr-1 size-3.5"/>Download</Button><Button variant="ghost" size="sm" onClick={() => printDoc(document)}><Printer className="mr-1 size-3.5"/>Print</Button><Button variant="ghost" size="sm" onClick={() => printDoc(document)}><FileText className="mr-1 size-3.5"/>Export</Button><Button variant="ghost" size="sm" onClick={() => remove(index)}><Trash2 className="mr-1 size-3.5"/>Delete</Button></div></td></tr>)}</tbody></table></div> : <div className="rounded-lg border border-dashed py-10 text-center"><FileText className="mx-auto size-6 text-muted-foreground"/><p className="mt-3 font-medium">No documents added</p><p className="mt-1 text-sm text-muted-foreground">Add a title and category, then upload a patient document.</p></div>}</CardContent></Card>
+  return <Card className="rounded-lg shadow-sm"><CardHeader className="flex-row items-center justify-between"><div><CardTitle>Documents</CardTitle><CardDescription>Clinical reports, scans, images, and supporting records for {patient.name}.</CardDescription></div><Button size="sm" onClick={add}><Upload className="mr-2 size-4" />Upload document</Button></CardHeader><CardContent><div className="mb-5 grid gap-3 md:grid-cols-2"><Input placeholder="Document title" value={title} onChange={(e) => setTitle(e.target.value)} /><select className="h-8 rounded-lg border border-input bg-background px-2.5 text-sm" value={category} onChange={(e) => setCategory(e.target.value)}><option>Clinical report</option><option>Lab report</option><option>Prescription</option><option>Identity document</option><option>Scanned report</option></select><Input placeholder="Uploaded by" value={uploadedBy} onChange={(e) => setUploadedBy(e.target.value)} /><Input placeholder="Notes (optional)" value={notes} onChange={(e) => setNotes(e.target.value)} /></div>{documents.length ? <div className="overflow-x-auto"><table className="w-full min-w-[760px] text-sm"><thead className="border-y bg-muted/40 text-xs text-muted-foreground"><tr><th className="p-3 text-left">File Name</th><th className="p-3 text-left">Document Type</th><th className="p-3 text-left">Patient Name</th><th className="p-3 text-left">Upload Date</th><th className="p-3 text-left">Uploaded By</th><th className="p-3 text-right">Actions</th></tr></thead><tbody>{documents.map((document, index) => <tr key={`${document.title}-${index}`} className="border-b"><td className="p-3 font-medium">{document.title}</td><td className="p-3">{document.category}</td><td className="p-3">{patient.name}</td><td className="p-3">{document.date}</td><td className="p-3">{document.uploadedBy}</td><td className="p-3 text-right"><div className="flex justify-end gap-1"><Button variant="ghost" size="sm"><Eye className="mr-1 size-3.5" />View</Button><Button variant="ghost" size="sm"><Download className="mr-1 size-3.5" />Download</Button><Button variant="ghost" size="sm" onClick={() => printDoc(document)}><Printer className="mr-1 size-3.5" />Print</Button><Button variant="ghost" size="sm" onClick={() => printDoc(document)}><FileText className="mr-1 size-3.5" />Export</Button><Button variant="ghost" size="sm" onClick={() => remove(index)}><Trash2 className="mr-1 size-3.5" />Delete</Button></div></td></tr>)}</tbody></table></div> : <div className="rounded-lg border border-dashed py-10 text-center"><FileText className="mx-auto size-6 text-muted-foreground" /><p className="mt-3 font-medium">No documents added</p><p className="mt-1 text-sm text-muted-foreground">Add a title and category, then upload a patient document.</p></div>}</CardContent></Card>
 }
 
 /* ------------------------------------------------------------------ */
