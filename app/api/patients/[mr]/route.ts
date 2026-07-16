@@ -86,6 +86,15 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ m
     const patient = await prisma.patient.update({
       where: { mr: decodeURIComponent(mr) },
       data,
+      include: {
+        visits: { orderBy: { createdAt: 'desc' } },
+        opSheets: { orderBy: { createdAt: 'desc' }, include: { visit: true, prescription: true } },
+        prescriptions: { orderBy: { createdAt: 'desc' }, include: { opSheet: { include: { visit: true } } } },
+        nutritionAssessments: true,
+        ayurcareTreatments: true,
+        followUps: true,
+        documents: { orderBy: { uploadedAt: 'desc' } },
+      },
     });
 
     return NextResponse.json({ patient });
