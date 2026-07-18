@@ -234,6 +234,14 @@ describe('BillingWorkspace', () => {
       expect(screen.getByText('Create invoice')).toBeDefined()
     })
 
+    fireEvent.click(screen.getByText('Save & preview bill'))
+
+    await waitFor(() => {
+      expect(screen.getByText('MR number is required.')).toBeDefined()
+    })
+    expect(screen.getByText('Patient name is required.')).toBeDefined()
+    expect(screen.getByText('Add at least one item with a name and rate.')).toBeDefined()
+
     fireEvent.change(screen.getByPlaceholderText('e.g. NU000003'), { target: { value: 'NU000003' } })
     await waitFor(() => {
       expect(screen.getByText('Existing patient found — details auto-filled.')).toBeDefined()
@@ -241,9 +249,7 @@ describe('BillingWorkspace', () => {
 
     fireEvent.change(screen.getByPlaceholderText('Any service, test, medicine, or package'), { target: { value: 'Test service' } })
 
-    await waitFor(() => {
-      expect(screen.getByText('Save & preview bill')).toHaveAttribute('disabled', undefined)
-    }, { timeout: 5000 })
+    expect(screen.getByText('Save & preview bill')).not.toHaveAttribute('disabled', 'true')
   })
 
   it('opens invoice preview modal when clicking row', async () => {

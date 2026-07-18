@@ -513,6 +513,10 @@ export function BillingWorkspace() {
     }
   }
 
+  const handleAddCategory = (category: string) => {
+    setExpenseCategories((current) => (current.includes(category) ? current : [...current, category]))
+  }
+
   return (
     <div className="mx-auto max-w-[1600px] space-y-6" style={{ fontFamily: UI_FONT }}>
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -839,14 +843,19 @@ function NewInvoiceModal({ onClose, onSave, saving }: { onClose: () => void; onS
   const contactValid = patient.contact.length === 0 || MOBILE_REGEX.test(patient.contact)
   const contactComplete = MOBILE_REGEX.test(patient.contact)
 
-  const canSave =
-    mrNumberValid &&
-    patient.name.trim().length > 0 &&
-    contactComplete &&
-    items.some((item) => item.name.trim().length > 0 && item.rate > 0)
+  const validate = () => {
+    const errors: Record<string, string> = {}
+    if (!patient.mrNumber.trim()) errors.mrNumber = 'MR number is required.'
+    if (!patient.name.trim()) errors.patientName = 'Patient name is required.'
+    if (!contactComplete) errors.contact = 'Enter a valid 10-digit mobile number.'
+    const hasValidItem = items.some((item) => item.name.trim().length > 0 && item.rate > 0)
+    if (!hasValidItem) errors.items = 'Add at least one item with a name and rate.'
+    setValidationErrors(errors)
+    return Object.keys(errors).length === 0
+  }
 
   const handleSave = () => {
-    if (!canSave) return
+    if (!validate()) return
     const invoice: Invoice = {
       id: `INV-${Date.now().toString(36).toUpperCase()}`,
       center,
@@ -904,10 +913,14 @@ function NewInvoiceModal({ onClose, onSave, saving }: { onClose: () => void; onS
                 className={!mrNumberValid ? 'border-destructive' : undefined}
               />
               {mrStatus === 'found' && <p className="mt-1 text-xs font-medium text-primary">Existing patient found — details auto-filled.</p>}
+              {mrStatus === 'loading' && <p className="mt-1 text-xs text-muted-foreground">Looking up patient...</p>}
               {mrStatus === 'new' && <p className="mt-1 text-xs text-muted-foreground">No record on file — enter details for a new patient.</p>}
-              {!mrNumberValid && <p className="mt-1 text-xs text-destructive">MR number is required.</p>}
+              {!mrNumberValid && validationErrors.mrNumber && <p className="mt-1 text-xs text-destructive">{validationErrors.mrNumber}</p>}
             </FormField>
-            <FormField label="Patient name" required><Input value={patient.name} onChange={(e) => updatePatient('name', e.target.value)} /></FormField>
+            <FormField label="Patient name" required>
+              <Input value={patient.name} onChange={(e) => updatePatient('name', e.target.value)} className={validationErrors.patientName ? 'border-destructive' : undefined} />
+            </FormField>
+            {validationErrors.patientName && <p className="mt-1 text-xs text-destructive col-span-1">{validationErrors.patientName}</p>}
             <FormField label="Gender">
               <select className="h-9 w-full rounded-lg border border-input bg-background px-2 text-sm" value={patient.gender} onChange={(e) => updatePatient('gender', e.target.value)}>
                 <option value="">Select</option>
@@ -929,9 +942,10 @@ function NewInvoiceModal({ onClose, onSave, saving }: { onClose: () => void; onS
                 value={patient.contact}
                 onChange={(e) => handleContactChange(e.target.value)}
                 placeholder="10-digit mobile number"
-                className={!contactValid || (patient.contact.length > 0 && !contactComplete) ? 'border-destructive' : undefined}
+                className={(!contactValid || (patient.contact.length > 0 && !contactComplete) || !!validationErrors.contact) ? 'border-destructive' : undefined}
               />
               {patient.contact.length > 0 && !contactComplete && <p className="mt-1 text-xs text-destructive">Enter a valid 10-digit mobile number.</p>}
+              {validationErrors.contact && <p className="mt-1 text-xs text-destructive">{validationErrors.contact}</p>}
             </FormField>
             <div className="sm:col-span-2">
               <FormField label="Address"><Input value={patient.address} onChange={(e) => updatePatient('address', e.target.value)} /></FormField>
@@ -965,6 +979,7 @@ function NewInvoiceModal({ onClose, onSave, saving }: { onClose: () => void; onS
               </div>
             ))}
           </div>
+          {validationErrors.items && <p className="mt-2 text-xs text-destructive">{validationErrors.items}</p>}
         </div>
 
         <div className="grid gap-3 sm:grid-cols-3">
@@ -992,7 +1007,7 @@ function NewInvoiceModal({ onClose, onSave, saving }: { onClose: () => void; onS
 
       <div className="flex justify-end gap-2 border-t px-6 py-4">
         <Button variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
-        <Button onClick={handleSave} disabled={!canSave || saving}>{saving ? 'Saving...' : 'Save & preview bill'}</Button>
+        <Button onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : 'Save & preview bill'}</Button>
       </div>
     </ModalShell>
   )
