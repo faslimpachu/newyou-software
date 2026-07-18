@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useRef, useState, useEffect, useCallback } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import {
   Download,
   FileText,
@@ -277,35 +277,6 @@ function computeTotals(items: Line[], discount: number, tax: number, paid: numbe
   return { subtotal, discountValue, taxValue, total, balance }
 }
 
-function mapDbInvoiceToFrontend(invoice: any): Invoice {
-  return {
-    id: invoice.invoiceNumber,
-    center: invoice.center as Center,
-    billType: invoice.billType,
-    patient: {
-      name: invoice.patientName,
-      mrNumber: invoice.patientMrNumber,
-      age: invoice.patientAge || '',
-      dob: invoice.patientDob || '',
-      gender: invoice.patientGender || '',
-      bloodGroup: invoice.patientBloodGroup || '',
-      address: invoice.patientAddress || '',
-      contact: invoice.patientContact || '',
-    },
-    date: invoice.invoiceDate,
-    items: invoice.items.map((item: any) => ({
-      id: item.id,
-      name: item.name,
-      quantity: item.quantity,
-      rate: item.rate,
-    })),
-    discount: invoice.discount,
-    tax: invoice.tax,
-    paid: invoice.paid,
-    paymentMethod: invoice.paymentMethod || 'Cash',
-  }
-}
-
 function downloadBlob(content: BlobPart, filename: string, type: string) {
   const blob = new Blob([content], { type })
   const url = URL.createObjectURL(blob)
@@ -353,24 +324,18 @@ async function exportNodeToPdf(node: HTMLElement, filename: string) {
 type ModuleTab = 'billing' | 'expenses' | 'reports'
 
 export function BillingWorkspace() {
-  const [invoices, setInvoices] = useState<Invoice[]>([])
-  const [expenses, setExpenses] = useState<Expense[]>([])
+  const [invoices, setInvoices] = useState<Invoice[]>(seedInvoices)
+  const [expenses, setExpenses] = useState<Expense[]>(seedExpenses)
   const [expenseCategories, setExpenseCategories] = useState<string[]>(DEFAULT_EXPENSE_CATEGORIES)
 
   const [activeTab, setActiveTab] = useState<ModuleTab>('billing')
 
   const [viewInvoice, setViewInvoice] = useState<Invoice | null>(null)
   const [creating, setCreating] = useState(false)
-  const [savingInvoice, setSavingInvoice] = useState(false)
-  const [loadingInvoices, setLoadingInvoices] = useState(true)
-  const [errorInvoices, setErrorInvoices] = useState('')
 
   const [viewExpense, setViewExpense] = useState<Expense | null>(null)
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
   const [addingExpense, setAddingExpense] = useState(false)
-  const [savingExpense, setSavingExpense] = useState(false)
-  const [loadingExpenses, setLoadingExpenses] = useState(true)
-  const [errorExpenses, setErrorExpenses] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<Expense | null>(null)
 
   /* ---------------- dashboard summary ---------------- */
@@ -390,127 +355,33 @@ export function BillingWorkspace() {
     [invoices],
   )
 
-  const fetchInvoices = useCallback(async () => {
-    setLoadingInvoices(true)
-    setErrorInvoices('')
-    try {
-      const res = await fetch('/api/billing?limit=100')
-      if (!res.ok) throw new Error('Failed to load invoices')
-      const data = await res.json()
-      const mapped = (data.invoices || []).map(mapDbInvoiceToFrontend)
-      setInvoices(mapped)
-    } catch (err: any) {
-      setErrorInvoices(err.message || 'Failed to load invoices')
-    } finally {
-      setLoadingInvoices(false)
-    }
-  }, [])
-
-  const fetchExpenses = useCallback(async () => {
-    setLoadingExpenses(true)
-    setErrorExpenses('')
-    try {
-      const res = await fetch('/api/expenses')
-      if (!res.ok) throw new Error('Failed to load expenses')
-      const data = await res.json()
-      setExpenses(data.expenses || [])
-    } catch (err: any) {
-      setErrorExpenses(err.message || 'Failed to load expenses')
-    } finally {
-      setLoadingExpenses(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    fetchInvoices()
-  }, [fetchInvoices])
-
-  useEffect(() => {
-    fetchExpenses()
-  }, [fetchExpenses])
-
-  const handleSaveInvoice = async (invoice: Invoice) => {
-    setSavingInvoice(true)
-    try {
-      const res = await fetch('/api/billing', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          center: invoice.center,
-          billType: invoice.billType,
-          patient: invoice.patient,
-          items: invoice.items.map((item) => ({ name: item.name, quantity: item.quantity, rate: item.rate })),
-          discount: invoice.discount,
-          tax: invoice.tax,
-          paid: invoice.paid,
-          paymentMethod: invoice.paymentMethod,
-        }),
-      })
-
-      if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.error || 'Failed to create invoice')
-      }
-
-      const data = await res.json()
-      const saved = mapDbInvoiceToFrontend(data.invoice)
-      setInvoices((current) => [saved, ...current])
-      setCreating(false)
-      setViewInvoice(saved)
-    } catch (err: any) {
-      setErrorInvoices(err.message || 'Failed to create invoice')
-    } finally {
-      setSavingInvoice(false)
-    }
+  const handleSaveInvoice = (invoice: Invoice) => {
+    setInvoices((current) => {
+      const exists = current.some((inv) => inv.id === invoice.id)
+      return exists ? current.map((inv) => (inv.id === invoice.id ? invoice : inv)) : [invoice, ...current]
+    })
+    setCreating(false)
+    setViewInvoice(invoice)
   }
 
-  const handleSaveExpense = async (expense: Expense) => {
-    setSavingExpense(true)
-    try {
-      const isEdit = Boolean(expense.id && expense.id.length > 0 && !expense.id.startsWith('EXP-'))
-      const url = isEdit ? `/api/expenses/${expense.id}` : '/api/expenses'
-      const method = isEdit ? 'PATCH' : 'POST'
-
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(expense),
-      })
-
-      if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.error || 'Failed to save expense')
-      }
-
-      const data = await res.json()
-      const saved = data.expense
-      setExpenses((current) => {
-        const exists = current.some((exp) => exp.id === saved.id)
-        return exists ? current.map((exp) => (exp.id === saved.id ? saved : exp)) : [saved, ...current]
-      })
-      setAddingExpense(false)
-      setEditingExpense(null)
-      setViewExpense(saved)
-    } catch (err: any) {
-      setErrorExpenses(err.message || 'Failed to save expense')
-    } finally {
-      setSavingExpense(false)
-    }
+  const handleSaveExpense = (expense: Expense) => {
+    setExpenses((current) => {
+      const exists = current.some((exp) => exp.id === expense.id)
+      return exists ? current.map((exp) => (exp.id === expense.id ? expense : exp)) : [expense, ...current]
+    })
+    setAddingExpense(false)
+    setEditingExpense(null)
+    setViewExpense(expense)
   }
 
-  const handleDeleteExpense = async (expense: Expense) => {
-    try {
-      const res = await fetch(`/api/expenses/${expense.id}`, { method: 'DELETE' })
-      if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.error || 'Failed to delete expense')
-      }
-      setExpenses((current) => current.filter((exp) => exp.id !== expense.id))
-      setDeleteTarget(null)
-      if (viewExpense?.id === expense.id) setViewExpense(null)
-    } catch (err: any) {
-      setErrorExpenses(err.message || 'Failed to delete expense')
-    }
+  const handleAddCategory = (category: string) => {
+    setExpenseCategories((current) => (current.includes(category) ? current : [...current, category]))
+  }
+
+  const handleDeleteExpense = (expense: Expense) => {
+    setExpenses((current) => current.filter((exp) => exp.id !== expense.id))
+    setDeleteTarget(null)
+    if (viewExpense?.id === expense.id) setViewExpense(null)
   }
 
   return (
@@ -543,9 +414,6 @@ export function BillingWorkspace() {
         <Metric label="Net Profit" value={money(netProfit)} icon={<Wallet className="size-4" />} tone={netProfit >= 0 ? 'positive' : 'negative'} />
         <Metric label="Outstanding Patient Bills" value={money(outstanding)} tone={outstanding > 0 ? 'negative' : undefined} />
       </div>
-
-      {errorInvoices && <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">{errorInvoices}</div>}
-      {errorExpenses && <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">{errorExpenses}</div>}
 
       {/* Module tabs — Billing / Expenses / Reports, all within this same page */}
       <div className="flex gap-1 rounded-lg border bg-muted/40 p-1 w-fit">
@@ -589,37 +457,29 @@ export function BillingWorkspace() {
                   </tr>
                 </thead>
                 <tbody>
-                  {loadingInvoices ? (
-                    <tr><td colSpan={7} className="p-8 text-center text-sm text-muted-foreground">Loading invoices...</td></tr>
-                  ) : errorInvoices ? (
-                    <tr><td colSpan={7} className="p-8 text-center text-sm text-destructive">{errorInvoices}</td></tr>
-                  ) : invoices.length === 0 ? (
-                    <tr><td colSpan={7} className="p-8 text-center text-sm text-muted-foreground">No invoices found.</td></tr>
-                  ) : (
-                    invoices.map((invoice) => {
-                      const totals = computeTotals(invoice.items, invoice.discount, invoice.tax, invoice.paid)
-                      return (
-                        <tr
-                          key={invoice.id}
-                          onClick={() => setViewInvoice(invoice)}
-                          className="cursor-pointer border-b hover:bg-muted/50"
-                        >
-                          <td className="px-5 py-4 font-medium text-primary">{invoice.id}</td>
-                          <td className="px-5 py-4 text-muted-foreground">{CENTERS[invoice.center].name}</td>
-                          <td className="px-5 py-4">
-                            <p className="font-medium">{invoice.patient.name}</p>
-                            <p className="text-xs text-muted-foreground">{invoice.patient.mrNumber}</p>
-                          </td>
-                          <td className="px-5 py-4 text-muted-foreground">{invoice.billType}</td>
-                          <td className="px-5 py-4 text-muted-foreground">{invoice.date}</td>
-                          <td className="px-5 py-4 text-right">{money(totals.total)}</td>
-                          <td className="px-5 py-4 text-right">
-                            <span className={totals.balance ? 'text-destructive' : 'text-primary'}>{money(totals.balance)}</span>
-                          </td>
-                        </tr>
-                      )
-                    })
-                  )}
+                  {invoices.map((invoice) => {
+                    const totals = computeTotals(invoice.items, invoice.discount, invoice.tax, invoice.paid)
+                    return (
+                      <tr
+                        key={invoice.id}
+                        onClick={() => setViewInvoice(invoice)}
+                        className="cursor-pointer border-b hover:bg-muted/50"
+                      >
+                        <td className="px-5 py-4 font-medium text-primary">{invoice.id}</td>
+                        <td className="px-5 py-4 text-muted-foreground">{CENTERS[invoice.center].name}</td>
+                        <td className="px-5 py-4">
+                          <p className="font-medium">{invoice.patient.name}</p>
+                          <p className="text-xs text-muted-foreground">{invoice.patient.mrNumber}</p>
+                        </td>
+                        <td className="px-5 py-4 text-muted-foreground">{invoice.billType}</td>
+                        <td className="px-5 py-4 text-muted-foreground">{invoice.date}</td>
+                        <td className="px-5 py-4 text-right">{money(totals.total)}</td>
+                        <td className="px-5 py-4 text-right">
+                          <span className={totals.balance ? 'text-destructive' : 'text-primary'}>{money(totals.balance)}</span>
+                        </td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
@@ -640,7 +500,7 @@ export function BillingWorkspace() {
 
       {activeTab === 'reports' && <ReportsPanel invoices={invoices} expenses={expenses} />}
 
-      {creating && <NewInvoiceModal onClose={() => setCreating(false)} onSave={handleSaveInvoice} saving={savingInvoice} />}
+      {creating && <NewInvoiceModal onClose={() => setCreating(false)} onSave={handleSaveInvoice} />}
       {viewInvoice && <InvoiceModal invoice={viewInvoice} onClose={() => setViewInvoice(null)} />}
 
       {(addingExpense || editingExpense) && (
@@ -653,7 +513,6 @@ export function BillingWorkspace() {
             setEditingExpense(null)
           }}
           onSave={handleSaveExpense}
-          saving={savingExpense}
         />
       )}
 
@@ -750,19 +609,16 @@ function ConfirmDialog({
 /*  New invoice creation                                                */
 /* ------------------------------------------------------------------ */
 
-function NewInvoiceModal({ onClose, onSave, saving }: { onClose: () => void; onSave: (invoice: Invoice) => void; saving: boolean }) {
+function NewInvoiceModal({ onClose, onSave }: { onClose: () => void; onSave: (invoice: Invoice) => void }) {
   const [center, setCenter] = useState<Center>('nutrition')
   const [billType, setBillType] = useState(BILL_TYPE_PRESETS[0])
   const [patient, setPatient] = useState<Patient>(emptyPatient)
-  const [mrStatus, setMrStatus] = useState<'idle' | 'found' | 'new' | 'loading'>('idle')
+  const [mrStatus, setMrStatus] = useState<'idle' | 'found' | 'new'>('idle')
   const [items, setItems] = useState<Line[]>([{ id: Date.now(), name: '', quantity: 1, rate: 0 }])
   const [discount, setDiscount] = useState(0)
   const [tax, setTax] = useState(0)
   const [paid, setPaid] = useState(0)
   const [paymentMethod, setPaymentMethod] = useState('Cash')
-  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
-  const mrTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const abortControllerRef = useRef<AbortController | null>(null)
 
   const totals = useMemo(() => computeTotals(items, discount, tax, paid), [items, discount, tax, paid])
 
@@ -771,58 +627,19 @@ function NewInvoiceModal({ onClose, onSave, saving }: { onClose: () => void; onS
 
   const updatePatient = (key: keyof Patient, value: string) => setPatient((current) => ({ ...current, [key]: value }))
 
-  useEffect(() => {
-    return () => {
-      if (mrTimerRef.current) clearTimeout(mrTimerRef.current)
-      if (abortControllerRef.current) abortControllerRef.current.abort()
-    }
-  }, [])
-
-  const handleMrNumberChange = useCallback(async (value: string) => {
+  // MR number is the lookup key: as soon as it matches a record on file,
+  // the rest of the patient's details are fetched and auto-filled.
+  const handleMrNumberChange = (value: string) => {
     const mrNumber = value.toUpperCase()
-    if (!mrNumber.trim()) {
-      setPatient(emptyPatient)
-      setMrStatus('idle')
-      return
+    const record = PATIENT_DIRECTORY[mrNumber]
+    if (record) {
+      setPatient({ ...record, mrNumber })
+      setMrStatus('found')
+    } else {
+      setPatient((current) => ({ ...current, mrNumber }))
+      setMrStatus(mrNumber.trim().length > 0 ? 'new' : 'idle')
     }
-    if (mrTimerRef.current) clearTimeout(mrTimerRef.current)
-    if (abortControllerRef.current) abortControllerRef.current.abort()
-    setMrStatus('loading')
-    const timer = setTimeout(async () => {
-      const controller = new AbortController()
-      abortControllerRef.current = controller
-      try {
-        const res = await fetch(`/api/patients/${encodeURIComponent(mrNumber)}`, { signal: controller.signal })
-        if (res.ok) {
-          const data = await res.json()
-          const p = data.patient
-          const record: Patient = {
-            name: p.patientName,
-            mrNumber: p.mr,
-            age: p.age ? String(p.age) : '',
-            dob: p.dob ? new Date(p.dob).toISOString().slice(0, 10) : '',
-            gender: p.gender,
-            bloodGroup: p.bloodGroup || '',
-            address: [p.address, p.district, p.state, p.pinCode].filter(Boolean).join(', '),
-            contact: p.mobileNumber,
-          }
-          setPatient(record)
-          setMrStatus('found')
-        } else {
-          setPatient((current) => ({ ...current, mrNumber }))
-          setMrStatus('new')
-        }
-      } catch {
-        setPatient((current) => ({ ...current, mrNumber }))
-        setMrStatus('new')
-      } finally {
-        if (abortControllerRef.current === controller) {
-          abortControllerRef.current = null
-        }
-      }
-    }, 400)
-    mrTimerRef.current = timer
-  }, [])
+  }
 
   // DOB drives Age automatically; Age stays editable for cases where DOB is unknown.
   const handleDobChange = (value: string) => {
@@ -848,7 +665,7 @@ function NewInvoiceModal({ onClose, onSave, saving }: { onClose: () => void; onS
   const handleSave = () => {
     if (!canSave) return
     const invoice: Invoice = {
-      id: `INV-${Date.now().toString(36).toUpperCase()}`,
+      id: `INV-${Math.floor(90000 + Math.random() * 9999)}`,
       center,
       billType,
       patient,
@@ -991,8 +808,8 @@ function NewInvoiceModal({ onClose, onSave, saving }: { onClose: () => void; onS
       </div>
 
       <div className="flex justify-end gap-2 border-t px-6 py-4">
-        <Button variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
-        <Button onClick={handleSave} disabled={!canSave || saving}>{saving ? 'Saving...' : 'Save & preview bill'}</Button>
+        <Button variant="outline" onClick={onClose}>Cancel</Button>
+        <Button onClick={handleSave} disabled={!canSave}>Save & preview bill</Button>
       </div>
     </ModalShell>
   )
@@ -1322,14 +1139,12 @@ function NewExpenseModal({
   onAddCategory,
   onClose,
   onSave,
-  saving,
 }: {
   initial?: Expense
   categories: string[]
   onAddCategory: (category: string) => void
   onClose: () => void
   onSave: (expense: Expense) => void
-  saving?: boolean
 }) {
   const isEdit = Boolean(initial)
   const [date, setDate] = useState(initial?.date ?? new Date().toISOString().slice(0, 10))
@@ -1498,8 +1313,8 @@ function NewExpenseModal({
       </div>
 
       <div className="flex justify-end gap-2 border-t px-6 py-4">
-        <Button variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
-        <Button onClick={handleSave} disabled={touched && !canSave || saving}>{saving ? 'Saving...' : (isEdit ? 'Save changes' : 'Save expense')}</Button>
+        <Button variant="outline" onClick={onClose}>Cancel</Button>
+        <Button onClick={handleSave} disabled={touched && !canSave}>{isEdit ? 'Save changes' : 'Save expense'}</Button>
       </div>
     </ModalShell>
   )

@@ -141,7 +141,7 @@ model AyurcareTreatment {
 }
 
 model FollowUp {
-  id          String    @id @default(uuid())
+  id          String   @id @default(uuid())
   patientMr   String
   program     String?
   reviewDate  DateTime?
@@ -155,6 +155,25 @@ model FollowUp {
   patient     Patient @relation(fields: [patientMr], references: [mr], onDelete: Cascade)
 
   @@map("follow_ups")
+}
+
+model Expense {
+  id            String   @id @default(cuid())
+  date          String   // ISO yyyy-mm-dd
+  category      String
+  description   String
+  amount        Float
+  paymentMethod String
+  paidTo        String
+  remarks       String?
+  receiptName   String?
+  receiptDataUrl String?
+  addedBy       String
+  createdDate   String   // display date, set once
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("expenses")
 }
 
 model Invoice {

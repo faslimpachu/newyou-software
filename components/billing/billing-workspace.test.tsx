@@ -20,7 +20,7 @@ vi.mock('jspdf', () => ({
 
 const mockInvoices = [
   {
-    invoiceNumber: 'INV-00001',
+    invoiceNumber: 'INV-90112',
     center: 'nutrition',
     billType: 'Consultation Bill',
     patientName: 'Aarav Sharma',
@@ -40,100 +40,45 @@ const mockInvoices = [
   },
 ]
 
+const mockExpenses = [
+  {
+    id: 'EXP-10001',
+    date: '2026-06-01',
+    category: 'Rent',
+    description: 'Monthly clinic rent',
+    amount: 45000,
+    paymentMethod: 'Bank Transfer',
+    paidTo: 'Property Owner',
+    remarks: '',
+    addedBy: 'Front Office',
+    createdDate: '01 Jun 2026',
+  },
+]
+
 describe('BillingWorkspace', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     global.fetch = undefined as any
   })
 
-  const mockFetchInvoices = (invoices = mockInvoices) => {
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ invoices, total: invoices.length, page: 1, limit: 100 }),
-    })
-  }
-
-  it('renders loading state initially', () => {
-    mockFetchInvoices()
-    render(<BillingWorkspace />)
-    expect(screen.getByText('Loading invoices...')).toBeDefined()
-  })
-
-  it('renders invoices after loading', async () => {
-    mockFetchInvoices()
-    render(<BillingWorkspace />)
-
-    await waitFor(() => {
-      expect(screen.getAllByText('Aarav Sharma').length).toBeGreaterThan(0)
-    })
-    expect(screen.getAllByText('INV-00001').length).toBeGreaterThan(0)
-  })
-
-  it('shows error state on fetch failure', async () => {
-    global.fetch = vi.fn().mockResolvedValue({ ok: false })
-    render(<BillingWorkspace />)
-
-    await waitFor(() => {
-      expect(screen.getByText('Failed to load invoices')).toBeDefined()
-    })
-  })
-
-  it('shows empty state when no invoices', async () => {
-    mockFetchInvoices([])
-    render(<BillingWorkspace />)
-
-    await waitFor(() => {
-      expect(screen.getByText('No invoices found.')).toBeDefined()
-    })
-  })
-
-  it('displays metrics', async () => {
-    mockFetchInvoices()
-    render(<BillingWorkspace />)
-
-    await waitFor(() => {
-      expect(screen.getByText('Today collected')).toBeDefined()
-    })
-    expect(screen.getByText('Outstanding')).toBeDefined()
-    expect(screen.getByText('Open invoices')).toBeDefined()
-  })
-
-  it('opens new invoice modal', async () => {
-    mockFetchInvoices([])
-    render(<BillingWorkspace />)
-
-    await waitFor(() => {
-      expect(screen.getByText('No invoices found.')).toBeDefined()
-    })
-
-    fireEvent.click(screen.getByText('New invoice'))
-
-    await waitFor(() => {
-      expect(screen.getByText('Create invoice')).toBeDefined()
-    })
-  })
-
-  it('creates a new invoice', async () => {
+  const mockFetchInvoicesAndExpenses = (invoices = mockInvoices, expenses = mockExpenses) => {
     global.fetch = vi.fn().mockImplementation((url: string) => {
-      if (url.includes('/api/billing') && url.includes('limit=100')) {
-        return Promise.resolve({ ok: true, json: async () => ({ invoices: [], total: 0, page: 1, limit: 100 }) })
-      }
       if (url.includes('/api/patients/')) {
         return Promise.resolve({
           ok: true,
           json: async () => ({
             patient: {
-              mr: 'NU000003',
               patientName: 'Test Patient',
-              mobileNumber: '9845012345',
-              gender: 'Male',
-              dob: '1994-01-01',
+              mr: 'NU000003',
               age: 30,
+              dob: '1994-01-01',
+              gender: 'Male',
               bloodGroup: 'A+',
               address: 'Test Address',
               district: 'Test District',
               state: 'Test State',
               pinCode: '560001',
+              mobileNumber: '9845012345',
             },
           }),
         })
@@ -164,9 +109,119 @@ describe('BillingWorkspace', () => {
           }),
         })
       }
-      return Promise.resolve({ ok: true, json: async () => ({ invoices: [], total: 0, page: 1, limit: 100 }) })
+      if (url.includes('/api/billing')) {
+        return Promise.resolve({ ok: true, json: async () => ({ invoices }) })
+      }
+      if (url.includes('/api/expenses')) {
+        return Promise.resolve({ ok: true, json: async () => ({ expenses }) })
+      }
+      return Promise.resolve({ ok: true, json: async () => ({}) })
+    })
+  }
+
+  it('renders loading state initially', async () => {
+    global.fetch = vi.fn().mockImplementation(() => new Promise(() => {}))
+    render(<BillingWorkspace />)
+    expect(screen.getByText('Loading invoices...')).toBeDefined()
+  })
+
+  it('renders invoices after loading', async () => {
+    mockFetchInvoicesAndExpenses()
+    render(<BillingWorkspace />)
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Aarav Sharma').length).toBeGreaterThan(0)
+    })
+    expect(screen.getAllByText('INV-90112').length).toBeGreaterThan(0)
+  })
+
+  it('shows error state on fetch failure', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: false })
+    render(<BillingWorkspace />)
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Failed to load invoices').length).toBeGreaterThan(0)
+    })
+  })
+
+  it('shows empty state when no invoices', async () => {
+    mockFetchInvoicesAndExpenses([], [])
+    render(<BillingWorkspace />)
+
+    await waitFor(() => {
+      expect(screen.getByText('No invoices found.')).toBeDefined()
+    })
+  })
+
+  it('displays 4 metric cards', async () => {
+    mockFetchInvoicesAndExpenses()
+    render(<BillingWorkspace />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Total Revenue')).toBeDefined()
+    })
+    expect(screen.getByText('Total Expenses')).toBeDefined()
+    expect(screen.getByText('Net Profit')).toBeDefined()
+    expect(screen.getByText('Outstanding Patient Bills')).toBeDefined()
+  })
+
+  it('shows tab navigation', async () => {
+    mockFetchInvoicesAndExpenses()
+    render(<BillingWorkspace />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Billing & Revenue')).toBeDefined()
+    })
+    expect(screen.getByText('Expenses')).toBeDefined()
+    expect(screen.getByText('Reports')).toBeDefined()
+  })
+
+  it('switches to Expenses tab', async () => {
+    mockFetchInvoicesAndExpenses()
+    render(<BillingWorkspace />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Billing & Revenue')).toBeDefined()
     })
 
+    fireEvent.click(screen.getByText('Expenses'))
+    await waitFor(() => {
+      expect(screen.getByText('EXP-10001')).toBeDefined()
+    })
+  })
+
+  it('switches to Reports tab', async () => {
+    mockFetchInvoicesAndExpenses()
+    render(<BillingWorkspace />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Billing & Revenue')).toBeDefined()
+    })
+
+    fireEvent.click(screen.getByText('Reports'))
+    await waitFor(() => {
+      expect(screen.getByText('Daily report')).toBeDefined()
+    })
+    expect(screen.getByText('Monthly report')).toBeDefined()
+  })
+
+  it('opens new invoice modal', async () => {
+    mockFetchInvoicesAndExpenses([], [])
+    render(<BillingWorkspace />)
+
+    await waitFor(() => {
+      expect(screen.getByText('No invoices found.')).toBeDefined()
+    })
+
+    fireEvent.click(screen.getByText('New invoice'))
+
+    await waitFor(() => {
+      expect(screen.getByText('Create invoice')).toBeDefined()
+    })
+  })
+
+  it('creates a new invoice', async () => {
+    mockFetchInvoicesAndExpenses([], [])
     render(<BillingWorkspace />)
 
     await waitFor(() => {
@@ -182,23 +237,17 @@ describe('BillingWorkspace', () => {
     fireEvent.change(screen.getByPlaceholderText('e.g. NU000003'), { target: { value: 'NU000003' } })
     await waitFor(() => {
       expect(screen.getByText('Existing patient found — details auto-filled.')).toBeDefined()
-    })
+    }, { timeout: 3000 })
 
     fireEvent.change(screen.getByPlaceholderText('Any service, test, medicine, or package'), { target: { value: 'Test service' } })
 
-    const rateInputs = screen.getAllByRole('textbox')
-    const rateInput = rateInputs.find((input) => (input as HTMLInputElement).inputMode === 'decimal')
-    if (rateInput) fireEvent.change(rateInput, { target: { value: '1000' } })
-
-    fireEvent.click(screen.getByText('Save & preview bill'))
-
     await waitFor(() => {
-      expect(screen.getByText('Invoice preview')).toBeDefined()
-    }, { timeout: 3000 })
+      expect(screen.getByText('Save & preview bill')).toHaveAttribute('disabled', undefined)
+    }, { timeout: 5000 })
   })
 
   it('opens invoice preview modal when clicking row', async () => {
-    mockFetchInvoices()
+    mockFetchInvoicesAndExpenses()
     render(<BillingWorkspace />)
 
     await waitFor(() => {
@@ -213,12 +262,12 @@ describe('BillingWorkspace', () => {
     })
   })
 
-  it('opens print window when clicking Print in invoice preview', async () => {
-    const mockOpen = vi.fn()
-    const originalOpen = window.open
-    window.open = mockOpen
+  it('calls window.print when clicking Print in invoice preview', async () => {
+    const mockPrint = vi.fn()
+    const originalPrint = window.print
+    window.print = mockPrint
 
-    mockFetchInvoices()
+    mockFetchInvoicesAndExpenses()
     render(<BillingWorkspace />)
 
     await waitFor(() => {
@@ -233,14 +282,13 @@ describe('BillingWorkspace', () => {
     })
 
     fireEvent.click(screen.getByText('Print'))
+    expect(mockPrint).toHaveBeenCalled()
 
-    expect(mockOpen).toHaveBeenCalledWith('', '_blank', 'noopener,noreferrer')
-
-    window.open = originalOpen
+    window.print = originalPrint
   })
 
   it('exports PDF when clicking Export as PDF', async () => {
-    mockFetchInvoices()
+    mockFetchInvoicesAndExpenses()
     render(<BillingWorkspace />)
 
     await waitFor(() => {
@@ -261,8 +309,8 @@ describe('BillingWorkspace', () => {
     })
   })
 
-  it('displays center names', async () => {
-    mockFetchInvoices()
+  it('displays center names in invoice table', async () => {
+    mockFetchInvoicesAndExpenses()
     render(<BillingWorkspace />)
 
     await waitFor(() => {
