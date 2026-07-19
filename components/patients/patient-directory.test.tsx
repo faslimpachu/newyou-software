@@ -120,6 +120,21 @@ describe('PatientDirectory', () => {
     expect(table.textContent).toContain('Rohan Mehta')
   })
 
+  it('shows newest patients first', async () => {
+    mockFetchPatients()
+    render(<PatientDirectory />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Aarav Sharma')).toBeDefined()
+    })
+
+    const table = screen.getByRole('table')
+    const rows = table.querySelectorAll('tbody tr')
+    expect(rows[0].textContent).toContain('MR000001')
+    expect(rows[1].textContent).toContain('MR000003')
+    expect(rows[2].textContent).toContain('MR000002')
+  })
+
   it('navigates to register page when clicking Register patient', async () => {
     mockPush.mockClear()
 

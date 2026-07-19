@@ -59,7 +59,6 @@ export function PatientDirectory() {
   const [deleteLoading, setDeleteLoading] = useState(false)
 
   const fetchPatients = useCallback(async () => {
-    setLoading(true)
     setError('')
     try {
       const params = new URLSearchParams()
@@ -70,22 +69,23 @@ export function PatientDirectory() {
       const res = await fetch(`/api/patients?${params.toString()}`)
       if (!res.ok) throw new Error('Failed to load patients')
       const data = await res.json()
-      const mapped = (data.patients || []).map(mapApiPatient)
+      const mapped = (data.patients || [])
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        .map(mapApiPatient)
       setPatients(mapped)
     } catch (err: any) {
       setError(err.message || 'Failed to load patients')
-    } finally {
-      setLoading(false)
     }
   }, [query])
 
   useEffect(() => {
     let mounted = true
     const initial = async () => {
+      setLoading(true)
       try {
         await fetchPatients()
-      } catch {
-        // handled inside fetchPatients
+      } finally {
+        if (mounted) setLoading(false)
       }
     }
     initial()
