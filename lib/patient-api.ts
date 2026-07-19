@@ -97,10 +97,6 @@ export function consultationTypeFromCenter(center: 'nutrition' | 'ayurcare' | nu
   return center === 'ayurcare' ? 'AYURCARE' : 'NUTRITION'
 }
 
-export function centerNameFromMr(mr?: string) {
-  return 'Nutrition Center'
-}
-
 function formatDate(value?: string | null) {
   if (!value) return ''
   const date = new Date(value)
