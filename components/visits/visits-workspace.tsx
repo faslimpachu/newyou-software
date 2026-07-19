@@ -70,7 +70,7 @@ export function VisitsWorkspace() {
       }
     }
     initial()
-    const timer = setInterval(fetchVisits, 2000)
+    const timer = setInterval(fetchVisits, 3000)
     return () => {
       mounted = false
       clearInterval(timer)

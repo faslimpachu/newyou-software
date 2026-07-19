@@ -500,6 +500,13 @@ export function BillingWorkspace() {
   }, [fetchInvoices])
 
   useEffect(() => {
+    const timer = setInterval(() => {
+      void fetchInvoices()
+    }, 3000)
+    return () => clearInterval(timer)
+  }, [fetchInvoices])
+
+  useEffect(() => {
     const controller = new AbortController()
     setLoadingExpenses(true)
     fetchExpenses(controller.signal).finally(() => {
@@ -509,9 +516,23 @@ export function BillingWorkspace() {
   }, [fetchExpenses])
 
   useEffect(() => {
+    const timer = setInterval(() => {
+      void fetchExpenses()
+    }, 3000)
+    return () => clearInterval(timer)
+  }, [fetchExpenses])
+
+  useEffect(() => {
     const controller = new AbortController()
     void fetchBillingSummary(controller.signal)
     return () => controller.abort()
+  }, [fetchBillingSummary])
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      void fetchBillingSummary()
+    }, 3000)
+    return () => clearInterval(timer)
   }, [fetchBillingSummary])
 
   const handleSaveInvoice = async (invoice: Invoice) => {

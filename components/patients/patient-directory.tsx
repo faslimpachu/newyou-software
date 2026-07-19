@@ -87,7 +87,7 @@ export function PatientDirectory() {
       }
     }
     initial()
-    const timer = setInterval(fetchPatients, 2000)
+    const timer = setInterval(fetchPatients, 3000)
     return () => {
       mounted = false
       clearInterval(timer)
@@ -209,5 +209,4 @@ export function PatientDirectory() {
     )}
   </div>
 }
-
 

@@ -98,9 +98,9 @@ export function WorkflowWorkspace({ mode }: { mode: Mode }) {
   const data = useMemo(() => consultationMode ? consultations : followUps, [consultationMode, followUps])
   const rows = data.filter((row) => `${row.name} ${row.mr} ${row.id} ${'program' in row ? row.program : ''}`.toLowerCase().includes(query.toLowerCase()))
 
-  const loadFollowUps = async () => {
+  const loadFollowUps = async (showLoading = true) => {
     if (consultationMode) return
-    setLoading(true)
+    if (showLoading) setLoading(true)
     setError('')
     try {
       const response = await fetch('/api/follow-ups')
@@ -114,12 +114,17 @@ export function WorkflowWorkspace({ mode }: { mode: Mode }) {
       setFollowUps([])
       setSelected(null)
     } finally {
-      setLoading(false)
+      if (showLoading) setLoading(false)
     }
   }
 
   useEffect(() => {
     loadFollowUps()
+    if (consultationMode) return
+    const timer = setInterval(() => {
+      void loadFollowUps(false)
+    }, 3000)
+    return () => clearInterval(timer)
   }, [consultationMode])
 
   const openPatient = (mr: string) => router.push(`/patients/${mr}`)
