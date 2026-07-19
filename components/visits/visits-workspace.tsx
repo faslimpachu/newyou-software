@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { CalendarDays, Plus, Printer, Search, UserRound } from 'lucide-react'
+import { CalendarDays, Plus, Search, UserRound } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -102,7 +102,6 @@ function VisitDetailPanel({ visit, updateStatus, onOpenPatient }: { visit: Visit
         </div>
         <div className="flex gap-2 border-t pt-4">
           <Button className="flex-1" size="sm" onClick={onOpenPatient}><UserRound className="mr-2 size-4"/>Open patient profile</Button>
-          <Button className="flex-1" size="sm" variant="outline" onClick={() => window.print()}><Printer className="mr-2 size-4"/>Print</Button>
         </div>
       </div>
     </CardContent>
