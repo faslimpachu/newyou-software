@@ -76,7 +76,7 @@ export function VisitsWorkspace() {
 
   const visible = useMemo(() => {
     return visits.filter((visit) => {
-      const matchesQuery = `${visit.patient} ${visit.mr} ${visit.op}`.toLowerCase().includes(query.toLowerCase())
+      const matchesQuery = `${visit.id} ${visit.mr} ${visit.patient}`.toLowerCase().includes(query.toLowerCase())
       const matchesCenter = center === 'All centres' || visit.center === center
       const matchesStatus = status === 'All statuses' || visit.status === status
       return matchesQuery && matchesCenter && matchesStatus
@@ -137,23 +137,24 @@ export function VisitsWorkspace() {
               <CardDescription>{visible.length} appointments scheduled.</CardDescription>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <Filter label="Centre" value={center} values={['All centres', 'Nutrition Center', 'Ayurcare Center']} onChange={setCenter} />
-              <Filter label="Status" value={status} values={['All statuses', 'Waiting', 'Active', 'Completed', 'Cancelled']} onChange={setStatus} />
-              <div className="relative"><Search className="absolute left-2.5 top-2 size-4 text-muted-foreground"/><Input className="w-56 pl-8" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search patient or OP no."/></div>
+               <div className="relative"><Search className="absolute left-2.5 top-2 size-4 text-muted-foreground"/><Input className="w-56 pl-8" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search visit ID, MR or patient"/></div>
+               <Filter label="Centre" value={center} values={['All centres', 'Nutrition Center', 'Ayurcare Center']} onChange={setCenter} />
+               <Filter label="Status" value={status} values={['All statuses', 'Waiting', 'Active', 'Completed', 'Cancelled']} onChange={setStatus} />
             </div>
           </CardHeader>
           <CardContent className="px-0">
             {loading ? <div className="p-8 text-center text-sm text-muted-foreground">Loading visits...</div> : <div className="overflow-x-auto">
                 <table className="w-full min-w-[780px] text-sm">
                   <thead className="border-y bg-muted/40 text-xs text-muted-foreground">
-                    <tr>{['ID','Patient','Centre','Clinician','Visit status'].map((heading) => <th key={heading} className="px-5 py-3 text-left font-medium">{heading}</th>)}</tr>
+                    <tr>{['ID','MR','Patient','Centre','Clinician','Visit status'].map((heading) => <th key={heading} className="px-5 py-3 text-left font-medium">{heading}</th>)}</tr>
                   </thead>
                   <tbody>
-                    {visible.length === 0 && <tr><td colSpan={5} className="p-8 text-center text-sm text-muted-foreground">No visits found.</td></tr>}
+                    {visible.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-sm text-muted-foreground">No visits found.</td></tr>}
                     {visible.map((visit) => (
                       <tr key={visit.id} onClick={() => setSelected(visit)} className={'cursor-pointer border-b hover:bg-muted/50 ' + (selected && selected.id === visit.id ? 'bg-primary/5' : '')}>
                         <td className="px-5 py-4 text-sm font-medium">{visit.id}</td>
-                        <td className="px-5 py-4"><p className="font-medium">{visit.patient}</p><p className="text-xs text-primary">{visit.mr}</p></td>
+                        <td className="px-5 py-4 text-sm font-medium">{visit.mr}</td>
+                        <td className="px-5 py-4"><p className="font-medium">{visit.patient}</p></td>
                         <td className="px-5 py-4 text-sm text-muted-foreground">{visit.center}</td>
                         <td className="px-5 py-4 text-sm text-muted-foreground">{visit.clinician}</td>
                         <td className="px-5 py-4"><StatusBadge status={visit.status}/></td>

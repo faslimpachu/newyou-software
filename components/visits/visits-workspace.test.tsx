@@ -49,7 +49,7 @@ describe('VisitsWorkspace', () => {
       expect(screen.getByText('Aarav Sharma')).toBeDefined()
     })
 
-    const searchInput = screen.getByPlaceholderText('Search patient or OP no.')
+    const searchInput = screen.getByPlaceholderText('Search visit ID, MR or patient')
     ;(searchInput as HTMLInputElement).value = 'Rohan'
     searchInput.dispatchEvent(new Event('input', { bubbles: true }))
 
