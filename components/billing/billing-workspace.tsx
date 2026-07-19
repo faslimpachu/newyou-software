@@ -464,6 +464,29 @@ export function BillingWorkspace() {
     }
   }
 
+  const handleExportInvoices = () => {
+    const rows = invoices.map((inv) => {
+      const totals = computeTotals(inv.items, inv.discount, inv.tax, inv.paid)
+      return {
+        Invoice: inv.id,
+        Center: CENTERS[inv.center].name,
+        Patient: inv.patient.name,
+        MR: inv.patient.mrNumber,
+        'Bill type': inv.billType,
+        Date: inv.date,
+        Items: inv.items.map((item) => item.name).join('; '),
+        Subtotal: totals.subtotal,
+        Discount: inv.discount,
+        Tax: inv.tax,
+        Total: totals.total,
+        Paid: inv.paid,
+        Balance: totals.balance,
+        'Payment method': inv.paymentMethod,
+      }
+    })
+    exportRowsToExcel(rows, `billing-invoices-${new Date().toISOString().slice(0, 10)}.xlsx`)
+  }
+
   const handleSaveExpense = async (expense: Expense) => {
     setSavingExpense(true)
     try {
@@ -530,7 +553,7 @@ export function BillingWorkspace() {
             <Printer className="mr-2 size-4" />
             Print list
           </Button>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={handleExportInvoices}>
             <Download className="mr-2 size-4" />
             Export
           </Button>
