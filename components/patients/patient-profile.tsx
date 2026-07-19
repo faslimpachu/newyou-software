@@ -823,17 +823,7 @@ function escapeHtml(value: string): string {
     .replace(/'/g, '&#39;')
 }
 
-function openA4Print(title: string, patient: ExistingPatient | null, center: string, content?: PrintContent) {
-  // IMPORTANT: do not pass 'noopener' in the window features here. Most
-  // browsers return `null` from window.open() when 'noopener' is set,
-  // which previously made every Print / Export PDF / Generate prescription
-  // button silently do nothing (the function returned early on `!printWindow`).
-  const printWindow = window.open('', '_blank')
-  if (!printWindow) {
-    alert('Your browser blocked the print window. Please allow pop-ups for this site and try again.')
-    return
-  }
-
+function buildPrintHtml(title: string, patient: ExistingPatient | null, center: string, content?: PrintContent): string {
   const nutrition = center.toLowerCase().includes('nutrition')
   const clinic = nutrition ? 'NEW YOU' : 'Ayurcare Center'
   const subtitle = nutrition ? 'Lose Weight. Choose Health. | Centre for Professional Weight Management' : 'Jubilee Bazar'
@@ -852,10 +842,40 @@ function openA4Print(title: string, patient: ExistingPatient | null, center: str
     ? content.sections.map((section) => `<section class="section"><b>${escapeHtml(section.label)}</b>${section.value.trim() ? `<div class="notes">${escapeHtml(section.value).replace(/\n/g, '<br>')}</div>` : '<div class="rule"></div><div class="rule"></div>'}</section>`).join('')
     : `<section class="section"><b>Diagnosis / Clinical Notes</b><div class="rule"></div><div class="rule"></div></section><section class="section"><b>Advice and Follow-up</b><div class="rule"></div><div class="rule"></div></section>`
 
-  printWindow.document.write(`<!doctype html><html><head><title>${escapeHtml(title)}</title><style>@page{size:A4 portrait;margin:14mm}*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#17202a;font-size:12px}.header{border-bottom:2px solid #167b91;padding-bottom:12px;margin-bottom:16px}.clinic{font-size:26px;font-weight:700;color:#167b91}.tag{font-weight:600;margin:4px 0}.address{color:#4b5563;line-height:1.5}.title{font-size:16px;font-weight:700;text-transform:uppercase;margin:18px 0 10px}.patient{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:10px;border:1px solid #b8c7cc;background:#f7fafb}.section{margin-top:18px}.rule{border-bottom:1px solid #b8c7cc;height:34px}.notes{border:1px solid #b8c7cc;padding:8px;margin-top:6px;min-height:34px;white-space:pre-wrap}.table{width:100%;border-collapse:collapse;margin-top:8px}.table th,.table td{border:1px solid #b8c7cc;padding:8px;text-align:left}.table th{background:#edf5f6}.signature{display:grid;grid-template-columns:1fr 1fr;gap:80px;margin-top:100px;text-align:center}.signature div{border-top:1px solid #17202a;padding-top:8px}@media print{body{margin:0}}</style></head><body><header class="header"><div class="clinic">${clinic}</div><div class="tag">${subtitle}</div><div class="address">Onden Road, Kannur - 670001, Kerala<br>PH: 8111999581 / 8111999582</div></header><div class="title">${escapeHtml(title)}</div>${patientInfo}<section class="section"><b>${title.includes('Prescription') ? 'Medicines' : 'Clinical Examination'}</b><table class="table"><thead><tr>${columns.map((c) => `<th>${escapeHtml(c)}</th>`).join('')}</tr></thead><tbody>${tableRows}</tbody></table></section>${sections}<div class="signature"><div>Doctor Signature</div><div>Dietitian Signature</div></div></body></html>`)
-  printWindow.document.close()
-  printWindow.focus()
-  printWindow.print()
+  return `<!doctype html><html><head><title>${escapeHtml(title)}</title><style>@page{size:A4 portrait;margin:14mm}*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#17202a;font-size:12px}.header{border-bottom:2px solid #167b91;padding-bottom:12px;margin-bottom:16px}.clinic{font-size:26px;font-weight:700;color:#167b91}.tag{font-weight:600;margin:4px 0}.address{color:#4b5563;line-height:1.5}.title{font-size:16px;font-weight:700;text-transform:uppercase;margin:18px 0 10px}.patient{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:10px;border:1px solid #b8c7cc;background:#f7fafb}.section{margin-top:18px}.rule{border-bottom:1px solid #b8c7cc;height:34px}.notes{border:1px solid #b8c7cc;padding:8px;margin-top:6px;min-height:34px;white-space:pre-wrap}.table{width:100%;border-collapse:collapse;margin-top:8px}.table th,.table td{border:1px solid #b8c7cc;padding:8px;text-align:left}.table th{background:#edf5f6}.signature{display:grid;grid-template-columns:1fr 1fr;gap:80px;margin-top:100px;text-align:center}.signature div{border-top:1px solid #17202a;padding-top:8px}@media print{body{margin:0}}</style></head><body><header class="header"><div class="clinic">${clinic}</div><div class="tag">${subtitle}</div><div class="address">Onden Road, Kannur - 670001, Kerala<br>PH: 8111999581 / 8111999582</div></header><div class="title">${escapeHtml(title)}</div>${patientInfo}<section class="section"><b>${title.includes('Prescription') ? 'Medicines' : 'Clinical Examination'}</b><table class="table"><thead><tr>${columns.map((c) => `<th>${escapeHtml(c)}</th>`).join('')}</tr></thead><tbody>${tableRows}</tbody></table></section>${sections}<div class="signature"><div>Doctor Signature</div><div>Dietitian Signature</div></div></body></html>`
+}
+
+function openA4Print(title: string, patient: ExistingPatient | null, center: string, content?: PrintContent) {
+  const printFrame = document.createElement('iframe')
+  printFrame.style.cssText = 'position:fixed;left:0;top:0;width:0;height:0;border:0;opacity:0;pointer-events:none'
+  document.body.appendChild(printFrame)
+
+  const frameDoc = printFrame.contentDocument || printFrame.contentWindow?.document
+  if (!frameDoc) {
+    alert('Unable to create print preview. Please try again.')
+    document.body.removeChild(printFrame)
+    return
+  }
+
+  frameDoc.open()
+  frameDoc.write(buildPrintHtml(title, patient, center, content))
+  frameDoc.close()
+
+  let printed = false
+  const doPrint = () => {
+    if (printed) return
+    printed = true
+    printFrame.contentWindow?.focus()
+    printFrame.contentWindow?.print()
+    setTimeout(() => {
+      if (printFrame.parentNode) {
+        document.body.removeChild(printFrame)
+      }
+    }, 100)
+  }
+
+  printFrame.onload = doPrint
+  setTimeout(doPrint, 100)
 }
 
 

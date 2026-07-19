@@ -457,14 +457,25 @@ describe('PatientProfile', () => {
   })
 
   it('prints OP sheet with visit center header instead of patient default', async () => {
-    const printWindows: any[] = []
-    const mockOpen = vi.fn(() => {
-      const doc = { write: vi.fn(), close: vi.fn() }
-      const win = { document: doc, focus: vi.fn(), print: vi.fn() }
-      printWindows.push(win)
-      return win
+    const printCalls: { write: string; print: boolean }[] = []
+    const originalCreateElement = document.createElement.bind(document)
+    const mockCreateElement = vi.fn((tagName: string) => {
+      const element = originalCreateElement(tagName)
+      if (tagName.toLowerCase() === 'iframe') {
+        const doc = { open: vi.fn(), write: vi.fn((html: string) => { printCalls.push({ write: html, print: false }) }), close: vi.fn() }
+        const win = { document: doc, focus: vi.fn(), print: vi.fn(() => { printCalls[printCalls.length - 1].print = true }) }
+        Object.defineProperties(element, {
+          contentDocument: { get: () => doc },
+          contentWindow: { get: () => win },
+          onload: { writable: true, value: null },
+        })
+        element.addEventListener('load', () => {
+          if (element.onload) element.onload(new Event('load'))
+        })
+      }
+      return element
     })
-    vi.spyOn(window, 'open').mockImplementation(mockOpen)
+    vi.spyOn(document, 'createElement').mockImplementation(mockCreateElement as any)
 
     const patientWithVisit = {
       ...existingPatients[0],
@@ -482,21 +493,32 @@ describe('PatientProfile', () => {
     const printButtons = screen.getAllByRole('button', { name: /Print/ })
     fireEvent.click(printButtons[printButtons.length - 1])
 
-    expect(printWindows.length).toBe(1)
-    const writeArg = printWindows[0].document.write.mock.calls[0]?.[0] as string
-    expect(writeArg).toContain('Ayurcare Center')
-    expect(writeArg).not.toContain('NEW YOU')
+    expect(mockCreateElement).toHaveBeenCalledWith('iframe')
+    expect(printCalls.length).toBeGreaterThan(0)
+    expect(printCalls.some((call) => call.write.includes('Ayurcare Center'))).toBe(true)
+    expect(printCalls.some((call) => call.write.includes('NEW YOU'))).toBe(false)
   })
 
   it('prints prescription with visit center header instead of patient default', async () => {
-    const printWindows: any[] = []
-    const mockOpen = vi.fn(() => {
-      const doc = { write: vi.fn(), close: vi.fn() }
-      const win = { document: doc, focus: vi.fn(), print: vi.fn() }
-      printWindows.push(win)
-      return win
+    const printCalls: { write: string; print: boolean }[] = []
+    const originalCreateElement = document.createElement.bind(document)
+    const mockCreateElement = vi.fn((tagName: string) => {
+      const element = originalCreateElement(tagName)
+      if (tagName.toLowerCase() === 'iframe') {
+        const doc = { open: vi.fn(), write: vi.fn((html: string) => { printCalls.push({ write: html, print: false }) }), close: vi.fn() }
+        const win = { document: doc, focus: vi.fn(), print: vi.fn(() => { printCalls[printCalls.length - 1].print = true }) }
+        Object.defineProperties(element, {
+          contentDocument: { get: () => doc },
+          contentWindow: { get: () => win },
+          onload: { writable: true, value: null },
+        })
+        element.addEventListener('load', () => {
+          if (element.onload) element.onload(new Event('load'))
+        })
+      }
+      return element
     })
-    vi.spyOn(window, 'open').mockImplementation(mockOpen)
+    vi.spyOn(document, 'createElement').mockImplementation(mockCreateElement as any)
 
     const patientWithVisit = {
       ...existingPatients[0],
@@ -514,21 +536,32 @@ describe('PatientProfile', () => {
     const printButtons = screen.getAllByRole('button', { name: /Print/ })
     fireEvent.click(printButtons[printButtons.length - 1])
 
-    expect(printWindows.length).toBe(1)
-    const writeArg = printWindows[0].document.write.mock.calls[0]?.[0] as string
-    expect(writeArg).toContain('Ayurcare Center')
-    expect(writeArg).not.toContain('NEW YOU')
+    expect(mockCreateElement).toHaveBeenCalledWith('iframe')
+    expect(printCalls.length).toBeGreaterThan(0)
+    expect(printCalls.some((call) => call.write.includes('Ayurcare Center'))).toBe(true)
+    expect(printCalls.some((call) => call.write.includes('NEW YOU'))).toBe(false)
   })
 
   it('falls back to patient default center for print when visit center is missing', async () => {
-    const printWindows: any[] = []
-    const mockOpen = vi.fn(() => {
-      const doc = { write: vi.fn(), close: vi.fn() }
-      const win = { document: doc, focus: vi.fn(), print: vi.fn() }
-      printWindows.push(win)
-      return win
+    const printCalls: { write: string; print: boolean }[] = []
+    const originalCreateElement = document.createElement.bind(document)
+    const mockCreateElement = vi.fn((tagName: string) => {
+      const element = originalCreateElement(tagName)
+      if (tagName.toLowerCase() === 'iframe') {
+        const doc = { open: vi.fn(), write: vi.fn((html: string) => { printCalls.push({ write: html, print: false }) }), close: vi.fn() }
+        const win = { document: doc, focus: vi.fn(), print: vi.fn(() => { printCalls[printCalls.length - 1].print = true }) }
+        Object.defineProperties(element, {
+          contentDocument: { get: () => doc },
+          contentWindow: { get: () => win },
+          onload: { writable: true, value: null },
+        })
+        element.addEventListener('load', () => {
+          if (element.onload) element.onload(new Event('load'))
+        })
+      }
+      return element
     })
-    vi.spyOn(window, 'open').mockImplementation(mockOpen)
+    vi.spyOn(document, 'createElement').mockImplementation(mockCreateElement as any)
 
     const patientWithVisit = {
       ...existingPatients[0],
@@ -546,8 +579,54 @@ describe('PatientProfile', () => {
     const printButtons = screen.getAllByRole('button', { name: /Print/ })
     fireEvent.click(printButtons[printButtons.length - 1])
 
-    expect(printWindows.length).toBe(1)
-    const writeArg = printWindows[0].document.write.mock.calls[0]?.[0] as string
-    expect(writeArg).toContain('NEW YOU')
+    expect(mockCreateElement).toHaveBeenCalledWith('iframe')
+    expect(printCalls.length).toBeGreaterThan(0)
+    expect(printCalls.some((call) => call.write.includes('NEW YOU'))).toBe(true)
+  })
+
+  it('prints on the same page using a hidden iframe instead of a new tab', async () => {
+    const printCalls: { write: string; print: boolean }[] = []
+    const originalCreateElement = document.createElement.bind(document)
+    const mockCreateElement = vi.fn((tagName: string) => {
+      const element = originalCreateElement(tagName)
+      if (tagName.toLowerCase() === 'iframe') {
+        const doc = { open: vi.fn(), write: vi.fn((html: string) => { printCalls.push({ write: html, print: false }) }), close: vi.fn() }
+        const win = { document: doc, focus: vi.fn(), print: vi.fn(() => { printCalls[printCalls.length - 1].print = true }) }
+        Object.defineProperties(element, {
+          contentDocument: { get: () => doc },
+          contentWindow: { get: () => win },
+          onload: { writable: true, value: null },
+        })
+        element.addEventListener('load', () => {
+          if (element.onload) element.onload(new Event('load'))
+        })
+      }
+      return element
+    })
+    vi.spyOn(document, 'createElement').mockImplementation(mockCreateElement as any)
+
+    const patientWithVisit = {
+      ...existingPatients[0],
+      visits: [
+        { id: 'NU000001', date: '01 Jan 2026', center: 'Nutrition Center', doctor: 'Dr. A', reason: 'Checkup' },
+      ],
+      apiOPSheets: [{ id: 'OP-1', visitId: 'NU000001', clinicalExamination: '', vitals: null, diagnosis: '', symptoms: '', status: null, createdAt: new Date().toISOString(), visit: undefined, prescription: null }],
+      apiPrescriptions: [],
+    }
+
+    render(<PatientProfile patient={patientWithVisit} center="Nutrition Center" />)
+
+    fireEvent.click(screen.getByRole('tab', { name: 'OP Sheet' }))
+    fireEvent.click(screen.getByRole('button', { name: /View/ }))
+    const printButtons = screen.getAllByRole('button', { name: /Print/ })
+    fireEvent.click(printButtons[printButtons.length - 1])
+
+    expect(mockCreateElement).toHaveBeenCalledWith('iframe')
+
+    await waitFor(() => {
+      expect(printCalls.length).toBeGreaterThan(0)
+    })
+
+    expect(printCalls.some((call) => call.print)).toBe(true)
   })
 })
