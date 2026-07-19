@@ -84,7 +84,6 @@ export function PatientProfileEditor({ patient, center, onCancel, onSaved }: Pat
   const validate = () => {
     const next: Record<string, string> = {}
     if (!form.firstName.trim()) next.firstName = 'Patient name is required.'
-    if (!form.parentName.trim()) next.parentName = 'Parent, father, husband, or mother name is required.'
     if (!form.gender) next.gender = 'Gender is required.'
     if (!/^\d{10}$/.test(form.mobile)) next.mobile = 'Enter exactly 10 numeric digits.'
     if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) next.email = 'Enter a valid email address.'
