@@ -118,8 +118,22 @@ export function PatientWorkspace() {
   const matches = useMemo(() => {
     if (!query.trim()) return []
     const q = query.toLowerCase().replace(/\s/g, '')
-    const searchQuery = searchField === 'mr' ? q.replace(/^(nu|ay)/, 'mr') : q
-    return patients.filter((p) => ({ mr: p.mr, mobile: p.mobile, name: p.name, parent: p.parentName }[searchField] || '').toLowerCase().replace(/\s/g, '').includes(searchQuery))
+
+    if (searchField === 'mr') {
+      const visitIdMatch = q.match(/^(nu|ay)/i)
+      if (visitIdMatch) {
+        const upperQuery = q.toUpperCase()
+        return patients.filter((p) =>
+          (p.apiVisits ?? []).some((v) => v.id === upperQuery)
+        )
+      }
+
+      return patients.filter((p) =>
+        (p.mr || '').toLowerCase().replace(/\s/g, '').includes(q)
+      )
+    }
+
+    return patients.filter((p) => ({ mr: p.mr, mobile: p.mobile, name: p.name, parent: p.parentName }[searchField] || '').toLowerCase().replace(/\s/g, '').includes(q))
   }, [patients, query, searchField])
   const set = (key: string) => (value: string) => setForm((state) => ({ ...state, [key]: value }))
   const activeCenter = centerOptions.find((item) => item.id === center)

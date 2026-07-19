@@ -278,4 +278,60 @@ describe('PatientWorkspace registration flow', () => {
       expect(body.center).toBe('Nutrition Center')
     })
   })
+
+  it('searches patients by MR prefix', async () => {
+    ;(global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ({ patients: [{ mr: 'MR000001', patientName: 'Test', consultationType: 'NUTRITION', mobileNumber: '9845012345', district: 'City', state: 'Karnataka', address: 'Addr', pinCode: '560001', gender: 'Male' }] }),
+    })
+
+    render(<PatientWorkspace />)
+
+    const searchInput = screen.getByPlaceholderText('e.g. MR000001 or NU000001 / AY000001')
+    fireEvent.change(searchInput, { target: { value: 'MR000001' } })
+
+    await waitFor(() => expect(screen.getByText('Test')).toBeDefined())
+  })
+
+  it('searches patients by NU visit prefix', async () => {
+    ;(global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ({ patients: [{ mr: 'MR000001', patientName: 'Test', consultationType: 'NUTRITION', mobileNumber: '9845012345', district: 'City', state: 'Karnataka', address: 'Addr', pinCode: '560001', gender: 'Male', visits: [{ id: 'NU000001' }] }] }),
+    })
+
+    render(<PatientWorkspace />)
+
+    const searchInput = screen.getByPlaceholderText('e.g. MR000001 or NU000001 / AY000001')
+    fireEvent.change(searchInput, { target: { value: 'NU000001' } })
+
+    await waitFor(() => expect(screen.getByText('Test')).toBeDefined())
+  })
+
+  it('searches patients by AY visit prefix', async () => {
+    ;(global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ({ patients: [{ mr: 'MR000001', patientName: 'Test', consultationType: 'AYURCARE', mobileNumber: '9845012345', district: 'City', state: 'Karnataka', address: 'Addr', pinCode: '560001', gender: 'Male', visits: [{ id: 'AY000001' }] }] }),
+    })
+
+    render(<PatientWorkspace />)
+
+    const searchInput = screen.getByPlaceholderText('e.g. MR000001 or NU000001 / AY000001')
+    fireEvent.change(searchInput, { target: { value: 'AY000001' } })
+
+    await waitFor(() => expect(screen.getByText('Test')).toBeDefined())
+  })
+
+  it('searches patients by exact AY visit ID even when MR differs', async () => {
+    ;(global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ({ patients: [{ mr: 'MR000024', patientName: 'Muhammad Muhsin', consultationType: 'AYURCARE', mobileNumber: '0989529163', district: 'City', state: 'Karnataka', address: 'Addr', pinCode: '560001', gender: 'Male', visits: [{ id: 'AY000012' }] }] }),
+    })
+
+    render(<PatientWorkspace />)
+
+    const searchInput = screen.getByPlaceholderText('e.g. MR000001 or NU000001 / AY000001')
+    fireEvent.change(searchInput, { target: { value: 'AY000012' } })
+
+    await waitFor(() => expect(screen.getByText('Muhammad Muhsin')).toBeDefined())
+  })
 })
