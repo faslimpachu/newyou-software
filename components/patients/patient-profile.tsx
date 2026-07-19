@@ -507,7 +507,7 @@ const blankMedicineRows = (): MedicineRow[] => [
 function mapPrescriptionRecord(prescription: ApiPrescription, center: string): PrescriptionRecord {
   return {
     id: prescription.id,
-    visitId: prescription.opSheet?.visitId || '?',
+    visitId: prescription.visitId,
     opSheetId: prescription.opSheetId,
     date: formatRecordDate(prescription.createdAt),
     doctor: prescription.opSheet?.visit?.doctor || 'Not yet assigned',
@@ -564,14 +564,14 @@ function Prescription({ patient, center, onRefresh }: { patient: PatientRecord; 
 
   const handleSaveRecord = async (record: PrescriptionRecord) => {
     const existing = prescriptionsByVisitId.get(record.visitId)
-    const opSheetId = record.opSheetId || patient.apiOPSheets?.find((s) => s.visitId === record.visitId)?.id
-    if (!existing && opSheetId) {
+    if (!existing) {
       const response = await fetch('/api/prescriptions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           patientMr: patient.mr,
-          opSheetId,
+          visitId: record.visitId,
+          opSheetId: record.opSheetId || patient.apiOPSheets?.find((s) => s.visitId === record.visitId)?.id,
           diagnosis: record.diagnosis,
           medicines: JSON.stringify(record.medicines),
           advice: record.advice,
@@ -632,7 +632,7 @@ function Prescription({ patient, center, onRefresh }: { patient: PatientRecord; 
       : <Card className="rounded-lg shadow-sm"><CardContent className="p-0"><div className="overflow-x-auto"><table className="w-full min-w-[940px] text-left text-sm"><thead className="border-y bg-muted/40 text-xs text-muted-foreground"><tr><th className="p-3 font-medium">Visit ID</th><th className="p-3 font-medium">Visit Date</th><th className="p-3 font-medium">Doctor</th><th className="p-3 font-medium">Department</th><th className="p-3 font-medium">OP Sheet</th><th className="p-3 font-medium">Prescription</th><th className="p-3 font-medium text-right">Actions</th></tr></thead><tbody>{sortedVisits.map((visit) => {
         const opSheet = opSheetsByVisitId.get(visit.id)
         const prescription = prescriptionsByVisitId.get(visit.id)
-        return <tr className="border-b" key={visit.id}><td className="p-3 font-mono text-xs">{visit.id}</td><td className="p-3">{visit.date}</td><td className="p-3">{visit.doctor}</td><td className="p-3">{visit.center}</td><td className="p-3">{opSheet ? <><CheckCircle2 className="mr-1 size-4 text-green-400" /><span className="text-green-400 text-xs font-medium">Created</span></> : <><Circle className="mr-1 size-4 text-muted-foreground" /><span className="text-xs font-medium text-muted-foreground">Not Created</span></>}</td><td className="p-3">{opSheet ? (prescription ? <><CheckCircle2 className="mr-1 size-4 text-green-400" /><span className="text-green-400 text-xs font-medium">Created</span></> : <><Circle className="mr-1 size-4 text-muted-foreground" /><span className="text-xs font-medium text-muted-foreground">Not Created</span></>) : <span className="text-xs font-medium text-muted-foreground">—</span>}</td><td className="p-3"><div className="flex justify-end gap-1">{opSheet ? (prescription ? <><Button variant="ghost" size="sm" onClick={() => openView(visit.id)}><Eye className="mr-1 size-3.5" />View</Button><Button variant="ghost" size="sm" onClick={() => openEdit(visit.id)}><Pencil className="mr-1 size-3.5" />Edit</Button><Button variant="ghost" size="sm" onClick={() => printRecord(prescription)}><Printer className="mr-1 size-3.5" />Print</Button></> : <Button size="sm" onClick={() => openCreate(visit.id)}><Plus className="mr-1 size-3.5" />Create Prescription</Button>) : <span className="text-xs text-muted-foreground">Create OP Sheet first</span>}</div></td></tr>
+        return <tr className="border-b" key={visit.id}><td className="p-3 font-mono text-xs">{visit.id}</td><td className="p-3">{visit.date}</td><td className="p-3">{visit.doctor}</td><td className="p-3">{visit.center}</td><td className="p-3">{opSheet ? <><CheckCircle2 className="mr-1 size-4 text-green-400" /><span className="text-green-400 text-xs font-medium">Created</span></> : <><Circle className="mr-1 size-4 text-muted-foreground" /><span className="text-xs font-medium text-muted-foreground">Not Created</span></>}</td><td className="p-3">{prescription ? <><CheckCircle2 className="mr-1 size-4 text-green-400" /><span className="text-green-400 text-xs font-medium">Created</span></> : <><Circle className="mr-1 size-4 text-muted-foreground" /><span className="text-xs font-medium text-muted-foreground">Not Created</span></>}</td><td className="p-3"><div className="flex justify-end gap-1">{prescription ? <><Button variant="ghost" size="sm" onClick={() => openView(visit.id)}><Eye className="mr-1 size-3.5" />View</Button><Button variant="ghost" size="sm" onClick={() => openEdit(visit.id)}><Pencil className="mr-1 size-3.5" />Edit</Button><Button variant="ghost" size="sm" onClick={() => printRecord(prescription)}><Printer className="mr-1 size-3.5" />Print</Button></> : <Button size="sm" onClick={() => openCreate(visit.id)}><Plus className="mr-1 size-3.5" />Create Prescription</Button>}</div></td></tr>
       }
       )}</tbody></table></div></CardContent></Card>}
   </div>

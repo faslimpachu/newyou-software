@@ -25,10 +25,14 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { patientMr, opSheetId, diagnosis, medicines, advice, followUp, doctorSignature } = body;
+    const { patientMr, visitId, opSheetId, diagnosis, medicines, advice, followUp, doctorSignature } = body;
 
-    if (!patientMr || !opSheetId) {
-      return NextResponse.json({ error: 'patientMr and opSheetId are required' }, { status: 400 });
+    if (!patientMr) {
+      return NextResponse.json({ error: 'patientMr is required' }, { status: 400 });
+    }
+
+    if (!visitId) {
+      return NextResponse.json({ error: 'visitId is required' }, { status: 400 });
     }
 
     const patient = await prisma.patient.findUnique({ where: { mr: patientMr } });
@@ -36,14 +40,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Patient not found' }, { status: 404 });
     }
 
-    const opSheet = await prisma.oPSheet.findUnique({ where: { id: opSheetId } });
-    if (!opSheet) {
-      return NextResponse.json({ error: 'OP Sheet not found' }, { status: 404 });
-    }
-
     const prescription = await prisma.prescription.create({
       data: {
         patientMr,
+        visitId,
         opSheetId,
         diagnosis,
         medicines,

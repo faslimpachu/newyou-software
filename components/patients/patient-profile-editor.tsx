@@ -16,7 +16,7 @@ import { mapApiPatient, readApiError, type ApiPatient, type PatientRecord } from
 type FormValues = Record<string, string>
 
 const emptyForm: FormValues = {
-  firstName: '', lastName: '', dob: '', gender: '', bloodGroup: '', mobile: '', email: '', parentName: '',
+  firstName: '', lastName: '', dob: '', age: '', gender: '', bloodGroup: '', mobile: '', email: '', parentName: '',
   address: '', city: '', state: '', postalCode: '', allergies: '', conditions: '', medications: '',
   emergencyName: '', emergencyPhone: '', emergencyRelation: '', smoking: 'Never', alcohol: 'Never', exercise: 'Moderate', diet: 'Vegetarian',
   doctor: '',
@@ -34,6 +34,7 @@ function prefillForm(patient: PatientRecord): FormValues {
     mobile: patient.mobile && patient.mobile !== 'Not recorded' ? patient.mobile : '',
     email: patient.email ?? '',
     dob: patient.dob ?? '',
+    age: patient.age ? String(patient.age) : '',
     address: patient.address ?? '',
     city: patient.city ?? '',
     state: patient.state ?? '',
@@ -96,6 +97,12 @@ export function PatientProfileEditor({ patient, center, onCancel, onSaved }: Pat
     return Object.keys(next).length === 0
   }
 
+  useEffect(() => {
+    if (form.dob) {
+      setForm((state) => ({ ...state, age: String(computeAge(form.dob)) }))
+    }
+  }, [form.dob])
+
   const handleSave = async () => {
     if (!validate()) return
     setSaveError('')
@@ -116,7 +123,7 @@ export function PatientProfileEditor({ patient, center, onCancel, onSaved }: Pat
           state: form.state,
           pinCode: form.postalCode,
           dob: form.dob || undefined,
-          age: form.dob ? computeAge(form.dob) : undefined,
+          age: form.age ? Number(form.age) : undefined,
           bloodGroup: form.bloodGroup || undefined,
           doctor: form.doctor || undefined,
           center: center,
@@ -185,6 +192,7 @@ export function PatientProfileEditor({ patient, center, onCancel, onSaved }: Pat
           <Field id="editFirstName" label="First name *" value={form.firstName} onChange={update('firstName')} error={errors.firstName} />
           <Field id="editLastName" label="Last name" value={form.lastName} onChange={update('lastName')} />
           <Field id="editDob" label="Date of birth" value={form.dob} type="date" onChange={update('dob')} />
+<Field id="editAge" label="Age" value={form.age} onChange={update('age')} readOnly />
           {select('Gender *', 'gender', ['Male', 'Female', 'Other'], errors.gender)}
           {select('Blood group', 'bloodGroup', ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'])}
           <Field id="editParentName" label="Parent / spouse name" value={form.parentName} onChange={update('parentName')} error={errors.parentName} />

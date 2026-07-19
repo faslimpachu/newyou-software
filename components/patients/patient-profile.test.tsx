@@ -330,7 +330,7 @@ describe('PatientProfile', () => {
     expect(screen.getByRole('tab', { name: 'Prescriptions' })).toBeDefined()
   })
 
-  it('shows Create OP Sheet when no OP Sheet exists for a visit in Prescription tab', async () => {
+  it('shows Create Prescription when no OP Sheet exists for a visit in Prescription tab', async () => {
     const patientWithVisit = {
       ...existingPatients[0],
       visits: [
@@ -344,8 +344,7 @@ describe('PatientProfile', () => {
 
     fireEvent.click(screen.getByRole('tab', { name: 'Prescriptions' }))
 
-    expect(screen.getByText('Create OP Sheet first')).toBeDefined()
-    expect(screen.queryByRole('button', { name: /Create Prescription/ })).toBeNull()
+    expect(screen.getByRole('button', { name: /Create Prescription/ })).toBeDefined()
   })
 
   it('shows Create Prescription when OP Sheet exists but no Prescription', async () => {
@@ -365,24 +364,6 @@ describe('PatientProfile', () => {
     expect(screen.getByRole('button', { name: /Create Prescription/ })).toBeDefined()
   })
 
-  it('does not show Create Prescription when no OP Sheet exists', async () => {
-    const patientWithVisit = {
-      ...existingPatients[0],
-      visits: [
-        { id: 'NU000001', date: '01 Jan 2026', center: 'Nutrition Center', doctor: 'Dr. A', reason: 'Checkup' },
-      ],
-      apiOPSheets: [],
-      apiPrescriptions: [],
-    }
-
-    render(<PatientProfile patient={patientWithVisit} center="Nutrition Center" />)
-
-    fireEvent.click(screen.getByRole('tab', { name: 'Prescriptions' }))
-
-    expect(screen.queryByRole('button', { name: /Create Prescription/ })).toBeNull()
-    expect(screen.getByText('Create OP Sheet first')).toBeDefined()
-  })
-
   it('does not show Create Prescription when prescription already exists', async () => {
     const patientWithOP = {
       ...existingPatients[0],
@@ -390,7 +371,7 @@ describe('PatientProfile', () => {
         { id: 'NU000001', date: '01 Jan 2026', center: 'Nutrition Center', doctor: 'Dr. A', reason: 'Checkup' },
       ],
       apiOPSheets: [{ id: 'OP-1', visitId: 'NU000001', clinicalExamination: '', vitals: null, diagnosis: '', symptoms: '', status: null, createdAt: new Date().toISOString(), visit: undefined, prescription: null }],
-      apiPrescriptions: [{ id: 'RX-1', opSheetId: 'OP-1', diagnosis: '', medicines: '[]', advice: '', followUp: '', createdAt: new Date().toISOString(), opSheet: { id: 'OP-1', visitId: 'NU000001', clinicalExamination: '', vitals: null, diagnosis: '', symptoms: '', status: null, createdAt: new Date().toISOString(), visit: undefined, prescription: null } }],
+      apiPrescriptions: [{ id: 'RX-1', visitId: 'NU000001', opSheetId: 'OP-1', diagnosis: '', medicines: '[]', advice: '', followUp: '', createdAt: new Date().toISOString(), opSheet: { id: 'OP-1', visitId: 'NU000001', clinicalExamination: '', vitals: null, diagnosis: '', symptoms: '', status: null, createdAt: new Date().toISOString(), visit: undefined, prescription: null } }],
     }
 
     render(<PatientProfile patient={patientWithOP} center="Nutrition Center" />)
@@ -414,13 +395,13 @@ describe('PatientProfile', () => {
 
     const refreshedPatient = {
       ...patientWithOP,
-      apiPrescriptions: [{ id: 'RX-1', opSheetId: 'OP-1', diagnosis: '', medicines: '[]', advice: '', followUp: '', createdAt: new Date().toISOString(), opSheet }],
+      apiPrescriptions: [{ id: 'RX-1', visitId: 'NU000001', opSheetId: 'OP-1', diagnosis: '', medicines: '[]', advice: '', followUp: '', createdAt: new Date().toISOString(), opSheet }],
     }
 
     const mockFetch = vi.fn()
       .mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ prescription: { id: 'RX-1', opSheetId: 'OP-1', diagnosis: '', medicines: '[]', advice: '', followUp: '', createdAt: new Date().toISOString(), opSheet } }),
+        json: async () => ({ prescription: { id: 'RX-1', visitId: 'NU000001', opSheetId: 'OP-1', diagnosis: '', medicines: '[]', advice: '', followUp: '', createdAt: new Date().toISOString(), opSheet } }),
       })
       .mockResolvedValueOnce({
         ok: true,

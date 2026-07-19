@@ -25,6 +25,7 @@ export type ApiOPSheet = {
 export type ApiPrescription = {
   id: string
   patientMr: string
+  visitId: string
   opSheetId: string
   diagnosis?: string | null
   medicines?: string | null

@@ -86,7 +86,8 @@ model OPSheet {
 model Prescription {
   id             String   @id @default(uuid())
   patientMr      String
-  opSheetId      String   @unique
+  visitId        String
+  opSheetId      String?  @unique
   diagnosis      String?
   medicines      String?
   advice         String?
@@ -94,8 +95,8 @@ model Prescription {
   doctorSignature String?
   createdAt      DateTime @default(now())
 
-  patient        Patient   @relation(fields: [patientMr], references: [mr], onDelete: Cascade)
-  opSheet        OPSheet   @relation(fields: [opSheetId], references: [id], onDelete: Cascade)
+  patient        Patient     @relation(fields: [patientMr], references: [mr], onDelete: Cascade)
+  opSheet        OPSheet?    @relation(fields: [opSheetId], references: [id], onDelete: Cascade)
 
   @@map("prescriptions")
 }
