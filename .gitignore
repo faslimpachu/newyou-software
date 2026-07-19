@@ -16,6 +16,7 @@ __v0_jsx-dev-runtime.ts
 # Prisma
 prisma/dev.db
 prisma/*.db
+prisma/prisma/*.db
 prisma/migrations/
 
 # node_modules
