@@ -629,4 +629,239 @@ describe('PatientProfile', () => {
 
     expect(printCalls.some((call) => call.print)).toBe(true)
   })
+
+  it('shows Blank OP Sheet button in visit row when no OP sheet exists', async () => {
+    const patientWithVisit = {
+      ...existingPatients[0],
+      visits: [
+        { id: 'NU000001', date: '01 Jan 2026', center: 'Nutrition Center', doctor: 'Dr. A', reason: 'Checkup' },
+      ],
+      apiOPSheets: [],
+      apiPrescriptions: [],
+    }
+
+    render(<PatientProfile patient={patientWithVisit} center="Nutrition Center" />)
+
+    fireEvent.click(screen.getByRole('tab', { name: 'OP Sheet' }))
+
+    expect(screen.getByRole('button', { name: /Blank OP Sheet/ })).toBeDefined()
+  })
+
+  it('shows Blank OP Sheet button alongside View Edit Print when OP sheet already exists', async () => {
+    const patientWithOP = {
+      ...existingPatients[0],
+      visits: [
+        { id: 'NU000001', date: '01 Jan 2026', center: 'Nutrition Center', doctor: 'Dr. A', reason: 'Checkup' },
+      ],
+      apiOPSheets: [{ id: 'OP-1', visitId: 'NU000001', clinicalExamination: '', vitals: null, diagnosis: '', symptoms: '', status: null, createdAt: new Date().toISOString(), visit: undefined, prescription: null }],
+      apiPrescriptions: [],
+    }
+
+    render(<PatientProfile patient={patientWithOP} center="Nutrition Center" />)
+
+    fireEvent.click(screen.getByRole('tab', { name: 'OP Sheet' }))
+
+    expect(screen.getAllByRole('button', { name: /View/ }).length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('button', { name: /Edit/ }).length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('button', { name: /Print/ }).length).toBeGreaterThan(0)
+    expect(screen.getByRole('button', { name: /Blank OP Sheet/ })).toBeDefined()
+  })
+
+  it('prints blank OP Sheet with visit center header when Blank OP Sheet is clicked', async () => {
+    const printCalls: { write: string; print: boolean }[] = []
+    const originalCreateElement = document.createElement.bind(document)
+    const mockCreateElement = vi.fn((tagName: string) => {
+      const element = originalCreateElement(tagName)
+      if (tagName.toLowerCase() === 'iframe') {
+        const doc = { open: vi.fn(), write: vi.fn((html: string) => { printCalls.push({ write: html, print: false }) }), close: vi.fn() }
+        const win = { document: doc, focus: vi.fn(), print: vi.fn(() => { printCalls[printCalls.length - 1].print = true }) }
+        Object.defineProperties(element, {
+          contentDocument: { get: () => doc },
+          contentWindow: { get: () => win },
+          onload: { writable: true, value: null },
+        })
+        element.addEventListener('load', () => {
+          if (element.onload) element.onload(new Event('load'))
+        })
+      }
+      return element
+    })
+    vi.spyOn(document, 'createElement').mockImplementation(mockCreateElement as any)
+
+    const patientWithVisit = {
+      ...existingPatients[0],
+      visits: [
+        { id: 'AY000001', date: '01 Jan 2026', center: 'Ayurcare Center', doctor: 'Dr. B', reason: 'Checkup' },
+      ],
+      apiOPSheets: [],
+      apiPrescriptions: [],
+    }
+
+    render(<PatientProfile patient={patientWithVisit} center="Nutrition Center" />)
+
+    fireEvent.click(screen.getByRole('tab', { name: 'OP Sheet' }))
+    fireEvent.click(screen.getByRole('button', { name: /Blank OP Sheet/ }))
+
+    expect(mockCreateElement).toHaveBeenCalledWith('iframe')
+    expect(printCalls.length).toBeGreaterThan(0)
+    expect(printCalls.some((call) => call.write.includes('Ayurcare Center'))).toBe(true)
+    expect(printCalls.some((call) => call.write.includes('NEW YOU'))).toBe(false)
+    expect(printCalls.some((call) => call.write.includes('Patient:'))).toBe(true)
+    expect(printCalls.some((call) => call.write.includes('MR No:'))).toBe(true)
+    expect(printCalls.some((call) => call.write.includes('Clinical Examination'))).toBe(false)
+    expect(printCalls.some((call) => call.write.includes('Investigations'))).toBe(false)
+    expect(printCalls.some((call) => call.write.includes('Treatment Plan'))).toBe(false)
+    expect(printCalls.some((call) => call.write.includes('Doctor Signature'))).toBe(false)
+
+    await waitFor(() => {
+      expect(printCalls.some((call) => call.print)).toBe(true)
+    })
+  })
+
+  it('prints blank OP Sheet with Nutrition Center header for nutrition visits', async () => {
+    const printCalls: { write: string; print: boolean }[] = []
+    const originalCreateElement = document.createElement.bind(document)
+    const mockCreateElement = vi.fn((tagName: string) => {
+      const element = originalCreateElement(tagName)
+      if (tagName.toLowerCase() === 'iframe') {
+        const doc = { open: vi.fn(), write: vi.fn((html: string) => { printCalls.push({ write: html, print: false }) }), close: vi.fn() }
+        const win = { document: doc, focus: vi.fn(), print: vi.fn(() => { printCalls[printCalls.length - 1].print = true }) }
+        Object.defineProperties(element, {
+          contentDocument: { get: () => doc },
+          contentWindow: { get: () => win },
+          onload: { writable: true, value: null },
+        })
+        element.addEventListener('load', () => {
+          if (element.onload) element.onload(new Event('load'))
+        })
+      }
+      return element
+    })
+    vi.spyOn(document, 'createElement').mockImplementation(mockCreateElement as any)
+
+    const patientWithVisit = {
+      ...existingPatients[0],
+      visits: [
+        { id: 'NU000001', date: '01 Jan 2026', center: 'Nutrition Center', doctor: 'Dr. A', reason: 'Checkup' },
+      ],
+      apiOPSheets: [],
+      apiPrescriptions: [],
+    }
+
+    render(<PatientProfile patient={patientWithVisit} center="Nutrition Center" />)
+
+    fireEvent.click(screen.getByRole('tab', { name: 'OP Sheet' }))
+    fireEvent.click(screen.getByRole('button', { name: /Blank OP Sheet/ }))
+
+    await waitFor(() => {
+      expect(printCalls.some((call) => call.write.includes('NEW YOU'))).toBe(true)
+    })
+    expect(printCalls.some((call) => call.write.includes('Ayurcare Center'))).toBe(false)
+  })
+
+  it('shows Blank Prescription button in prescription visit row', async () => {
+    const patientWithVisit = {
+      ...existingPatients[0],
+      visits: [
+        { id: 'NU000001', date: '01 Jan 2026', center: 'Nutrition Center', doctor: 'Dr. A', reason: 'Checkup' },
+      ],
+      apiOPSheets: [],
+      apiPrescriptions: [],
+    }
+
+    render(<PatientProfile patient={patientWithVisit} center="Nutrition Center" />)
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Prescriptions' }))
+
+    expect(screen.getByRole('button', { name: /Blank Prescription/ })).toBeDefined()
+  })
+
+  it('prints blank Prescription with visit center header when Blank Prescription is clicked', async () => {
+    const printCalls: { write: string; print: boolean }[] = []
+    const originalCreateElement = document.createElement.bind(document)
+    const mockCreateElement = vi.fn((tagName: string) => {
+      const element = originalCreateElement(tagName)
+      if (tagName.toLowerCase() === 'iframe') {
+        const doc = { open: vi.fn(), write: vi.fn((html: string) => { printCalls.push({ write: html, print: false }) }), close: vi.fn() }
+        const win = { document: doc, focus: vi.fn(), print: vi.fn(() => { printCalls[printCalls.length - 1].print = true }) }
+        Object.defineProperties(element, {
+          contentDocument: { get: () => doc },
+          contentWindow: { get: () => win },
+          onload: { writable: true, value: null },
+        })
+        element.addEventListener('load', () => {
+          if (element.onload) element.onload(new Event('load'))
+        })
+      }
+      return element
+    })
+    vi.spyOn(document, 'createElement').mockImplementation(mockCreateElement as any)
+
+    const patientWithVisit = {
+      ...existingPatients[0],
+      visits: [
+        { id: 'AY000001', date: '01 Jan 2026', center: 'Ayurcare Center', doctor: 'Dr. B', reason: 'Checkup' },
+      ],
+      apiOPSheets: [],
+      apiPrescriptions: [],
+    }
+
+    render(<PatientProfile patient={patientWithVisit} center="Nutrition Center" />)
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Prescriptions' }))
+    fireEvent.click(screen.getByRole('button', { name: /Blank Prescription/ }))
+
+    expect(mockCreateElement).toHaveBeenCalledWith('iframe')
+    expect(printCalls.length).toBeGreaterThan(0)
+    expect(printCalls.some((call) => call.write.includes('Ayurcare Center'))).toBe(true)
+    expect(printCalls.some((call) => call.write.includes('NEW YOU'))).toBe(false)
+    expect(printCalls.some((call) => call.write.includes('Prescription'))).toBe(true)
+    expect(printCalls.some((call) => call.write.includes('Patient:'))).toBe(true)
+    expect(printCalls.some((call) => call.write.includes('Doctor Signature'))).toBe(false)
+
+    await waitFor(() => {
+      expect(printCalls.some((call) => call.print)).toBe(true)
+    })
+  })
+
+  it('prints blank Prescription with Nutrition Center header for nutrition visits', async () => {
+    const printCalls: { write: string; print: boolean }[] = []
+    const originalCreateElement = document.createElement.bind(document)
+    const mockCreateElement = vi.fn((tagName: string) => {
+      const element = originalCreateElement(tagName)
+      if (tagName.toLowerCase() === 'iframe') {
+        const doc = { open: vi.fn(), write: vi.fn((html: string) => { printCalls.push({ write: html, print: false }) }), close: vi.fn() }
+        const win = { document: doc, focus: vi.fn(), print: vi.fn(() => { printCalls[printCalls.length - 1].print = true }) }
+        Object.defineProperties(element, {
+          contentDocument: { get: () => doc },
+          contentWindow: { get: () => win },
+          onload: { writable: true, value: null },
+        })
+        element.addEventListener('load', () => {
+          if (element.onload) element.onload(new Event('load'))
+        })
+      }
+      return element
+    })
+    vi.spyOn(document, 'createElement').mockImplementation(mockCreateElement as any)
+
+    const patientWithVisit = {
+      ...existingPatients[0],
+      visits: [
+        { id: 'NU000001', date: '01 Jan 2026', center: 'Nutrition Center', doctor: 'Dr. A', reason: 'Checkup' },
+      ],
+      apiOPSheets: [],
+      apiPrescriptions: [],
+    }
+
+    render(<PatientProfile patient={patientWithVisit} center="Nutrition Center" />)
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Prescriptions' }))
+    fireEvent.click(screen.getByRole('button', { name: /Blank Prescription/ }))
+
+    await waitFor(() => {
+      expect(printCalls.some((call) => call.write.includes('NEW YOU'))).toBe(true)
+    })
+    expect(printCalls.some((call) => call.write.includes('Ayurcare Center'))).toBe(false)
+  })
 })

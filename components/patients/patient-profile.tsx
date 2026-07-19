@@ -342,6 +342,12 @@ function OPSheet({ patient, center, onRefresh, onUpdateStatus }: { patient: Pati
     setMode('edit')
   }
 
+  const openBlank = (visitId: string) => {
+    const visit = getVisit(visitId)
+    const sheetCenter = visit?.center || center
+    openBlankA4Print(sheetCenter, patient)
+  }
+
   const handleSaveRecord = async (record: OPSheetRecord) => {
     const existing = opSheetsByVisitId.get(record.visitId)
     if (!existing) {
@@ -409,11 +415,13 @@ function OPSheet({ patient, center, onRefresh, onUpdateStatus }: { patient: Pati
       ? <Card className="rounded-lg shadow-sm"><CardContent className="py-14 text-center"><FileText className="mx-auto size-6 text-muted-foreground" /><p className="mt-3 font-medium">No visits recorded for this patient.</p></CardContent></Card>
       : <Card className="rounded-lg shadow-sm"><CardContent className="p-0"><div className="overflow-x-auto"><table className="w-full min-w-[920px] text-left text-sm"><thead className="border-y bg-muted/40 text-xs text-muted-foreground"><tr><th className="p-3 font-medium">Visit ID</th><th className="p-3 font-medium">Visit Date</th><th className="p-3 font-medium">Doctor</th><th className="p-3 font-medium">Department</th><th className="p-3 font-medium">OP Sheet</th><th className="p-3 font-medium text-right">Actions</th></tr></thead><tbody>{sortedVisits.map((visit) => {
         const opRecord = opSheetsByVisitId.get(visit.id)
-        return <tr className="border-b" key={visit.id}><td className="p-3 font-mono text-xs">{visit.id}</td><td className="p-3">{visit.date}</td><td className="p-3">{visit.doctor}</td><td className="p-3">{visit.center}</td><td className="p-3">{opRecord ? <><CheckCircle2 className="mr-1 size-4 text-green-400" /><span className="text-green-400 text-xs font-medium">Created</span></> : <><Circle className="mr-1 size-4 text-muted-foreground" /><span className="text-xs font-medium text-muted-foreground">Not Created</span></>}</td><td className="p-3"><div className="flex justify-end gap-1">{opRecord ? <><Button variant="ghost" size="sm" onClick={() => openView(visit.id)}><Eye className="mr-1 size-3.5" />View</Button><Button variant="ghost" size="sm" onClick={() => openEdit(visit.id)}><Pencil className="mr-1 size-3.5" />Edit</Button><Button variant="ghost" size="sm" onClick={() => printRecord(opRecord)}><Printer className="mr-1 size-3.5" />Print</Button></> : <Button size="sm" onClick={() => openCreate(visit.id)}><Plus className="mr-1 size-3.5" />Create OP Sheet</Button>}</div></td></tr>
+        return <tr className="border-b" key={visit.id}><td className="p-3 font-mono text-xs">{visit.id}</td><td className="p-3">{visit.date}</td><td className="p-3">{visit.doctor}</td><td className="p-3">{visit.center}</td><td className="p-3">{opRecord ? <><CheckCircle2 className="mr-1 size-4 text-green-400" /><span className="text-green-400 text-xs font-medium">Created</span></> : <><Circle className="mr-1 size-4 text-muted-foreground" /><span className="text-xs font-medium text-muted-foreground">Not Created</span></>}</td><td className="p-3"><div className="flex justify-end gap-1">{opRecord ? <><Button variant="ghost" size="sm" onClick={() => openView(visit.id)}><Eye className="mr-1 size-3.5" />View</Button><Button variant="ghost" size="sm" onClick={() => openEdit(visit.id)}><Pencil className="mr-1 size-3.5" />Edit</Button><Button variant="ghost" size="sm" onClick={() => printRecord(opRecord)}><Printer className="mr-1 size-3.5" />Print</Button></> : <Button size="sm" onClick={() => openCreate(visit.id)}><Plus className="mr-1 size-3.5" />Create OP Sheet</Button>}<Button variant="ghost" size="sm" onClick={() => openBlank(visit.id)}><FileText className="mr-1 size-3.5" />Blank OP Sheet</Button></div></td></tr>
       }
       )}</tbody></table></div></CardContent></Card>}
-  </div>
-} function buildOPPrintContent(record: OPSheetRecord): PrintContent {
+    </div>
+}
+
+function buildOPPrintContent(record: OPSheetRecord): PrintContent {
   const rows = measurements
     .filter((name) => (record.measurementValues[name] ?? []).some((v) => v && v.trim()))
     .map((name) => [name, ...(record.measurementValues[name] ?? ['', '', '', '', ''])])
@@ -562,6 +570,12 @@ function Prescription({ patient, center, onRefresh }: { patient: PatientRecord; 
     setMode('edit')
   }
 
+  const openBlank = (visitId: string) => {
+    const visit = getVisit(visitId)
+    const sheetCenter = visit?.center || center
+    openBlankPrescriptionA4Print(sheetCenter, patient)
+  }
+
   const handleSaveRecord = async (record: PrescriptionRecord) => {
     const existing = prescriptionsByVisitId.get(record.visitId)
     if (!existing) {
@@ -632,7 +646,7 @@ function Prescription({ patient, center, onRefresh }: { patient: PatientRecord; 
       : <Card className="rounded-lg shadow-sm"><CardContent className="p-0"><div className="overflow-x-auto"><table className="w-full min-w-[940px] text-left text-sm"><thead className="border-y bg-muted/40 text-xs text-muted-foreground"><tr><th className="p-3 font-medium">Visit ID</th><th className="p-3 font-medium">Visit Date</th><th className="p-3 font-medium">Doctor</th><th className="p-3 font-medium">Department</th><th className="p-3 font-medium">OP Sheet</th><th className="p-3 font-medium">Prescription</th><th className="p-3 font-medium text-right">Actions</th></tr></thead><tbody>{sortedVisits.map((visit) => {
         const opSheet = opSheetsByVisitId.get(visit.id)
         const prescription = prescriptionsByVisitId.get(visit.id)
-        return <tr className="border-b" key={visit.id}><td className="p-3 font-mono text-xs">{visit.id}</td><td className="p-3">{visit.date}</td><td className="p-3">{visit.doctor}</td><td className="p-3">{visit.center}</td><td className="p-3">{opSheet ? <><CheckCircle2 className="mr-1 size-4 text-green-400" /><span className="text-green-400 text-xs font-medium">Created</span></> : <><Circle className="mr-1 size-4 text-muted-foreground" /><span className="text-xs font-medium text-muted-foreground">Not Created</span></>}</td><td className="p-3">{prescription ? <><CheckCircle2 className="mr-1 size-4 text-green-400" /><span className="text-green-400 text-xs font-medium">Created</span></> : <><Circle className="mr-1 size-4 text-muted-foreground" /><span className="text-xs font-medium text-muted-foreground">Not Created</span></>}</td><td className="p-3"><div className="flex justify-end gap-1">{prescription ? <><Button variant="ghost" size="sm" onClick={() => openView(visit.id)}><Eye className="mr-1 size-3.5" />View</Button><Button variant="ghost" size="sm" onClick={() => openEdit(visit.id)}><Pencil className="mr-1 size-3.5" />Edit</Button><Button variant="ghost" size="sm" onClick={() => printRecord(prescription)}><Printer className="mr-1 size-3.5" />Print</Button></> : <Button size="sm" onClick={() => openCreate(visit.id)}><Plus className="mr-1 size-3.5" />Create Prescription</Button>}</div></td></tr>
+        return <tr className="border-b" key={visit.id}><td className="p-3 font-mono text-xs">{visit.id}</td><td className="p-3">{visit.date}</td><td className="p-3">{visit.doctor}</td><td className="p-3">{visit.center}</td><td className="p-3">{opSheet ? <><CheckCircle2 className="mr-1 size-4 text-green-400" /><span className="text-green-400 text-xs font-medium">Created</span></> : <><Circle className="mr-1 size-4 text-muted-foreground" /><span className="text-xs font-medium text-muted-foreground">Not Created</span></>}</td><td className="p-3">{prescription ? <><CheckCircle2 className="mr-1 size-4 text-green-400" /><span className="text-green-400 text-xs font-medium">Created</span></> : <><Circle className="mr-1 size-4 text-muted-foreground" /><span className="text-xs font-medium text-muted-foreground">Not Created</span></>}</td><td className="p-3"><div className="flex justify-end gap-1">{prescription ? <><Button variant="ghost" size="sm" onClick={() => openView(visit.id)}><Eye className="mr-1 size-3.5" />View</Button><Button variant="ghost" size="sm" onClick={() => openEdit(visit.id)}><Pencil className="mr-1 size-3.5" />Edit</Button><Button variant="ghost" size="sm" onClick={() => printRecord(prescription)}><Printer className="mr-1 size-3.5" />Print</Button></> : <Button size="sm" onClick={() => openCreate(visit.id)}><Plus className="mr-1 size-3.5" />Create Prescription</Button>}<Button variant="ghost" size="sm" onClick={() => openBlank(visit.id)}><FileText className="mr-1 size-3.5" />Blank Prescription</Button></div></td></tr>
       }
       )}</tbody></table></div></CardContent></Card>}
   </div>
@@ -845,6 +859,30 @@ function buildPrintHtml(title: string, patient: ExistingPatient | null, center: 
   return `<!doctype html><html><head><title>${escapeHtml(title)}</title><style>@page{size:A4 portrait;margin:14mm}*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#17202a;font-size:12px}.header{border-bottom:2px solid #167b91;padding-bottom:12px;margin-bottom:16px}.clinic{font-size:26px;font-weight:700;color:#167b91}.tag{font-weight:600;margin:4px 0}.address{color:#4b5563;line-height:1.5}.title{font-size:16px;font-weight:700;text-transform:uppercase;margin:18px 0 10px}.patient{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:10px;border:1px solid #b8c7cc;background:#f7fafb}.section{margin-top:18px}.rule{border-bottom:1px solid #b8c7cc;height:34px}.notes{border:1px solid #b8c7cc;padding:8px;margin-top:6px;min-height:34px;white-space:pre-wrap}.table{width:100%;border-collapse:collapse;margin-top:8px}.table th,.table td{border:1px solid #b8c7cc;padding:8px;text-align:left}.table th{background:#edf5f6}.signature{display:grid;grid-template-columns:1fr 1fr;gap:80px;margin-top:100px;text-align:center}.signature div{border-top:1px solid #17202a;padding-top:8px}@media print{body{margin:0}}</style></head><body><header class="header"><div class="clinic">${clinic}</div><div class="tag">${subtitle}</div><div class="address">Onden Road, Kannur - 670001, Kerala<br>PH: 8111999581 / 8111999582</div></header><div class="title">${escapeHtml(title)}</div>${patientInfo}<section class="section"><b>${title.includes('Prescription') ? 'Medicines' : 'Clinical Examination'}</b><table class="table"><thead><tr>${columns.map((c) => `<th>${escapeHtml(c)}</th>`).join('')}</tr></thead><tbody>${tableRows}</tbody></table></section>${sections}<div class="signature"><div>Doctor Signature</div><div>Dietitian Signature</div></div></body></html>`
 }
 
+function buildBlankOPPrintHtml(center: string, patient: ExistingPatient | null): string {
+  const nutrition = center.toLowerCase().includes('nutrition')
+  const clinic = nutrition ? 'NEW YOU' : 'Ayurcare Center'
+  const subtitle = nutrition ? 'Lose Weight. Choose Health. | Centre for Professional Weight Management' : 'Jubilee Bazar'
+
+  const patientInfo = patient
+    ? `<div class="patient"><b>Patient:</b> ${escapeHtml(patient.name)}<b>MR No:</b> ${escapeHtml(patient.mr)}<b>Age / Gender:</b> ${patient.age} / ${escapeHtml(patient.gender)}<b>Blood Group:</b> ${escapeHtml(patient.bloodGroup)}<b>Mobile:</b> ${escapeHtml(patient.mobile)}<b>Date:</b> ${new Date().toLocaleDateString()}</div>`
+    : '<div class="patient"><b>Patient:</b> ____________________ <b>MR No:</b> ____________________ <b>Age / Gender:</b> ____________________ <b>Blood Group:</b> ____________________ <b>Mobile:</b> ____________________ <b>Date:</b> ____________________</div>'
+
+  return `<!doctype html><html><head><title>OP Registration Sheet</title><style>@page{size:A4 portrait;margin:14mm}*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#17202a;font-size:12px}.header{border-bottom:2px solid #167b91;padding-bottom:12px;margin-bottom:16px}.clinic{font-size:26px;font-weight:700;color:#167b91}.tag{font-weight:600;margin:4px 0}.address{color:#4b5563;line-height:1.5}.title{font-size:16px;font-weight:700;text-transform:uppercase;margin:18px 0 10px}.patient{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:10px;border:1px solid #b8c7cc;background:#f7fafb}@media print{body{margin:0}}</style></head><body><header class="header"><div class="clinic">${clinic}</div><div class="tag">${subtitle}</div><div class="address">Onden Road, Kannur - 670001, Kerala<br>PH: 8111999581 / 8111999582</div></header><div class="title">OP Registration Sheet</div>${patientInfo}</body></html>`
+}
+
+function buildBlankPrescriptionPrintHtml(center: string, patient: ExistingPatient | null): string {
+  const nutrition = center.toLowerCase().includes('nutrition')
+  const clinic = nutrition ? 'NEW YOU' : 'Ayurcare Center'
+  const subtitle = nutrition ? 'Lose Weight. Choose Health. | Centre for Professional Weight Management' : 'Jubilee Bazar'
+
+  const patientInfo = patient
+    ? `<div class="patient"><b>Patient:</b> ${escapeHtml(patient.name)}<b>MR No:</b> ${escapeHtml(patient.mr)}<b>Age / Gender:</b> ${patient.age} / ${escapeHtml(patient.gender)}<b>Blood Group:</b> ${escapeHtml(patient.bloodGroup)}<b>Mobile:</b> ${escapeHtml(patient.mobile)}<b>Date:</b> ${new Date().toLocaleDateString()}</div>`
+    : '<div class="patient"><b>Patient:</b> ____________________ <b>MR No:</b> ____________________ <b>Age / Gender:</b> ____________________ <b>Blood Group:</b> ____________________ <b>Mobile:</b> ____________________ <b>Date:</b> ____________________</div>'
+
+  return `<!doctype html><html><head><title>Prescription</title><style>@page{size:A4 portrait;margin:14mm}*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#17202a;font-size:12px}.header{border-bottom:2px solid #167b91;padding-bottom:12px;margin-bottom:16px}.clinic{font-size:26px;font-weight:700;color:#167b91}.tag{font-weight:600;margin:4px 0}.address{color:#4b5563;line-height:1.5}.title{font-size:16px;font-weight:700;text-transform:uppercase;margin:18px 0 10px}.patient{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:10px;border:1px solid #b8c7cc;background:#f7fafb}@media print{body{margin:0}}</style></head><body><header class="header"><div class="clinic">${clinic}</div><div class="tag">${subtitle}</div><div class="address">Onden Road, Kannur - 670001, Kerala<br>PH: 8111999581 / 8111999582</div></header><div class="title">Prescription</div>${patientInfo}</body></html>`
+}
+
 function openA4Print(title: string, patient: ExistingPatient | null, center: string, content?: PrintContent) {
   const printFrame = document.createElement('iframe')
   printFrame.style.cssText = 'position:fixed;left:0;top:0;width:0;height:0;border:0;opacity:0;pointer-events:none'
@@ -859,6 +897,72 @@ function openA4Print(title: string, patient: ExistingPatient | null, center: str
 
   frameDoc.open()
   frameDoc.write(buildPrintHtml(title, patient, center, content))
+  frameDoc.close()
+
+  let printed = false
+  const doPrint = () => {
+    if (printed) return
+    printed = true
+    printFrame.contentWindow?.focus()
+    printFrame.contentWindow?.print()
+    setTimeout(() => {
+      if (printFrame.parentNode) {
+        document.body.removeChild(printFrame)
+      }
+    }, 100)
+  }
+
+  printFrame.onload = doPrint
+  setTimeout(doPrint, 100)
+}
+
+function openBlankA4Print(center: string, patient: ExistingPatient | null) {
+  const printFrame = document.createElement('iframe')
+  printFrame.style.cssText = 'position:fixed;left:0;top:0;width:0;height:0;border:0;opacity:0;pointer-events:none'
+  document.body.appendChild(printFrame)
+
+  const frameDoc = printFrame.contentDocument || printFrame.contentWindow?.document
+  if (!frameDoc) {
+    alert('Unable to create print preview. Please try again.')
+    document.body.removeChild(printFrame)
+    return
+  }
+
+  frameDoc.open()
+  frameDoc.write(buildBlankOPPrintHtml(center, patient))
+  frameDoc.close()
+
+  let printed = false
+  const doPrint = () => {
+    if (printed) return
+    printed = true
+    printFrame.contentWindow?.focus()
+    printFrame.contentWindow?.print()
+    setTimeout(() => {
+      if (printFrame.parentNode) {
+        document.body.removeChild(printFrame)
+      }
+    }, 100)
+  }
+
+  printFrame.onload = doPrint
+  setTimeout(doPrint, 100)
+}
+
+function openBlankPrescriptionA4Print(center: string, patient: ExistingPatient | null) {
+  const printFrame = document.createElement('iframe')
+  printFrame.style.cssText = 'position:fixed;left:0;top:0;width:0;height:0;border:0;opacity:0;pointer-events:none'
+  document.body.appendChild(printFrame)
+
+  const frameDoc = printFrame.contentDocument || printFrame.contentWindow?.document
+  if (!frameDoc) {
+    alert('Unable to create print preview. Please try again.')
+    document.body.removeChild(printFrame)
+    return
+  }
+
+  frameDoc.open()
+  frameDoc.write(buildBlankPrescriptionPrintHtml(center, patient))
   frameDoc.close()
 
   let printed = false
