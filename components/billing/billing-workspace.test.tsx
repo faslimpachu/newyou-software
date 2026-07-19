@@ -84,32 +84,6 @@ describe('BillingWorkspace', () => {
           }),
         })
       }
-      if (url.includes('/api/billing') && !url.includes('limit=100')) {
-        return Promise.resolve({
-          ok: true,
-          json: async () => ({
-            invoice: {
-              invoiceNumber: 'INV-00003',
-              center: 'nutrition',
-              billType: 'Consultation Bill',
-              patientName: 'Test Patient',
-              patientMrNumber: 'NU000003',
-              patientAge: '30',
-              patientDob: '1994-01-01',
-              patientGender: 'Male',
-              patientBloodGroup: 'A+',
-              patientAddress: 'Test Address, Test District, Test State, 560001',
-              patientContact: '9845012345',
-              invoiceDate: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
-              discount: 0,
-              tax: 0,
-              paid: 0,
-              paymentMethod: 'Cash',
-              items: [{ id: '1', name: 'Test service', quantity: 1, rate: 1000 }],
-            },
-          }),
-        })
-      }
       if (url.includes('/api/billing')) {
         return Promise.resolve({ ok: true, json: async () => ({ invoices }) })
       }

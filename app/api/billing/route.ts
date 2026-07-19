@@ -15,25 +15,17 @@ export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
     const patientMr = url.searchParams.get('patientMr') || '';
-    const page = parseInt(url.searchParams.get('page') || '1');
-    const limit = parseInt(url.searchParams.get('limit') || '10');
-    const skip = (page - 1) * limit;
 
     const where: Record<string, unknown> = {};
     if (patientMr) where.patientMrNumber = patientMr;
 
-    const [invoices, total] = await Promise.all([
-      prisma.invoice.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy: { createdAt: 'desc' },
-        include: { items: true },
-      }),
-      prisma.invoice.count({ where }),
-    ]);
+    const invoices = await prisma.invoice.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      include: { items: true },
+    });
 
-    return NextResponse.json({ invoices, total, page, limit });
+    return NextResponse.json({ invoices });
   } catch (e) {
     console.error('Billing GET error', e);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

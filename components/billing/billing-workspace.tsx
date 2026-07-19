@@ -394,7 +394,7 @@ export function BillingWorkspace() {
 
   const fetchInvoices = useCallback(async () => {
     try {
-      const res = await fetch('/api/billing?limit=100')
+      const res = await fetch('/api/billing')
       if (!res.ok) throw new Error('Failed to load invoices')
       const data = await res.json()
       const mapped = (data.invoices || []).map(mapDbInvoiceToFrontend).sort((a, b) => b.date.localeCompare(a.date))
@@ -427,7 +427,7 @@ export function BillingWorkspace() {
     const initialInvoices = async () => {
       setLoadingInvoices(true)
       try {
-        const res = await fetch('/api/billing?limit=100')
+      const res = await fetch('/api/billing')
         if (!res.ok) throw new Error('Failed to load invoices')
         const data = await res.json()
         if (mounted) {
