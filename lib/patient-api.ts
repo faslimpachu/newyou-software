@@ -47,6 +47,19 @@ export type ApiDocument = {
   uploadedAt?: string
 }
 
+export type ApiFollowUp = {
+  id: string
+  patientMr: string
+  program?: string | null
+  reviewDate?: string | null
+  dueDate?: string | null
+  assignedTo?: string | null
+  priority?: string | null
+  status?: string | null
+  remarks?: string | null
+  createdAt?: string
+}
+
 export type ApiPatient = {
   mr: string
   consultationType: string
@@ -67,6 +80,7 @@ export type ApiPatient = {
   visits?: ApiVisit[]
   opSheets?: ApiOPSheet[]
   prescriptions?: ApiPrescription[]
+  followUps?: ApiFollowUp[]
   documents?: ApiDocument[]
   emergencyContactName?: string | null
   emergencyContactPhone?: string | null
@@ -89,6 +103,7 @@ export type PatientRecord = ExistingPatient & {
   apiVisits?: ApiVisit[]
   apiOPSheets?: ApiOPSheet[]
   apiPrescriptions?: ApiPrescription[]
+  apiFollowUps?: ApiFollowUp[]
   apiDocuments?: ApiDocument[]
 }
 
@@ -146,6 +161,7 @@ export function mapApiPatient(patient: ApiPatient): PatientRecord {
     apiVisits: patient.visits ?? [],
     apiOPSheets: patient.opSheets ?? [],
     apiPrescriptions: patient.prescriptions ?? [],
+    apiFollowUps: patient.followUps ?? [],
     apiDocuments: patient.documents ?? [],
     allergies: patient.allergies ?? undefined,
     conditions: patient.conditions ?? undefined,

@@ -55,3 +55,33 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
+
+export async function PATCH(request: Request) {
+  try {
+    const body = await request.json();
+    const { id, program, reviewDate, dueDate, assignedTo, priority, status, remarks } = body;
+
+    if (!id) {
+      return NextResponse.json({ error: 'id is required' }, { status: 400 });
+    }
+
+    const data: Record<string, unknown> = {};
+    if (program !== undefined) data.program = program;
+    if (reviewDate !== undefined) data.reviewDate = reviewDate ? new Date(reviewDate) : null;
+    if (dueDate !== undefined) data.dueDate = dueDate ? new Date(dueDate) : null;
+    if (assignedTo !== undefined) data.assignedTo = assignedTo;
+    if (priority !== undefined) data.priority = priority;
+    if (status !== undefined) data.status = status;
+    if (remarks !== undefined) data.remarks = remarks;
+
+    const followUp = await prisma.followUp.update({
+      where: { id },
+      data,
+    });
+
+    return NextResponse.json({ followUp });
+  } catch (e) {
+    console.error('Follow-ups PATCH error', e);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}

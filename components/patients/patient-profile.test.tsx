@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { PatientProfile } from '@/components/patients/patient-profile'
 import { existingPatients } from '@/lib/registration-data'
@@ -375,7 +375,7 @@ describe('PatientProfile', () => {
         { id: 'NU000001', date: '01 Jan 2026', center: 'Nutrition Center', doctor: 'Dr. A', reason: 'Checkup' },
       ],
       apiOPSheets: [{ id: 'OP-1', visitId: 'NU000001', clinicalExamination: '', vitals: null, diagnosis: '', symptoms: '', status: null, createdAt: new Date().toISOString(), visit: undefined, prescription: null }],
-      apiPrescriptions: [{ id: 'RX-1', visitId: 'NU000001', opSheetId: 'OP-1', diagnosis: '', medicines: '[]', advice: '', followUp: '', createdAt: new Date().toISOString(), opSheet: { id: 'OP-1', visitId: 'NU000001', clinicalExamination: '', vitals: null, diagnosis: '', symptoms: '', status: null, createdAt: new Date().toISOString(), visit: undefined, prescription: null } }],
+      apiPrescriptions: [{ id: 'RX-1', patientMr: 'MR000001', visitId: 'NU000001', opSheetId: 'OP-1', diagnosis: '', medicines: '[]', advice: '', followUp: '', createdAt: new Date().toISOString(), opSheet: { id: 'OP-1', visitId: 'NU000001', clinicalExamination: '', vitals: null, diagnosis: '', symptoms: '', status: null, createdAt: new Date().toISOString(), visit: undefined, prescription: null } }],
     }
 
     render(<PatientProfile patient={patientWithOP} center="Nutrition Center" />)
@@ -399,7 +399,7 @@ describe('PatientProfile', () => {
 
     const refreshedPatient = {
       ...patientWithOP,
-      apiPrescriptions: [{ id: 'RX-1', visitId: 'NU000001', opSheetId: 'OP-1', diagnosis: '', medicines: '[]', advice: '', followUp: '', createdAt: new Date().toISOString(), opSheet }],
+      apiPrescriptions: [{ id: 'RX-1', patientMr: 'MR000001', visitId: 'NU000001', opSheetId: 'OP-1', diagnosis: '', medicines: '[]', advice: '', followUp: '', createdAt: new Date().toISOString(), opSheet }],
     }
 
     const mockFetch = vi.fn()
@@ -526,7 +526,7 @@ describe('PatientProfile', () => {
         { id: 'NU000001', date: '01 Jan 2026', center: 'Ayurcare Center', doctor: 'Dr. A', reason: 'Checkup' },
       ],
       apiOPSheets: [],
-      apiPrescriptions: [{ id: 'RX-1', visitId: 'NU000001', opSheetId: 'OP-1', diagnosis: '', medicines: '[]', advice: '', followUp: '', createdAt: new Date().toISOString(), opSheet: { id: 'OP-1', visitId: 'NU000001', clinicalExamination: '', vitals: null, diagnosis: '', symptoms: '', status: null, createdAt: new Date().toISOString(), visit: undefined, prescription: null } }],
+      apiPrescriptions: [{ id: 'RX-1', patientMr: 'MR000001', visitId: 'NU000001', opSheetId: 'OP-1', diagnosis: '', medicines: '[]', advice: '', followUp: '', createdAt: new Date().toISOString(), opSheet: { id: 'OP-1', visitId: 'NU000001', clinicalExamination: '', vitals: null, diagnosis: '', symptoms: '', status: null, createdAt: new Date().toISOString(), visit: undefined, prescription: null } }],
     }
 
     render(<PatientProfile patient={patientWithVisit} center="Nutrition Center" />)
@@ -863,5 +863,173 @@ describe('PatientProfile', () => {
       expect(printCalls.some((call) => call.write.includes('NEW YOU'))).toBe(true)
     })
     expect(printCalls.some((call) => call.write.includes('Ayurcare Center'))).toBe(false)
+  })
+
+  it('shows patient-based follow-ups in the patient profile tab', async () => {
+    const patientWithFollowUps = {
+      ...existingPatients[0],
+      apiFollowUps: [{
+        id: 'FU-1',
+        patientMr: 'MR000001',
+        program: 'Weight Loss',
+        reviewDate: '2026-07-20T00:00:00.000Z',
+        dueDate: '2026-07-25T00:00:00.000Z',
+        assignedTo: 'Dr. Neha Verma',
+        priority: 'High',
+        status: 'Pending',
+        remarks: 'Call before visit',
+      }],
+    }
+
+    render(<PatientProfile patient={patientWithFollowUps} center="Nutrition Center" />)
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Follow-ups' }))
+
+    expect(screen.getByRole('heading', { name: 'Follow-ups' })).toBeDefined()
+    expect(screen.getByText('Dr. Neha Verma')).toBeDefined()
+    expect(screen.queryByText('Follow-up ID')).toBeNull()
+    expect(screen.queryByText('Program')).toBeNull()
+    expect(screen.queryByText('Visit ID')).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: /View/ }))
+
+    expect(screen.getByText('Follow-up details')).toBeDefined()
+    expect(screen.getByText('FU-1')).toBeDefined()
+    expect(screen.getByText('Weight Loss')).toBeDefined()
+  })
+
+  it('creates a patient follow-up from the patient profile without visitId', async () => {
+    const mockFetch = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          followUp: {
+            id: 'FU-1',
+            patientMr: 'MR000001',
+            program: 'Diet review',
+            reviewDate: '2026-07-20T00:00:00.000Z',
+            dueDate: '2026-07-25T00:00:00.000Z',
+            assignedTo: 'Dr. Neha Verma',
+            priority: 'High',
+            status: 'Pending',
+            remarks: 'Call before visit',
+          },
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          patient: {
+            mr: existingPatients[0].mr,
+            consultationType: 'NUTRITION',
+            patientName: existingPatients[0].name,
+            parentName: existingPatients[0].parentName,
+            gender: existingPatients[0].gender,
+            mobileNumber: existingPatients[0].mobile,
+            address: '',
+            district: existingPatients[0].city,
+            state: '',
+            pinCode: '',
+            visits: [],
+            followUps: [],
+          },
+        }),
+      })
+
+    global.fetch = mockFetch
+
+    render(<PatientProfile patient={{ ...existingPatients[0], apiFollowUps: [] }} center="Nutrition Center" />)
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Follow-ups' }))
+    fireEvent.click(screen.getAllByRole('button', { name: /Create follow-up/ })[0])
+    expect(screen.getAllByText('Create follow-up').length).toBeGreaterThan(1)
+    fireEvent.change(screen.getByLabelText('Program'), { target: { value: 'Diet review' } })
+    fireEvent.change(screen.getByLabelText('Assigned To'), { target: { value: 'Dr. Neha Verma' } })
+    fireEvent.change(screen.getByLabelText('Review Date'), { target: { value: '2026-07-20' } })
+    fireEvent.change(screen.getByLabelText('Due Date'), { target: { value: '2026-07-25' } })
+    fireEvent.change(screen.getByLabelText('Priority'), { target: { value: 'High' } })
+    fireEvent.change(screen.getByLabelText('Remarks'), { target: { value: 'Call before visit' } })
+    fireEvent.click(screen.getByRole('button', { name: /Save follow-up/ }))
+
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledWith('/api/follow-ups', expect.objectContaining({
+        method: 'POST',
+        body: expect.stringContaining('"patientMr":"MR000001"'),
+      }))
+    })
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body)
+    expect(body.visitId).toBeUndefined()
+    expect(body.program).toBe('Diet review')
+  })
+
+  it('updates an existing patient follow-up through PATCH', async () => {
+    const patientWithFollowUps = {
+      ...existingPatients[0],
+      apiFollowUps: [{
+        id: 'FU-1',
+        patientMr: 'MR000001',
+        program: 'Weight Loss',
+        reviewDate: '',
+        dueDate: '',
+        assignedTo: '',
+        priority: 'Medium',
+        status: 'Pending',
+        remarks: '',
+      }],
+    }
+
+    const mockFetch = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          followUp: {
+            id: 'FU-1',
+            patientMr: 'MR000001',
+            program: 'Weight Loss',
+            priority: 'Medium',
+            status: 'Completed',
+            remarks: 'Done',
+          },
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          patient: {
+            mr: existingPatients[0].mr,
+            consultationType: 'NUTRITION',
+            patientName: existingPatients[0].name,
+            parentName: existingPatients[0].parentName,
+            gender: existingPatients[0].gender,
+            mobileNumber: existingPatients[0].mobile,
+            address: '',
+            district: existingPatients[0].city,
+            state: '',
+            pinCode: '',
+            visits: [],
+            followUps: [],
+          },
+        }),
+      })
+
+    global.fetch = mockFetch
+
+    render(<PatientProfile patient={patientWithFollowUps} center="Nutrition Center" />)
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Follow-ups' }))
+    const editButtons = screen.getAllByRole('button', { name: /Edit/ })
+    fireEvent.click(editButtons[editButtons.length - 1])
+    expect(screen.getByText('Update follow-up')).toBeDefined()
+    fireEvent.change(screen.getByDisplayValue('Pending'), { target: { value: 'Completed' } })
+    fireEvent.change(screen.getByLabelText('Remarks'), { target: { value: 'Done' } })
+    fireEvent.click(screen.getByRole('button', { name: /Save follow-up/ }))
+
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledWith('/api/follow-ups', expect.objectContaining({
+        method: 'PATCH',
+        body: expect.stringContaining('"id":"FU-1"'),
+      }))
+    })
   })
 })

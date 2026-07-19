@@ -13,7 +13,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ mr:
         prescriptions: { orderBy: { createdAt: 'desc' }, include: { opSheet: { include: { visit: true } } } },
         nutritionAssessments: true,
         ayurcareTreatments: true,
-        followUps: true,
+        followUps: { orderBy: { createdAt: 'desc' } },
         documents: { orderBy: { uploadedAt: 'desc' } },
       },
     });
@@ -110,7 +110,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ m
         prescriptions: { orderBy: { createdAt: 'desc' }, include: { opSheet: { include: { visit: true } } } },
         nutritionAssessments: true,
         ayurcareTreatments: true,
-        followUps: true,
+        followUps: { orderBy: { createdAt: 'desc' } },
         documents: { orderBy: { uploadedAt: 'desc' } },
       },
     });

@@ -13,14 +13,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 import { type ExistingPatient, centerOptions, type ConsultationCenter, doctorsFor } from '@/lib/registration-data'
-import { mapApiPatient, readApiError, type ApiOPSheet, type ApiPatient, type ApiPrescription, type PatientRecord } from '@/lib/patient-api'
+import { mapApiPatient, readApiError, type ApiFollowUp, type ApiOPSheet, type ApiPatient, type ApiPrescription, type PatientRecord } from '@/lib/patient-api'
 import { PatientProfileEditor } from './patient-profile-editor'
 
 const measurements = ['Weight (kg)', 'Height (cm)', 'BMI', 'Body Fat (%)', 'Lean Mass (kg)', 'Waist (cm)', 'Hip (cm)', 'WHR', 'Muscle Mass (kg)', 'Water (%)', 'BMR (kcal)', 'Metabolic Age']
 const measurementColumns = ['Baseline', '1 Month', '2 Months', '3 Months', 'Change']
 
 function Field({ label, value, onChange, type = 'text', placeholder, error, inputMode }: { label: string; value: string; onChange: (v: string) => void; type?: string; placeholder?: string; error?: string; inputMode?: HTMLAttributes<HTMLInputElement>['inputMode'] }) {
-  return <div className="space-y-1.5"><Label className="text-xs font-medium text-muted-foreground">{label}</Label><Input value={value} type={type} inputMode={inputMode} aria-invalid={!!error} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} />{error && <p className="text-xs text-destructive">{error}</p>}</div>
+  return <div className="space-y-1.5"><Label className="text-xs font-medium text-muted-foreground">{label}</Label><Input value={value} type={type} inputMode={inputMode} aria-label={label} aria-invalid={!!error} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} />{error && <p className="text-xs text-destructive">{error}</p>}</div>
 }
 
 function Section({ title, description, children }: { title: string; description?: string; children: ReactNode }) {
@@ -128,7 +128,7 @@ export function PatientProfile({ patient, center, generatedMR, justRegistered, o
   if (error) return <Card className="rounded-lg shadow-sm"><CardContent className="py-12 text-center text-sm text-destructive">{error}</CardContent></Card>
   if (editing) return <PatientProfileEditor patient={p} center={center} onCancel={() => setEditing(false)} onSaved={(updated) => { setLoadedPatient(updated); setEditing(false) }} />
   return <>
-    <div className="grid gap-6 xl:grid-cols-[280px_1fr]"><aside><Card className="sticky top-20 rounded-lg shadow-sm"><CardContent className="p-5"><div className="flex size-16 items-center justify-center rounded-full bg-primary/10 text-xl font-semibold text-primary">{p.name.split(' ').map((part) => part[0]).join('')}</div><h2 className="mt-4 font-display text-xl font-semibold">{p.name}</h2><p className="mt-1 text-sm text-muted-foreground">{p.mr}</p><dl className="mt-6 space-y-3 border-t pt-5 text-sm"><Info label="Age / Gender" value={`${p.age || '-'} / ${p.gender}`} /><Info label="Blood group" value={p.bloodGroup} /><Info label="Phone" value={p.mobile} /><Info label="Last visit" value={p.lastVisit} /></dl><div className="mt-6 grid grid-cols-2 gap-2"><Button size="sm" onClick={handleNewVisit}><CalendarDays className="mr-2 size-4" />New visit</Button><Button size="sm" variant="outline" onClick={() => setEditing(true)}><Pencil className="mr-2 size-4" />Edit</Button></div></CardContent></Card></aside><main><div className="mb-4 flex flex-wrap justify-between gap-2"><div><h2 className="font-display text-xl font-semibold">Patient profile</h2><p className="mt-1 text-sm text-muted-foreground">{center} ? Active outpatient record</p></div><div className="flex gap-2"><Button variant="outline" size="sm" onClick={print}><Printer className="mr-2 size-4" />Print</Button></div></div><Tabs defaultValue={justRegistered ? 'prescriptions' : 'overview'}><div className="overflow-x-auto"><TabsList className="h-10 bg-muted/70"><TabsTrigger value="overview">Overview</TabsTrigger><TabsTrigger value="visits">Visits</TabsTrigger><TabsTrigger value="op">OP Sheet</TabsTrigger><TabsTrigger value="prescriptions">Prescriptions</TabsTrigger></TabsList></div><TabsContent value="overview" className="mt-5"><Overview patient={p} onUpdateStatus={handleUpdateStatus} /></TabsContent><TabsContent value="visits" className="mt-5"><Visits patient={p} onUpdateStatus={handleUpdateStatus} /></TabsContent><TabsContent value="op" className="mt-5"><OPSheet patient={p} center={center} onRefresh={refreshPatient} onUpdateStatus={handleUpdateStatus} /></TabsContent><TabsContent value="prescriptions" className="mt-5"><Prescription patient={p} center={center} onRefresh={refreshPatient} /></TabsContent></Tabs></main></div>
+    <div className="grid gap-6 xl:grid-cols-[280px_1fr]"><aside><Card className="sticky top-20 rounded-lg shadow-sm"><CardContent className="p-5"><div className="flex size-16 items-center justify-center rounded-full bg-primary/10 text-xl font-semibold text-primary">{p.name.split(' ').map((part) => part[0]).join('')}</div><h2 className="mt-4 font-display text-xl font-semibold">{p.name}</h2><p className="mt-1 text-sm text-muted-foreground">{p.mr}</p><dl className="mt-6 space-y-3 border-t pt-5 text-sm"><Info label="Age / Gender" value={`${p.age || '-'} / ${p.gender}`} /><Info label="Blood group" value={p.bloodGroup} /><Info label="Phone" value={p.mobile} /><Info label="Last visit" value={p.lastVisit} /></dl><div className="mt-6 grid grid-cols-2 gap-2"><Button size="sm" onClick={handleNewVisit}><CalendarDays className="mr-2 size-4" />New visit</Button><Button size="sm" variant="outline" onClick={() => setEditing(true)}><Pencil className="mr-2 size-4" />Edit</Button></div></CardContent></Card></aside><main><div className="mb-4 flex flex-wrap justify-between gap-2"><div><h2 className="font-display text-xl font-semibold">Patient profile</h2><p className="mt-1 text-sm text-muted-foreground">{center} ? Active outpatient record</p></div><div className="flex gap-2"><Button variant="outline" size="sm" onClick={print}><Printer className="mr-2 size-4" />Print</Button></div></div><Tabs defaultValue={justRegistered ? 'prescriptions' : 'overview'}><div className="overflow-x-auto"><TabsList className="h-10 bg-muted/70"><TabsTrigger value="overview">Overview</TabsTrigger><TabsTrigger value="visits">Visits</TabsTrigger><TabsTrigger value="op">OP Sheet</TabsTrigger><TabsTrigger value="prescriptions">Prescriptions</TabsTrigger><TabsTrigger value="follow-ups">Follow-ups</TabsTrigger></TabsList></div><TabsContent value="overview" className="mt-5"><Overview patient={p} onUpdateStatus={handleUpdateStatus} /></TabsContent><TabsContent value="visits" className="mt-5"><Visits patient={p} onUpdateStatus={handleUpdateStatus} /></TabsContent><TabsContent value="op" className="mt-5"><OPSheet patient={p} center={center} onRefresh={refreshPatient} onUpdateStatus={handleUpdateStatus} /></TabsContent><TabsContent value="prescriptions" className="mt-5"><Prescription patient={p} center={center} onRefresh={refreshPatient} /></TabsContent><TabsContent value="follow-ups" className="mt-5"><FollowUps patient={p} onRefresh={refreshPatient} /></TabsContent></Tabs></main></div>
     {newVisitDialog && (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/20 p-4">
         <Card className="w-full max-w-md rounded-lg shadow-xl">
@@ -720,6 +720,189 @@ function PrescriptionEditor({ patient, center, record, readOnly, onCancel, onSav
     <div className="mt-16 grid grid-cols-2 gap-10 text-center text-sm">
       <div className="border-t pt-2">Doctor signature</div>
       <div className="border-t pt-2">Dietitian signature</div>
+    </div>
+  </div>
+}
+
+type FollowUpRecord = {
+  id: string
+  patientMr: string
+  program: string
+  reviewDate: string
+  dueDate: string
+  assignedTo: string
+  priority: string
+  status: string
+  remarks: string
+}
+
+function dateInputValue(value?: string | null) {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value.slice(0, 10)
+  return date.toISOString().slice(0, 10)
+}
+
+function mapFollowUpRecord(followUp: ApiFollowUp): FollowUpRecord {
+  return {
+    id: followUp.id,
+    patientMr: followUp.patientMr,
+    program: followUp.program || '',
+    reviewDate: dateInputValue(followUp.reviewDate),
+    dueDate: dateInputValue(followUp.dueDate),
+    assignedTo: followUp.assignedTo || '',
+    priority: followUp.priority || 'Medium',
+    status: followUp.status || 'Pending',
+    remarks: followUp.remarks || '',
+  }
+}
+
+function FollowUps({ patient, onRefresh }: { patient: PatientRecord; onRefresh?: () => void }) {
+  const [records, setRecords] = useState<FollowUpRecord[]>(() => (patient.apiFollowUps ?? []).map(mapFollowUpRecord))
+  const [editing, setEditing] = useState<FollowUpRecord | null>(null)
+  const [viewing, setViewing] = useState<FollowUpRecord | null>(null)
+  const [error, setError] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    setRecords((patient.apiFollowUps ?? []).map(mapFollowUpRecord))
+  }, [patient.apiFollowUps])
+
+  const blankRecord = (): FollowUpRecord => ({
+    id: '',
+    patientMr: patient.mr,
+    program: '',
+    reviewDate: '',
+    dueDate: '',
+    assignedTo: '',
+    priority: 'Medium',
+    status: 'Pending',
+    remarks: '',
+  })
+
+  const saveRecord = async (record: FollowUpRecord) => {
+    setSaving(true)
+    setError('')
+    const isUpdate = !!record.id
+    const payload = {
+      ...(isUpdate ? { id: record.id } : { patientMr: patient.mr }),
+      program: record.program,
+      reviewDate: record.reviewDate,
+      dueDate: record.dueDate,
+      assignedTo: record.assignedTo,
+      priority: record.priority,
+      status: record.status,
+      remarks: record.remarks,
+    }
+
+    try {
+      const response = await fetch('/api/follow-ups', {
+        method: isUpdate ? 'PATCH' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      if (!response.ok) {
+        setError(await readApiError(response))
+        return
+      }
+      const body = await response.json() as { followUp: ApiFollowUp }
+      const saved = mapFollowUpRecord(body.followUp)
+      setRecords((current) => isUpdate ? current.map((item) => (item.id === saved.id ? saved : item)) : [saved, ...current])
+      setEditing(null)
+      setViewing(null)
+      onRefresh?.()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save follow-up')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return <div className="space-y-4">
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <div>
+        <h3 className="font-display text-xl font-semibold">Follow-ups</h3>
+        <p className="text-sm text-muted-foreground">{patient.name} ? {patient.mr}</p>
+      </div>
+      <Button size="sm" onClick={() => { setError(''); setEditing(blankRecord()) }}><Plus className="mr-2 size-4" />Create follow-up</Button>
+    </div>
+    {error && <Card className="rounded-lg border-destructive/30 shadow-sm"><CardContent className="py-3 text-sm text-destructive">{error}</CardContent></Card>}
+    <Card className="rounded-lg shadow-sm">
+      <CardContent className="p-0">
+        {records.length ? <div className="overflow-x-auto"><table className="w-full min-w-[820px] text-left text-sm"><thead className="border-y bg-muted/40 text-xs text-muted-foreground"><tr><th className="p-3 font-medium">Review Date</th><th className="p-3 font-medium">Due Date</th><th className="p-3 font-medium">Assigned To</th><th className="p-3 font-medium">Priority</th><th className="p-3 font-medium">Status</th><th className="p-3 font-medium">Remarks</th><th className="p-3 font-medium text-right">Actions</th></tr></thead><tbody>{records.map((record) => <tr className="border-b" key={record.id}><td className="p-3">{formatRecordDate(record.reviewDate)}</td><td className="p-3">{formatRecordDate(record.dueDate)}</td><td className="p-3">{record.assignedTo || 'Unassigned'}</td><td className="p-3"><StatusBadge status={record.priority} /></td><td className="p-3"><StatusBadge status={record.status} /></td><td className="p-3">{record.remarks || 'No remarks'}</td><td className="p-3"><div className="flex justify-end gap-1"><Button variant="ghost" size="sm" onClick={() => { setError(''); setViewing(record) }}><Eye className="mr-1 size-3.5" />View</Button><Button variant="ghost" size="sm" onClick={() => { setError(''); setEditing(record) }}><Pencil className="mr-1 size-3.5" />Edit</Button></div></td></tr>)}</tbody></table></div> : <div className="py-12 text-center"><p className="font-medium">No follow-ups for this patient</p><Button size="sm" variant="outline" className="mt-3" onClick={() => setEditing(blankRecord())}><Plus className="mr-2 size-4" />Create follow-up</Button></div>}
+      </CardContent>
+    </Card>
+    {(editing || viewing) && <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/20 p-4">
+      <Card className="w-full max-w-2xl rounded-lg shadow-xl">
+        <CardHeader className="flex-row items-start justify-between">
+          <div>
+            <CardTitle>{editing ? (editing.id ? 'Update follow-up' : 'Create follow-up') : 'Follow-up details'}</CardTitle>
+            <CardDescription>{patient.name} - {patient.mr}</CardDescription>
+          </div>
+          <Button size="icon-sm" variant="ghost" onClick={() => { setEditing(null); setViewing(null) }} aria-label="Close follow-up dialog"><X className="size-4" /></Button>
+        </CardHeader>
+        <CardContent>
+          {editing ? <FollowUpEditor record={editing} saving={saving} onCancel={() => setEditing(null)} onSave={saveRecord} /> : viewing && <FollowUpDetails record={viewing} onEdit={() => { setEditing(viewing); setViewing(null) }} />}
+        </CardContent>
+      </Card>
+    </div>}
+  </div>
+}
+
+function FollowUpEditor({ record, saving, onCancel, onSave }: { record: FollowUpRecord; saving: boolean; onCancel: () => void; onSave: (record: FollowUpRecord) => void }) {
+  const [form, setForm] = useState(record)
+  const update = (key: keyof FollowUpRecord, value: string) => setForm((current) => ({ ...current, [key]: value }))
+
+  return <div>
+    <div className="grid gap-4 md:grid-cols-2">
+      <Field label="Program" value={form.program} placeholder="Weight Loss, Diet review..." onChange={(value) => update('program', value)} />
+      <Field label="Assigned To" value={form.assignedTo} placeholder="Staff member" onChange={(value) => update('assignedTo', value)} />
+      <Field label="Review Date" type="date" value={form.reviewDate} onChange={(value) => update('reviewDate', value)} />
+      <Field label="Due Date" type="date" value={form.dueDate} onChange={(value) => update('dueDate', value)} />
+      <div className="space-y-1.5">
+        <Label className="text-xs font-medium text-muted-foreground">Priority</Label>
+        <select aria-label="Priority" value={form.priority} onChange={(e) => update('priority', e.target.value)} className="h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm">
+          <option value="Low">Low</option>
+          <option value="Medium">Medium</option>
+          <option value="High">High</option>
+          <option value="Urgent">Urgent</option>
+        </select>
+      </div>
+      <div className="space-y-1.5">
+        <Label className="text-xs font-medium text-muted-foreground">Status</Label>
+        <select aria-label="Status" value={form.status} onChange={(e) => update('status', e.target.value)} className="h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm">
+          <option value="Pending">Pending</option>
+          <option value="Scheduled">Scheduled</option>
+          <option value="Completed">Completed</option>
+          <option value="Cancelled">Cancelled</option>
+        </select>
+      </div>
+      <div className="md:col-span-2">
+        <Label className="text-xs font-medium text-muted-foreground">Remarks</Label>
+        <Textarea aria-label="Remarks" className="mt-1.5 min-h-24" value={form.remarks} onChange={(e) => update('remarks', e.target.value)} placeholder="Notes for the next contact or review" />
+      </div>
+    </div>
+    <div className="mt-4 flex justify-end gap-2 border-t pt-4">
+      <Button variant="outline" size="sm" onClick={onCancel}>Cancel</Button>
+      <Button size="sm" disabled={saving} onClick={() => onSave(form)}><Check className="mr-2 size-4" />Save follow-up</Button>
+    </div>
+  </div>
+}
+
+function FollowUpDetails({ record, onEdit }: { record: FollowUpRecord; onEdit: () => void }) {
+  return <div className="space-y-5">
+    <div className="grid gap-4 text-sm md:grid-cols-2">
+      <Info label="Follow-up ID" value={record.id} />
+      <Info label="Program" value={record.program || 'Not recorded'} />
+      <Info label="Review date" value={formatRecordDate(record.reviewDate)} />
+      <Info label="Due date" value={formatRecordDate(record.dueDate)} />
+      <Info label="Assigned to" value={record.assignedTo || 'Unassigned'} />
+      <Info label="Priority" value={record.priority} />
+      <Info label="Status" value={record.status} />
+      <Info label="Remarks" value={record.remarks || 'No remarks'} />
+    </div>
+    <div className="flex justify-end border-t pt-4">
+      <Button size="sm" onClick={onEdit}><Pencil className="mr-2 size-4" />Edit follow-up</Button>
     </div>
   </div>
 }
