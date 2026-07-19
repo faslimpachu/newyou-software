@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Download, FileSpreadsheet, Printer, Search, Info, UserPlus, Trash2 } from 'lucide-react'
+import { Search, Info, UserPlus, Trash2, FileSpreadsheet } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -32,19 +32,6 @@ function exportToCSV(patients: Patient[], filename: string) {
   const link = document.createElement('a')
   link.href = url
   link.download = `${filename}_${new Date().toISOString().slice(0,10)}.csv`
-  link.click()
-  URL.revokeObjectURL(url)
-}
-
-function exportToExcel(patients: Patient[], filename: string) {
-  const headers = ['MR Number','Patient','Parent / Spouse','Phone','Age','Last Visit']
-  const rows = patients.map((p) => [p.mr, p.name, p.parent, p.phone, p.age, p.lastVisit])
-  const csv = [headers, ...rows].map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n')
-  const blob = new Blob(['\uFEFF' + csv], { type: 'application/vnd.ms-excel;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = `${filename}_${new Date().toISOString().slice(0,10)}.xls`
   link.click()
   URL.revokeObjectURL(url)
 }
@@ -116,16 +103,6 @@ export function PatientDirectory() {
     }
   }
 
-  const printDirectory = () => {
-    const win = window.open('', '_blank', 'noopener,noreferrer')
-    if (!win) return
-    const rowsHtml = (filtered.length ? filtered : patients).map((p) => `<tr><td>${p.mr}</td><td>${p.name}</td><td>${p.parent}</td><td>${p.phone}</td><td>${p.age}</td><td>${p.lastVisit}</td></tr>`).join('')
-    win.document.write(`<!doctype html><html><head><title>Patient List</title><style>@page{size:A4 portrait;margin:14mm}*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#17202a;font-size:12px}.header{border-bottom:2px solid #167b91;padding-bottom:12px;margin-bottom:16px;text-align:center}.clinic{font-size:22px;font-weight:700;color:#167b91}.address{color:#4b5563;margin-top:4px;font-size:11px}.title{font-size:16px;font-weight:700;text-transform:uppercase;margin:18px 0 10px}.meta{font-size:11px;margin-bottom:12px;color:#4b5563}.table{width:100%;border-collapse:collapse;margin-top:8px}.table th,.table td{border:1px solid #b8c7cc;padding:8px;text-align:left;font-size:11px}.table th{background:#edf5f6}@media print{body{margin:0}}</style></head><body><header class="header"><div class="clinic">NEW YOU & Ayurcare Center</div><div class="address">Onden Road, Kannur - 670001, Kerala · PH: 8111999581 / 8111999582</div></header><div class="title">Patient Directory</div><div class="meta">Printed on ${new Date().toLocaleDateString()} · Total: ${(filtered.length ? filtered : patients).length} patients</div><table class="table"><thead><tr><th>MR No</th><th>Patient</th><th>Parent/Spouse</th><th>Phone</th><th>Age</th><th>Last Visit</th></tr></thead><tbody>${rowsHtml}</tbody></table></body></html>`)
-    win.document.close()
-    win.focus()
-    win.print()
-  }
-
   return <div className="mx-auto max-w-[1600px] space-y-6">
     <div className="flex flex-wrap items-end justify-between gap-3">
       <div>
@@ -134,9 +111,6 @@ export function PatientDirectory() {
         <p className="mt-1 text-sm text-muted-foreground">Search registered patients, review details, and keep care status current.</p>
       </div>
       <div className="flex flex-wrap gap-2">
-        <Button variant="outline" size="sm" onClick={printDirectory}><Printer className="mr-2 size-4"/>Print</Button>
-        <Button variant="outline" size="sm" onClick={() => exportToCSV(filtered.length ? filtered : patients, 'patients')}><Download className="mr-2 size-4"/>Export PDF</Button>
-        <Button variant="outline" size="sm" onClick={() => exportToExcel(filtered.length ? filtered : patients, 'patients')}><FileSpreadsheet className="mr-2 size-4"/>Export Excel</Button>
         <Button variant="outline" size="sm" onClick={() => exportToCSV(filtered.length ? filtered : patients, 'patients')}><FileSpreadsheet className="mr-2 size-4"/>Export CSV</Button>
         <Button size="sm" onClick={() => router.push('/register')}><UserPlus className="mr-2 size-4"/>Register patient</Button>
       </div>
