@@ -159,6 +159,7 @@ model FollowUp {
 
 model Expense {
   id            String   @id @default(cuid())
+  expenseNumber String   @unique
   date          String   // ISO yyyy-mm-dd
   category      String
   description   String

@@ -42,16 +42,17 @@ const mockInvoices = [
 
 const mockExpenses = [
   {
-    id: 'EXP-10001',
-    date: '2026-06-01',
-    category: 'Rent',
-    description: 'Monthly clinic rent',
-    amount: 45000,
-    paymentMethod: 'Bank Transfer',
-    paidTo: 'Property Owner',
+    id: 'cmrr88hrn000010qkop5ryua7',
+    expenseNumber: 'EXP-00001',
+    date: '2026-07-19',
+    category: 'Salary',
+    description: 'E',
+    amount: 2,
+    paymentMethod: 'Cash',
+    paidTo: '',
     remarks: '',
     addedBy: 'Front Office',
-    createdDate: '01 Jun 2026',
+    createdDate: '19 Jul 2026',
   },
 ]
 
@@ -186,7 +187,7 @@ describe('BillingWorkspace', () => {
 
     fireEvent.click(screen.getByText('Expenses'))
     await waitFor(() => {
-      expect(screen.getByText('EXP-10001')).toBeDefined()
+      expect(screen.getByText('EXP-00001')).toBeDefined()
     })
   })
 

@@ -56,6 +56,7 @@ type Invoice = {
 
 type Expense = {
   id: string
+  expenseNumber: string
   date: string // ISO yyyy-mm-dd
   category: string
   description: string
@@ -535,7 +536,7 @@ export function BillingWorkspace() {
   const handleSaveExpense = async (expense: Expense) => {
     setSavingExpense(true)
     try {
-      const isEdit = Boolean(expense.id && expense.id.length > 0 && !expense.id.startsWith('EXP-'))
+      const isEdit = Boolean(expense.expenseNumber && expense.expenseNumber.length > 0 && expense.expenseNumber.startsWith('EXP-'))
       const url = isEdit ? `/api/expenses/${expense.id}` : '/api/expenses'
       const method = isEdit ? 'PATCH' : 'POST'
 
@@ -1274,6 +1275,7 @@ function ExpensesPanel({
     let rows = expenses.filter((exp) => {
       const matchesSearch =
         term.length === 0 ||
+        exp.expenseNumber.toLowerCase().includes(term) ||
         exp.id.toLowerCase().includes(term) ||
         exp.description.toLowerCase().includes(term) ||
         exp.paidTo.toLowerCase().includes(term) ||
@@ -1357,7 +1359,7 @@ function ExpensesPanel({
             <tbody>
               {filtered.map((exp) => (
                 <tr key={exp.id} className="border-b last:border-0 hover:bg-muted/30">
-                  <td className="px-4 py-3 font-medium text-primary">{exp.id}</td>
+                  <td className="px-4 py-3 font-medium text-primary">{exp.expenseNumber}</td>
                   <td className="px-4 py-3 text-muted-foreground">{formatDateDisplay(exp.date)}</td>
                   <td className="px-4 py-3"><span className="rounded-full bg-muted px-2 py-0.5 text-xs">{exp.category}</span></td>
                   <td className="px-4 py-3 max-w-[220px] truncate" title={exp.description}>{exp.description}</td>
@@ -1624,7 +1626,7 @@ function ExpenseDetailModal({
       <div className="flex items-center justify-between border-b px-6 py-4 print:hidden">
         <div>
           <h2 className="font-display text-lg font-semibold">Expense details</h2>
-          <p className="text-sm text-muted-foreground">{expense.id}</p>
+          <p className="text-sm text-muted-foreground">{expense.expenseNumber}</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={onEdit}>
@@ -1653,7 +1655,7 @@ function ExpenseDetailModal({
           </div>
 
           <div className="flex items-center justify-between text-sm">
-            <p><span className="text-neutral-500">Expense ID: </span>{expense.id}</p>
+            <p><span className="text-neutral-500">Expense ID: </span>{expense.expenseNumber}</p>
             <p><span className="text-neutral-500">Date: </span>{formatDateDisplay(expense.date)}</p>
           </div>
 

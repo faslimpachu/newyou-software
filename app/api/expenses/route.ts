@@ -53,8 +53,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'date, category, description, and amount are required' }, { status: 400 });
     }
 
+    const lastExpense = await prisma.expense.findFirst({
+      orderBy: { expenseNumber: 'desc' },
+      select: { expenseNumber: true },
+    });
+
+    const nextNum = lastExpense ? parseInt(lastExpense.expenseNumber.replace('EXP-', ''), 10) + 1 : 1;
+
     const expense = await prisma.expense.create({
       data: {
+        expenseNumber: `EXP-${String(nextNum).padStart(5, '0')}`,
         date,
         category,
         description,
