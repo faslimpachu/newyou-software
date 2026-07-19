@@ -202,7 +202,7 @@ describe('PatientWorkspace registration flow', () => {
     await waitFor(() => expect(screen.getByText('Consulting Doctor')).toBeDefined())
 
     fireEvent.change(screen.getByLabelText('First name *'), { target: { value: 'Test' } })
-    fireEvent.change(screen.getByLabelText('Parent / spouse name *'), { target: { value: 'Parent' } })
+    fireEvent.change(screen.getByLabelText('Parent / spouse name'), { target: { value: 'Parent' } })
     fireEvent.change(screen.getByLabelText('Gender *'), { target: { value: 'Male' } })
     fireEvent.change(screen.getByLabelText('Mobile number *'), { target: { value: mobile } })
     fireEvent.change(screen.getByLabelText('Email address'), { target: { value: 'test@example.com' } })
@@ -251,7 +251,7 @@ describe('PatientWorkspace registration flow', () => {
     await waitFor(() => expect(screen.getByText('Consulting Doctor')).toBeDefined())
 
     fireEvent.change(screen.getByLabelText('First name *'), { target: { value: 'DOB' } })
-    fireEvent.change(screen.getByLabelText('Parent / spouse name *'), { target: { value: 'Parent' } })
+    fireEvent.change(screen.getByLabelText('Parent / spouse name'), { target: { value: 'Parent' } })
     fireEvent.change(screen.getByLabelText('Gender *'), { target: { value: 'Male' } })
     fireEvent.change(screen.getByLabelText('Mobile number *'), { target: { value: mobile } })
     fireEvent.change(screen.getByLabelText('Date of birth'), { target: { value: '1990-05-15' } })

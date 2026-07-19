@@ -33,7 +33,7 @@ export async function POST(request: Request) {
       diet,
     } = body;
 
-    if (!consultationType || !patientName || !parentName || !gender || !mobileNumber || !address || !district || !state || !pinCode) {
+    if (!consultationType || !patientName || !gender || !mobileNumber || !address || !district || !state || !pinCode) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 

@@ -187,7 +187,7 @@ export function PatientProfileEditor({ patient, center, onCancel, onSaved }: Pat
           <Field id="editDob" label="Date of birth" value={form.dob} type="date" onChange={update('dob')} />
           {select('Gender *', 'gender', ['Male', 'Female', 'Other'], errors.gender)}
           {select('Blood group', 'bloodGroup', ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'])}
-          <Field id="editParentName" label="Parent / spouse name *" value={form.parentName} onChange={update('parentName')} error={errors.parentName} />
+          <Field id="editParentName" label="Parent / spouse name" value={form.parentName} onChange={update('parentName')} error={errors.parentName} />
         </div>
       </Section>
       <Section title="Contact Information">

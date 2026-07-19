@@ -29,16 +29,14 @@ describe('Billing API', () => {
     const req = new Request('http://localhost/api/billing', {
       method: 'POST',
       body: JSON.stringify({
-        patientMr: patient.mr,
-        consultationType: 'Consultation',
-        centerType: 'NUTRITION',
-        subtotal: 100,
+        center: 'NUTRITION',
+        billType: 'Consultation',
+        patient: { name: 'Test', mrNumber: patient.mr, age: '', gender: 'Male', contact: '9999999999', address: 'Addr' },
+        items: [{ name: 'Consultation', quantity: 1, rate: 100 }],
+        discount: 0,
         tax: 10,
-        grandTotal: 110,
+        paid: 110,
         paymentMethod: 'Cash',
-        paidAmount: 110,
-        balance: 0,
-        status: 'Paid',
       }),
     });
     const res = await POST(req);
@@ -56,7 +54,7 @@ describe('Billing API', () => {
     });
 
     await prisma.invoice.create({
-      data: { patientMr: patient.mr, invoiceNumber: 'INV-001', subtotal: 100, tax: 10, grandTotal: 110, paidAmount: 110, balance: 0 },
+      data: { patientMrNumber: patient.mr, invoiceNumber: 'INV-001', center: 'NUTRITION', billType: 'Consultation', patientName: 'Test', invoiceDate: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }), subtotal: 100, tax: 10, grandTotal: 110, paid: 110, balance: 0 },
     });
 
     const req = new Request('http://localhost/api/billing?patientMr=' + patient.mr, { method: 'GET' });
