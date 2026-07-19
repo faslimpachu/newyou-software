@@ -376,7 +376,7 @@ export function BillingWorkspace() {
   /* ---------------- dashboard summary ---------------- */
 
   const totalRevenue = useMemo(
-    () => invoices.reduce((sum, inv) => sum + Math.min(inv.paid, computeTotals(inv.items, inv.discount, inv.tax, inv.paid).total), 0),
+    () => invoices.reduce((sum, inv) => sum + computeTotals(inv.items, inv.discount, inv.tax, inv.paid).total, 0),
     [invoices],
   )
   const totalExpenses = useMemo(() => expenses.reduce((sum, exp) => sum + exp.amount, 0), [expenses])
@@ -391,42 +391,81 @@ export function BillingWorkspace() {
   )
 
   const fetchInvoices = useCallback(async () => {
-    setLoadingInvoices(true)
-    setErrorInvoices('')
     try {
       const res = await fetch('/api/billing?limit=100')
       if (!res.ok) throw new Error('Failed to load invoices')
       const data = await res.json()
       const mapped = (data.invoices || []).map(mapDbInvoiceToFrontend)
       setInvoices(mapped)
+      setErrorInvoices('')
     } catch (err: any) {
       setErrorInvoices(err.message || 'Failed to load invoices')
-    } finally {
-      setLoadingInvoices(false)
     }
   }, [])
 
   const fetchExpenses = useCallback(async () => {
-    setLoadingExpenses(true)
-    setErrorExpenses('')
     try {
       const res = await fetch('/api/expenses')
       if (!res.ok) throw new Error('Failed to load expenses')
       const data = await res.json()
       setExpenses(data.expenses || [])
+      setErrorExpenses('')
     } catch (err: any) {
       setErrorExpenses(err.message || 'Failed to load expenses')
-    } finally {
-      setLoadingExpenses(false)
     }
   }, [])
 
   useEffect(() => {
-    fetchInvoices()
+    let mounted = true
+    const initialInvoices = async () => {
+      setLoadingInvoices(true)
+      try {
+        const res = await fetch('/api/billing?limit=100')
+        if (!res.ok) throw new Error('Failed to load invoices')
+        const data = await res.json()
+        if (mounted) {
+          const mapped = (data.invoices || []).map(mapDbInvoiceToFrontend)
+          setInvoices(mapped)
+          setErrorInvoices('')
+        }
+      } catch (err: any) {
+        if (mounted) setErrorInvoices(err.message || 'Failed to load invoices')
+      } finally {
+        if (mounted) setLoadingInvoices(false)
+      }
+    }
+    initialInvoices()
+    const timer = setInterval(fetchInvoices, 2000)
+    return () => {
+      mounted = false
+      clearInterval(timer)
+    }
   }, [fetchInvoices])
 
   useEffect(() => {
-    fetchExpenses()
+    let mounted = true
+    const initialExpenses = async () => {
+      setLoadingExpenses(true)
+      try {
+        const res = await fetch('/api/expenses')
+        if (!res.ok) throw new Error('Failed to load expenses')
+        const data = await res.json()
+        if (mounted) {
+          setExpenses(data.expenses || [])
+          setErrorExpenses('')
+        }
+      } catch (err: any) {
+        if (mounted) setErrorExpenses(err.message || 'Failed to load expenses')
+      } finally {
+        if (mounted) setLoadingExpenses(false)
+      }
+    }
+    initialExpenses()
+    const timer = setInterval(fetchExpenses, 3000)
+    return () => {
+      mounted = false
+      clearInterval(timer)
+    }
   }, [fetchExpenses])
 
   const handleSaveInvoice = async (invoice: Invoice) => {
