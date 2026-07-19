@@ -1,13 +1,9 @@
 import {
   Activity,
   CalendarClock,
-  FlaskConical,
   LayoutDashboard,
-  Leaf,
   Receipt,
-  BarChart3,
   Settings,
-  Stethoscope,
   UserPlus,
   Users,
   type LucideIcon,
@@ -38,8 +34,6 @@ export const navGroups: NavGroup[] = [
     heading: 'Clinical',
     items: [
       { label: 'Patients', icon: Users, href: '/patients' },
-      { label: 'Nutrition', icon: Leaf, href: '/nutrition' },
-      { label: 'Ayurcare', icon: FlaskConical, href: '/ayurcare' },
     ],
   },
   {
@@ -47,7 +41,6 @@ export const navGroups: NavGroup[] = [
     items: [
       { label: 'Follow-ups', icon: CalendarClock, href: '/follow-ups', badge: '54' },
       { label: 'Billing', icon: Receipt, href: '/billing' },
-      { label: 'Reports', icon: BarChart3, href: '/reports' },
       { label: 'Settings', icon: Settings, href: '/settings' },
     ],
   },
