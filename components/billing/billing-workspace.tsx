@@ -1258,8 +1258,8 @@ function ExpensesPanel({
   onDelete: (expense: Expense) => void
 }) {
   const [search, setSearch] = useState('')
-  const [filterDate, setFilterDate] = useState('')
-  const [filterMonth, setFilterMonth] = useState('')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
   const [filterCategory, setFilterCategory] = useState('all')
   const [sortOrder, setSortOrder] = useState<'latest' | 'oldest'>('latest')
 
@@ -1272,14 +1272,14 @@ function ExpensesPanel({
         exp.description.toLowerCase().includes(term) ||
         exp.paidTo.toLowerCase().includes(term) ||
         exp.category.toLowerCase().includes(term)
-      const matchesDate = !filterDate || exp.date === filterDate
-      const matchesMonth = !filterMonth || toMonthKey(exp.date) === filterMonth
+      const matchesFrom = !dateFrom || exp.date >= dateFrom
+      const matchesTo = !dateTo || exp.date <= dateTo
       const matchesCategory = filterCategory === 'all' || exp.category === filterCategory
-      return matchesSearch && matchesDate && matchesMonth && matchesCategory
+      return matchesSearch && matchesFrom && matchesTo && matchesCategory
     })
     rows = rows.sort((a, b) => (sortOrder === 'latest' ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date)))
     return rows
-  }, [expenses, search, filterDate, filterMonth, filterCategory, sortOrder])
+  }, [expenses, search, dateFrom, dateTo, filterCategory, sortOrder])
 
   const total = filtered.reduce((sum, exp) => sum + exp.amount, 0)
 
@@ -1301,8 +1301,8 @@ function ExpensesPanel({
             <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input className="pl-8" placeholder="Search description, vendor, category…" value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
-          <Input type="date" value={filterDate} onChange={(e) => setFilterDate(e.target.value)} aria-label="Filter by date" />
-          <Input type="month" value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)} aria-label="Filter by month" />
+          <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} aria-label="From date" />
+          <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} aria-label="To date" />
           <select className="h-9 w-full rounded-lg border border-input bg-background px-2 text-sm" value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
             <option value="all">All categories</option>
             {categories.map((cat) => (
@@ -1312,14 +1312,14 @@ function ExpensesPanel({
         </div>
         <div className="flex items-center justify-between">
           <div className="flex gap-1.5">
-            {(filterDate || filterMonth || filterCategory !== 'all' || search) && (
+            {(dateFrom || dateTo || filterCategory !== 'all' || search) && (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => {
                   setSearch('')
-                  setFilterDate('')
-                  setFilterMonth('')
+                  setDateFrom('')
+                  setDateTo('')
                   setFilterCategory('all')
                 }}
               >
