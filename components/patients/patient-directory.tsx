@@ -63,10 +63,8 @@ export function PatientDirectory() {
     try {
       const params = new URLSearchParams()
       if (query.trim()) params.set('search', query.trim())
-      params.set('page', '1')
-      params.set('limit', '100')
-
-      const res = await fetch(`/api/patients?${params.toString()}`)
+      const url = params.toString() ? `/api/patients?${params.toString()}` : '/api/patients'
+      const res = await fetch(url)
       if (!res.ok) throw new Error('Failed to load patients')
       const data = await res.json()
       const mapped = (data.patients || [])
