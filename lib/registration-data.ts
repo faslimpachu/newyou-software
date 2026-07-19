@@ -35,7 +35,7 @@ export const centerOptions: CenterOption[] = [
 export type SearchField = 'mr' | 'mobile' | 'name' | 'parent'
 
 export const searchFields: { id: SearchField; label: string; placeholder: string }[] = [
-  { id: 'mr', label: 'MR Number', placeholder: 'e.g. MR000001' },
+  { id: 'mr', label: 'MR Number', placeholder: 'e.g. MR000001 or NU000001 / AY000001' },
   { id: 'mobile', label: 'Mobile', placeholder: 'e.g. 98450 12345' },
   { id: 'name', label: 'Name', placeholder: 'e.g. Aarav Sharma' },
   { id: 'parent', label: 'Parent Name', placeholder: 'e.g. Rajesh Sharma' },

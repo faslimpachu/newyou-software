@@ -48,7 +48,7 @@ describe('PatientWorkspace registration flow', () => {
 
     render(<PatientWorkspace />)
 
-    const searchInput = screen.getByPlaceholderText('e.g. MR000001')
+    const searchInput = screen.getByPlaceholderText('e.g. MR000001 or NU000001 / AY000001')
     fireEvent.change(searchInput, { target: { value: 'zzzz-no-match' } })
 
     await waitFor(() => expect(screen.getByText('New registration')).toBeDefined())
@@ -69,7 +69,7 @@ describe('PatientWorkspace registration flow', () => {
 
     render(<PatientWorkspace />)
 
-    fireEvent.change(screen.getByPlaceholderText('e.g. MR000001'), { target: { value: 'zzzz-no-match' } })
+    fireEvent.change(screen.getByPlaceholderText('e.g. MR000001 or NU000001 / AY000001'), { target: { value: 'zzzz-no-match' } })
     await waitFor(() => expect(screen.getByText('New registration')).toBeDefined())
 
     fireEvent.click(screen.getByText('New registration'))
@@ -91,7 +91,7 @@ describe('PatientWorkspace registration flow', () => {
 
     render(<PatientWorkspace />)
 
-    fireEvent.change(screen.getByPlaceholderText('e.g. MR000001'), { target: { value: 'zzzz-no-match' } })
+    fireEvent.change(screen.getByPlaceholderText('e.g. MR000001 or NU000001 / AY000001'), { target: { value: 'zzzz-no-match' } })
     await waitFor(() => expect(screen.getByText('New registration')).toBeDefined())
 
     fireEvent.click(screen.getByText('New registration'))
@@ -112,7 +112,7 @@ describe('PatientWorkspace registration flow', () => {
 
     render(<PatientWorkspace />)
 
-    fireEvent.change(screen.getByPlaceholderText('e.g. MR000001'), { target: { value: 'zzzz-no-match' } })
+    fireEvent.change(screen.getByPlaceholderText('e.g. MR000001 or NU000001 / AY000001'), { target: { value: 'zzzz-no-match' } })
     await waitFor(() => expect(screen.getByText('New registration')).toBeDefined())
 
     fireEvent.click(screen.getByText('New registration'))
@@ -137,7 +137,7 @@ describe('PatientWorkspace registration flow', () => {
 
     render(<PatientWorkspace />)
 
-    fireEvent.change(screen.getByPlaceholderText('e.g. MR000001'), { target: { value: 'zzzz-no-match' } })
+    fireEvent.change(screen.getByPlaceholderText('e.g. MR000001 or NU000001 / AY000001'), { target: { value: 'zzzz-no-match' } })
     await waitFor(() => expect(screen.getByText('New registration')).toBeDefined())
 
     fireEvent.click(screen.getByText('New registration'))
