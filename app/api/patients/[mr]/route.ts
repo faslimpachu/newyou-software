@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { generateVisitId } from '@/lib/api-helpers';
 
 export async function GET(request: NextRequest, context: { params: Promise<{ mr: string }> }) {
   try {
@@ -38,6 +39,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ m
       parentName,
       gender,
       mobileNumber,
+      email,
       address,
       district,
       state,
@@ -56,6 +58,8 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ m
       alcohol,
       exercise,
       diet,
+      doctor,
+      center,
     } = body;
 
     const data: Record<string, unknown> = {};
@@ -64,6 +68,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ m
     if (parentName !== undefined) data.parentName = parentName;
     if (gender !== undefined) data.gender = gender;
     if (mobileNumber !== undefined) data.mobileNumber = mobileNumber;
+    if (email !== undefined) data.email = email || null;
     if (address !== undefined) data.address = address;
     if (district !== undefined) data.district = district;
     if (state !== undefined) data.state = state;
@@ -82,6 +87,19 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ m
     if (alcohol !== undefined) data.alcohol = alcohol;
     if (exercise !== undefined) data.exercise = exercise;
     if (diet !== undefined) data.diet = diet;
+
+    if (doctor !== undefined && doctor) {
+      const centerType = center?.toLowerCase().includes('ayurcare') ? 'AYURCARE' : 'NUTRITION';
+      const visitId = await generateVisitId(centerType);
+      await prisma.visit.create({
+        data: {
+          id: visitId,
+          patientMr: decodeURIComponent(mr),
+          doctor: doctor || null,
+          status: 'Visited',
+        },
+      });
+    }
 
     const patient = await prisma.patient.update({
       where: { mr: decodeURIComponent(mr) },

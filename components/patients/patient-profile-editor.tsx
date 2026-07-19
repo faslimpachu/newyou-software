@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import {
-  ArrowLeft, Check, UserPlus, X,
+  ArrowLeft, Check, ChevronRight, UserPlus, X,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
-import { centerOptions, type ConsultationCenter } from '@/lib/registration-data'
+import { centerOptions, type ConsultationCenter, doctorsFor } from '@/lib/registration-data'
 import { mapApiPatient, readApiError, type ApiPatient, type PatientRecord } from '@/lib/patient-api'
 
 type FormValues = Record<string, string>
@@ -20,28 +20,6 @@ const emptyForm: FormValues = {
   address: '', city: '', state: '', postalCode: '', allergies: '', conditions: '', medications: '',
   emergencyName: '', emergencyPhone: '', emergencyRelation: '', smoking: 'Never', alcohol: 'Never', exercise: 'Moderate', diet: 'Vegetarian',
   doctor: '',
-}
-
-type Doctor = { id: string; name: string; qualification: string }
-
-const doctorsByCenter: Record<ConsultationCenter, Doctor[]> = {
-  nutrition: [
-    { id: 'doc-nu-1', name: 'Dr. Anjali Menon', qualification: 'Chief Dietitian, M.Sc Clinical Nutrition' },
-    { id: 'doc-nu-2', name: 'Dr. Rahul Varma', qualification: 'Nutrition Physician, MD' },
-    { id: 'doc-nu-3', name: 'Dr. Priya Nair', qualification: 'Sports Nutritionist, M.Sc' },
-    { id: 'doc-nu-4', name: 'Dr. Sandeep Kumar', qualification: 'Bariatric Consultant, MD' },
-  ],
-  ayurcare: [
-    { id: 'doc-ay-1', name: 'Dr. Krishnan Namboothiri', qualification: 'Chief Physician, BAMS, MD (Ayu)' },
-    { id: 'doc-ay-2', name: 'Dr. Lakshmi Warrier', qualification: 'Panchakarma Specialist, BAMS' },
-    { id: 'doc-ay-3', name: 'Dr. Arun Pillai', qualification: 'Ayurvedic Consultant, BAMS, MD' },
-    { id: 'doc-ay-4', name: 'Dr. Meera Thampi', qualification: 'Ayurvedic Physician, BAMS' },
-  ],
-}
-
-function doctorsFor(center: ConsultationCenter | null): Doctor[] {
-  if (!center) return [...doctorsByCenter.nutrition, ...doctorsByCenter.ayurcare].slice(0, 4)
-  return doctorsByCenter[center] ?? []
 }
 
 function prefillForm(patient: PatientRecord): FormValues {
@@ -55,6 +33,7 @@ function prefillForm(patient: PatientRecord): FormValues {
     bloodGroup: patient.bloodGroup && patient.bloodGroup !== 'Not recorded' ? patient.bloodGroup : '',
     mobile: patient.mobile && patient.mobile !== 'Not recorded' ? patient.mobile : '',
     email: patient.email ?? '',
+    dob: patient.dob ?? '',
     address: patient.address ?? '',
     city: patient.city ?? '',
     state: patient.state ?? '',
@@ -69,12 +48,12 @@ function prefillForm(patient: PatientRecord): FormValues {
     alcohol: patient.alcohol ?? 'Never',
     exercise: patient.exercise ?? 'Moderate',
     diet: patient.diet ?? 'Vegetarian',
-    doctor: patient.apiVisits?.[0]?.doctor ?? patient.apiPrescriptions?.[0]?.opSheet?.visit?.doctor ?? '',
+    doctor: patient.apiVisits?.[0]?.doctor ?? patient.apiPrescriptions?.[0]?.opSheet?.visit?.doctor ?? (patient as any).visits?.[0]?.doctor ?? '',
   }
 }
 
-function Field({ label, value, onChange, type = 'text', placeholder, error, inputMode }: { label: string; value: string; onChange: (v: string) => void; type?: string; placeholder?: string; error?: string; inputMode?: string }) {
-  return <div className="space-y-1.5"><Label className="text-xs font-medium text-muted-foreground">{label}</Label><Input value={value} type={type} inputMode={inputMode as any} aria-invalid={!!error} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} />{error && <p className="text-xs text-destructive">{error}</p>}</div>
+function Field({ label, value, onChange, type = 'text', placeholder, error, inputMode, id }: { label: string; value: string; onChange: (v: string) => void; type?: string; placeholder?: string; error?: string; inputMode?: React.HTMLAttributes<HTMLInputElement>['inputMode']; id?: string }) {
+  return <div className="space-y-1.5"><Label htmlFor={id} className="text-xs font-medium text-muted-foreground">{label}</Label><Input id={id} value={value} type={type} inputMode={inputMode} aria-invalid={!!error} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} />{error && <p className="text-xs text-destructive">{error}</p>}</div>
 }
 
 function Section({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
@@ -108,10 +87,12 @@ export function PatientProfileEditor({ patient, center, onCancel, onSaved }: Pat
     if (!form.parentName.trim()) next.parentName = 'Parent, father, husband, or mother name is required.'
     if (!form.gender) next.gender = 'Gender is required.'
     if (!/^\d{10}$/.test(form.mobile)) next.mobile = 'Enter exactly 10 numeric digits.'
+    if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) next.email = 'Enter a valid email address.'
     if (!form.address.trim()) next.address = 'Address is required.'
     if (!form.city.trim()) next.city = 'District is required.'
     if (!form.state.trim()) next.state = 'State is required.'
     if (!/^\d{6}$/.test(form.postalCode)) next.postalCode = 'Enter a valid 6 digit PIN code.'
+    if (!form.doctor) next.doctor = 'Please select a consulting doctor.'
     setErrors(next)
     return Object.keys(next).length === 0
   }
@@ -130,6 +111,7 @@ export function PatientProfileEditor({ patient, center, onCancel, onSaved }: Pat
           parentName: form.parentName,
           gender: form.gender,
           mobileNumber: form.mobile,
+          email: form.email || undefined,
           address: form.address,
           district: form.city,
           state: form.state,
@@ -138,6 +120,7 @@ export function PatientProfileEditor({ patient, center, onCancel, onSaved }: Pat
           age: form.dob ? computeAge(form.dob) : undefined,
           bloodGroup: form.bloodGroup || undefined,
           doctor: form.doctor || undefined,
+          center: center,
           emergencyName: form.emergencyName || undefined,
           emergencyPhone: form.emergencyPhone || undefined,
           emergencyRelation: form.emergencyRelation || undefined,
@@ -170,60 +153,65 @@ export function PatientProfileEditor({ patient, center, onCancel, onSaved }: Pat
     setForm(prefillForm(patient))
   }, [patient.mr])
 
-  const select = (label: string, key: string, values: string[]) => <div className="space-y-1.5"><Label className="text-xs font-medium text-muted-foreground">{label}</Label><select value={form[key]} onChange={(e) => update(key)(e.target.value)} className="h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm"><option value="">Select</option>{values.map((v) => <option key={v}>{v}</option>)}</select></div>
+  const select = (label: string, key: string, values: string[], error?: string) => {
+    const id = `edit-select-${key}`
+    return <div className="space-y-1.5"><Label htmlFor={id} className="text-xs font-medium text-muted-foreground">{label}</Label><select id={id} value={form[key]} onChange={(e) => update(key)(e.target.value)} className="h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm"><option value="">Select</option>{values.map((v) => <option key={v} value={v}>{v}</option>)}</select>{error && <p className="-mt-2 text-xs text-destructive">{error}</p>}</div>
+  }
 
-  return <div className="mx-auto max-w-[1200px] pb-24">
+  return <div className="mx-auto max-w-[1500px] pb-24">
     <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
       <div>
+        <div className="mb-2 flex items-center gap-2 text-xs text-muted-foreground"><span>Patient Care</span><ChevronRight className="size-3"/><span className="text-foreground">Edit Profile</span></div>
         <h1 className="font-display text-2xl font-semibold">Edit Patient Profile</h1>
         <p className="mt-1 text-sm text-muted-foreground">Update patient details for {patient.name} · MR: {patient.mr}</p>
       </div>
       <Button variant="outline" size="sm" onClick={onCancel}><ArrowLeft className="mr-2 size-4"/>Cancel</Button>
     </div>
     {saveError && <p className="mb-4 text-sm text-destructive">{saveError}</p>}
+    <div className="mb-4 flex items-center gap-2 text-sm text-muted-foreground"><span className="font-medium">Center:</span><span className="rounded-md border border-primary/20 bg-primary/5 px-2.5 py-1 text-xs font-semibold text-primary">{center}</span></div>
     <div className="grid gap-5 xl:grid-cols-2">
       <Section title="Consulting Doctor" description="Choose from the doctors available for this department">
         <div className="space-y-1.5">
-          <Label className="text-xs font-medium text-muted-foreground">Consulting doctor</Label>
-          <select value={form.doctor} onChange={(e) => update('doctor')(e.target.value)} className="h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm">
+          <Label htmlFor="edit-doctor" className="text-xs font-medium text-muted-foreground">Consulting doctor *</Label>
+          <select id="edit-doctor" value={form.doctor} onChange={(e) => update('doctor')(e.target.value)} className="h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm">
             <option value="">Select a doctor</option>
             {doctorOptions.map((doc) => <option key={doc.id} value={doc.name}>{doc.name} - {doc.qualification}</option>)}
           </select>
+          {errors.doctor && <p className="text-xs text-destructive">{errors.doctor}</p>}
           <p className="text-xs text-muted-foreground">Showing {doctorOptions.length} doctors for {center}.</p>
         </div>
       </Section>
       <Section title="Personal Information" description="Fields marked * are required">
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="First name *" value={form.firstName} onChange={update('firstName')} error={errors.firstName} />
-          <Field label="Last name" value={form.lastName} onChange={update('lastName')} />
-          <Field label="Date of birth" value={form.dob} type="date" onChange={update('dob')} />
-          {select('Gender *', 'gender', ['Male', 'Female', 'Other'])}
-          {errors.gender && <p className="-mt-2 text-xs text-destructive">{errors.gender}</p>}
+          <Field id="editFirstName" label="First name *" value={form.firstName} onChange={update('firstName')} error={errors.firstName} />
+          <Field id="editLastName" label="Last name" value={form.lastName} onChange={update('lastName')} />
+          <Field id="editDob" label="Date of birth" value={form.dob} type="date" onChange={update('dob')} />
+          {select('Gender *', 'gender', ['Male', 'Female', 'Other'], errors.gender)}
           {select('Blood group', 'bloodGroup', ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'])}
-          <Field label="Parent / spouse name *" value={form.parentName} onChange={update('parentName')} error={errors.parentName} />
+          <Field id="editParentName" label="Parent / spouse name *" value={form.parentName} onChange={update('parentName')} error={errors.parentName} />
         </div>
       </Section>
       <Section title="Contact Information">
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Mobile number *" value={form.mobile} onChange={update('mobile')} inputMode="numeric" error={errors.mobile} placeholder="10 digit mobile number" />
-          <Field label="Email address" value={form.email} onChange={update('email')} type="email" />
+          <Field id="editMobile" label="Mobile number *" value={form.mobile} onChange={update('mobile')} inputMode="numeric" error={errors.mobile} placeholder="10 digit mobile number" />
+          <Field id="editEmail" label="Email address" value={form.email} onChange={update('email')} type="email" error={errors.email} />
         </div>
       </Section>
       <Section title="Address">
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="sm:col-span-2">
-            <Field label="Street address *" value={form.address} onChange={update('address')} error={errors.address} />
+            <Field id="editAddress" label="Street address *" value={form.address} onChange={update('address')} error={errors.address} />
           </div>
-          <Field label="District *" value={form.city} onChange={update('city')} error={errors.city} />
-          <Field label="State *" value={form.state} onChange={update('state')} error={errors.state} />
-          <Field label="PIN code *" value={form.postalCode} onChange={update('postalCode')} inputMode="numeric" error={errors.postalCode} />
+          <Field id="editCity" label="District *" value={form.city} onChange={update('city')} error={errors.city} />
+          <Field id="editState" label="State *" value={form.state} onChange={update('state')} error={errors.state} />
+          <Field id="editPostalCode" label="PIN code *" value={form.postalCode} onChange={update('postalCode')} inputMode="numeric" error={errors.postalCode} />
         </div>
       </Section>
       <Section title="Emergency Contact">
         <div className="grid gap-4 sm:grid-cols-3">
-          <Field label="Contact name" value={form.emergencyName} onChange={update('emergencyName')} />
-          <Field label="Phone number" value={form.emergencyPhone} onChange={update('emergencyPhone')} inputMode="numeric" />
-          <Field label="Relationship" value={form.emergencyRelation} onChange={update('emergencyRelation')} />
+          <Field id="editEmergencyName" label="Contact name" value={form.emergencyName} onChange={update('emergencyName')} />
+          <Field id="editEmergencyPhone" label="Phone number" value={form.emergencyPhone} onChange={update('emergencyPhone')} inputMode="numeric" />
+          <Field id="editEmergencyRelation" label="Relationship" value={form.emergencyRelation} onChange={update('emergencyRelation')} />
         </div>
       </Section>
       <Section title="Medical History" description="Document known conditions before consultation">
@@ -236,7 +224,7 @@ export function PatientProfileEditor({ patient, center, onCancel, onSaved }: Pat
             <Label className="text-xs text-muted-foreground">Existing conditions</Label>
             <Textarea className="mt-1.5 min-h-18" value={form.conditions} onChange={(e) => update('conditions')(e.target.value)} />
           </div>
-          <Field label="Current medications" value={form.medications} onChange={update('medications')} />
+          <Field id="editMedications" label="Current medications" value={form.medications} onChange={update('medications')} />
         </div>
       </Section>
       <Section title="Lifestyle">
@@ -249,7 +237,7 @@ export function PatientProfileEditor({ patient, center, onCancel, onSaved }: Pat
       </Section>
     </div>
     <div className="fixed bottom-0 left-0 right-0 z-30 border-t bg-background/95 px-4 py-3 backdrop-blur md:left-64">
-      <div className="mx-auto flex max-w-[1200px] justify-end gap-2">
+      <div className="mx-auto flex max-w-[1500px] justify-end gap-2">
         <Button variant="outline" onClick={onCancel} disabled={saving}><X className="mr-2 size-4"/>Cancel</Button>
         <Button onClick={handleSave} disabled={saving || saved}>
           {saved ? <><Check className="mr-2 size-4"/>Saved</> : <><UserPlus className="mr-2 size-4"/>Save changes</>}

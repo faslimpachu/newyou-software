@@ -53,6 +53,7 @@ export type ApiPatient = {
   parentName: string
   gender: ExistingPatient['gender']
   mobileNumber: string
+  email?: string | null
   address: string
   district: string
   state: string
@@ -83,6 +84,7 @@ export type PatientRecord = ExistingPatient & {
   address?: string
   state?: string
   postalCode?: string
+  email?: string
   apiVisits?: ApiVisit[]
   apiOPSheets?: ApiOPSheet[]
   apiPrescriptions?: ApiPrescription[]
@@ -126,6 +128,7 @@ export function mapApiPatient(patient: ApiPatient): PatientRecord {
     name: patient.patientName,
     parentName: patient.parentName,
     mobile: patient.mobileNumber,
+    email: patient.email ?? undefined,
     age: patient.age ?? 0,
     gender: patient.gender || 'Not specified',
     bloodGroup: patient.bloodGroup || 'Not recorded',
@@ -134,7 +137,7 @@ export function mapApiPatient(patient: ApiPatient): PatientRecord {
     tags: patient.status ? [patient.status] : [],
     visits,
     bills: [],
-    dob: patient.dob ?? undefined,
+    dob: patient.dob ? new Date(patient.dob).toISOString().slice(0, 10) : undefined,
     address: patient.address,
     state: patient.state,
     postalCode: patient.pinCode,

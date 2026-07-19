@@ -9,7 +9,7 @@ function uniqueMobile() {
 }
 
 describe('Patient register and update APIs', () => {
-  it('register persists emergency, medical, and lifestyle fields', async () => {
+  it('register persists emergency, medical, lifestyle, and email fields', async () => {
     const mobile = uniqueMobile()
     const payload = {
       consultationType: 'NUTRITION',
@@ -17,16 +17,17 @@ describe('Patient register and update APIs', () => {
       parentName: 'Parent Name',
       gender: 'Male',
       mobileNumber: mobile,
+      email: 'test@example.com',
       address: '123 Test St',
       district: 'TestCity',
       state: 'Karnataka',
       pinCode: '560001',
-      dob: '',
-      age: '',
+      dob: '1990-05-15',
+      age: 34,
       bloodGroup: 'O+',
       doctor: 'Dr. Test',
       emergencyName: 'Emergency Contact',
-      emergencyPhone: '9876543211',
+      emergencyPhone: '9876543210',
       emergencyRelation: 'Spouse',
       allergies: 'Peanuts',
       conditions: 'None',
@@ -54,7 +55,7 @@ describe('Patient register and update APIs', () => {
 
     expect(patient).not.toBeNull()
     expect(patient!.emergencyContactName).toBe('Emergency Contact')
-    expect(patient!.emergencyContactPhone).toBe('9876543211')
+    expect(patient!.emergencyContactPhone).toBe('9876543210')
     expect(patient!.emergencyContactRelation).toBe('Spouse')
     expect(patient!.allergies).toBe('Peanuts')
     expect(patient!.conditions).toBe('None')
@@ -63,12 +64,15 @@ describe('Patient register and update APIs', () => {
     expect(patient!.alcohol).toBe('Never')
     expect(patient!.exercise).toBe('Moderate')
     expect(patient!.diet).toBe('Vegetarian')
+    expect(patient!.email).toBe('test@example.com')
+    expect(patient!.dob).not.toBeNull()
+    expect(new Date(patient!.dob!).toISOString().slice(0, 10)).toBe('1990-05-15')
 
     await prisma.visit.deleteMany({ where: { patientMr: mr } })
     await prisma.patient.delete({ where: { mr } })
   })
 
-  it('PATCH updates emergency, medical, and lifestyle fields', async () => {
+  it('PATCH updates email and other patient fields', async () => {
     const mobile = uniqueMobile()
     const created = await prisma.patient.create({
       data: {
@@ -86,6 +90,7 @@ describe('Patient register and update APIs', () => {
     })
 
     const payload = {
+      email: 'updated@example.com',
       emergencyName: 'Updated Emergency',
       emergencyPhone: '9999999999',
       emergencyRelation: 'Parent',
@@ -96,6 +101,7 @@ describe('Patient register and update APIs', () => {
       alcohol: 'Occasional',
       exercise: 'Active',
       diet: 'Non-Vegetarian',
+      dob: '1985-03-20',
     }
 
     const request = new NextRequest(`http://localhost/api/patients/${encodeURIComponent(created.mr)}`, {
@@ -112,6 +118,7 @@ describe('Patient register and update APIs', () => {
     })
 
     expect(patient).not.toBeNull()
+    expect(patient!.email).toBe('updated@example.com')
     expect(patient!.emergencyContactName).toBe('Updated Emergency')
     expect(patient!.emergencyContactPhone).toBe('9999999999')
     expect(patient!.emergencyContactRelation).toBe('Parent')
@@ -122,6 +129,8 @@ describe('Patient register and update APIs', () => {
     expect(patient!.alcohol).toBe('Occasional')
     expect(patient!.exercise).toBe('Active')
     expect(patient!.diet).toBe('Non-Vegetarian')
+    expect(patient!.dob).not.toBeNull()
+    expect(new Date(patient!.dob!).toISOString().slice(0, 10)).toBe('1985-03-20')
 
     await prisma.visit.deleteMany({ where: { patientMr: created.mr } })
     await prisma.patient.delete({ where: { mr: created.mr } })
@@ -137,6 +146,7 @@ describe('Patient register and update APIs', () => {
         parentName: 'Parent',
         gender: 'Male',
         mobileNumber: mobile,
+        email: 'get@example.com',
         address: 'Get St',
         district: 'GetCity',
         state: 'Karnataka',
@@ -172,6 +182,7 @@ describe('Patient register and update APIs', () => {
     expect(body.patient.alcohol).toBe('Never')
     expect(body.patient.exercise).toBe('Light')
     expect(body.patient.diet).toBe('Vegan')
+    expect(body.patient.email).toBe('get@example.com')
 
     await prisma.visit.deleteMany({ where: { patientMr: created.mr } })
     await prisma.patient.delete({ where: { mr: created.mr } })
