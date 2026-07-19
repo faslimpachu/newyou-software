@@ -456,13 +456,23 @@ function OPSheetEditor({ patient, center, record, readOnly, onCancel, onSave }: 
   const handleSave = () => onSave({ ...currentRecord(), status: status === 'Draft' ? 'Completed' : status })
 
   return <div className="print-sheet space-y-5">
-    <div className="flex flex-wrap justify-between gap-2">
-      <div><h3 className="font-display text-xl font-semibold">{readOnly ? 'View OP Sheet' : 'Out Patient Registration Sheet'}</h3><p className="text-sm text-muted-foreground">{patient.name} � {patient.mr} � Visit {record.visitId}</p></div>
+    <div className="flex items-start justify-between border-b-2 border-primary pb-5">
+      <div>
+        <ClinicHeader center={patient.visits.find((v) => v.id === record.visitId)?.center || center} />
+        {/* <h3 className="font-display mt-4 text-xl font-semibold">{readOnly ? 'View OP Sheet' : 'Out Patient Registration Sheet'}</h3> */}
+      </div>
       <div className="flex gap-2">
-        <Button size="sm" variant="outline" onClick={onCancel}><ArrowLeft className="mr-2 size-4" />Back to list</Button>
-        <Button size="sm" variant="outline" onClick={doPrint}><Printer className="mr-2 size-4" />Print</Button>
+        <Button variant="outline" size="sm" onClick={onCancel}><ArrowLeft className="mr-2 size-4" />Back to list</Button>
+        <Button variant="outline" size="sm" onClick={doPrint}><Printer className="mr-2 size-4" />Print</Button>
         {!readOnly && <Button size="sm" onClick={handleSave}><Check className="mr-2 size-4" />Save</Button>}
       </div>
+    </div>
+    <div className="grid grid-cols-2 gap-4 py-5 text-sm">
+      <p><b>Patient:</b> {patient.name}</p>
+      <p><b>MR No:</b> {patient.mr}</p>
+      <p><b>Age / Sex:</b> {patient.age} / {patient.gender}</p>
+      <p><b>Date:</b> {record.date}</p>
+      {/* <p className="md:col-span-2"><b>Visit:</b> {record.visitId}</p> */}
     </div>
     <Section title="Clinical examination" description="Detailed clinical notes">
       <Textarea className="min-h-64 resize-y" disabled={readOnly} value={clinicalNotes} onChange={(e) => setClinicalNotes(e.target.value)} placeholder="Document clinical examination findings, assessment and observations..." />

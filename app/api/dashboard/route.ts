@@ -102,7 +102,7 @@ export async function GET() {
 
     for (const inv of allInvoices) {
       const key = inv.createdAt.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
-      revenueByMonth.set(key, (revenueByMonth.get(key) || 0) + inv.grandTotal)
+      revenueByMonth.set(key, (revenueByMonth.get(key) || 0) + (inv.grandTotal || 0))
     }
 
     for (const exp of allExpenses) {
@@ -118,6 +118,57 @@ export async function GET() {
 
     const todayRevenue = monthlyRevenue[11]?.revenue || 0
 
+    const [recentRegistrations, upcomingFollowUps, recentBilling] = await Promise.all([
+      prisma.patient.findMany({
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+        select: {
+          mr: true,
+          patientName: true,
+          mobileNumber: true,
+          consultationType: true,
+          gender: true,
+          age: true,
+          district: true,
+          state: true,
+          createdAt: true,
+          status: true,
+        },
+      }),
+      prisma.followUp.findMany({
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+        include: {
+          patient: {
+            select: {
+              patientName: true,
+              mobileNumber: true,
+              district: true,
+            },
+          },
+        },
+      }),
+      prisma.invoice.findMany({
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+        select: {
+          id: true,
+          invoiceNumber: true,
+          patientName: true,
+          patientMrNumber: true,
+          center: true,
+          billType: true,
+          invoiceDate: true,
+          grandTotal: true,
+          paid: true,
+          balance: true,
+          paymentMethod: true,
+          status: true,
+          createdAt: true,
+        },
+      }),
+    ])
+
     return NextResponse.json({
       stats: {
         registrations: todayRegistrations,
@@ -131,6 +182,9 @@ export async function GET() {
       monthlyRegistrations,
       consultationTypes,
       monthlyRevenue,
+      recentRegistrations,
+      upcomingFollowUps,
+      recentBilling,
     })
   } catch (e) {
     console.error('Dashboard error', e)
