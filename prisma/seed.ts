@@ -42,8 +42,7 @@ async function main() {
 
   await prisma.mRSequence.createMany({
     data: [
-      { centerType: 'NUTRITION', lastNumber: 0 },
-      { centerType: 'AYURCARE', lastNumber: 0 },
+      { id: 'GLOBAL', lastNumber: 0 },
     ],
   });
 

@@ -13,7 +13,7 @@ describe('PatientProfile', () => {
 
     expect(screen.getByRole('heading', { name: 'Patient profile' })).toBeDefined()
     expect(screen.getAllByText('Aarav Sharma').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('NU000001').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('MR000001').length).toBeGreaterThan(0)
     expect(screen.getByRole('tab', { name: 'Overview' })).toBeDefined()
   })
 
@@ -30,12 +30,11 @@ describe('PatientProfile', () => {
     expect(screen.getByText('Lifestyle')).toBeDefined()
   })
 
-  it('shows the registration success banner when a patient was just registered', () => {
+  it('defaults to prescriptions tab when justRegistered is true', () => {
     render(<PatientProfile patient={existingPatients[0]} center="Nutrition Center" justRegistered />)
 
-    expect(screen.getByText('Registration successful')).toBeDefined()
-    expect(screen.getByText(/MR number/)).toBeDefined()
-    expect(screen.getByRole('button', { name: /Generate blank prescription/ })).toBeDefined()
+    expect(screen.getByRole('tab', { name: 'Prescriptions' })).toBeDefined()
+    expect(screen.queryByText('Registration successful')).toBeNull()
   })
 
   it('keeps the workspace new visit callback wired for embedded usage', () => {
@@ -108,7 +107,7 @@ describe('PatientProfile', () => {
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith('/api/visits', expect.objectContaining({
         method: 'POST',
-        body: JSON.stringify({ patientMr: 'NU000001', doctor: 'Dr. Anjali Menon', center: 'Nutrition Center' }),
+        body: JSON.stringify({ patientMr: 'MR000001', doctor: 'Dr. Anjali Menon', center: 'Nutrition Center' }),
       }))
     })
   })
@@ -241,7 +240,7 @@ describe('PatientProfile', () => {
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith('/api/op-sheets', expect.objectContaining({
         method: 'POST',
-        body: JSON.stringify({ patientMr: 'NU000001', visitId: 'V-1', clinicalExamination: '', vitals: '{}', diagnosis: '', symptoms: '' }),
+        body: JSON.stringify({ patientMr: 'MR000001', visitId: 'V-1', clinicalExamination: '', vitals: '{}', diagnosis: '', symptoms: '' }),
       }))
     })
   })
@@ -459,12 +458,12 @@ describe('PatientProfile', () => {
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith('/api/prescriptions', expect.objectContaining({
         method: 'POST',
-        body: expect.stringContaining('"patientMr":"NU000001"'),
+        body: expect.stringContaining('"patientMr":"MR000001"'),
       }))
     })
 
     await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledWith('/api/patients/NU000001')
+      expect(mockFetch).toHaveBeenCalledWith('/api/patients/MR000001')
     })
 
     await waitFor(() => {

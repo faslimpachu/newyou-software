@@ -24,7 +24,7 @@ const mockInvoices = [
     center: 'nutrition',
     billType: 'Consultation Bill',
     patientName: 'Aarav Sharma',
-    patientMrNumber: 'NU000001',
+    patientMrNumber: 'MR000001',
     patientAge: '34',
     patientDob: '1992-03-12',
     patientGender: 'Male',
@@ -70,7 +70,7 @@ describe('BillingWorkspace', () => {
           json: async () => ({
             patient: {
               patientName: 'Test Patient',
-              mr: 'NU000003',
+              mr: 'MR000003',
               age: 30,
               dob: '1994-01-01',
               gender: 'Male',
@@ -201,7 +201,7 @@ describe('BillingWorkspace', () => {
     expect(screen.getByText('Patient name is required.')).toBeDefined()
     expect(screen.getByText('Add at least one item with a name and rate.')).toBeDefined()
 
-    fireEvent.change(screen.getByPlaceholderText('e.g. NU000003'), { target: { value: 'NU000003' } })
+    fireEvent.change(screen.getByPlaceholderText('e.g. MR000003'), { target: { value: 'MR000003' } })
     await waitFor(() => {
       expect(screen.getByText('Existing patient found — details auto-filled.')).toBeDefined()
     }, { timeout: 3000 })

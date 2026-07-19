@@ -8,9 +8,9 @@ vi.mock('next/navigation', () => ({
 }))
 
 const mockPatients = [
-  { mr: 'NU000001', patientName: 'Aarav Sharma', parentName: 'Rajesh Sharma', mobileNumber: '98450 12345', age: 34, status: 'Active', createdAt: '2026-06-02T00:00:00.000Z', visits: [] },
-  { mr: 'NU000002', patientName: 'Priya Nair', parentName: 'Suresh Nair', mobileNumber: '99860 45678', age: 28, status: 'Follow-up', createdAt: '2026-05-21T00:00:00.000Z', visits: [] },
-  { mr: 'AY000001', patientName: 'Rohan Mehta', parentName: 'Anil Mehta', mobileNumber: '90080 33221', age: 45, status: 'Consulting', createdAt: '2026-05-30T00:00:00.000Z', visits: [] },
+  { mr: 'MR000001', patientName: 'Aarav Sharma', parentName: 'Rajesh Sharma', mobileNumber: '98450 12345', age: 34, status: 'Active', createdAt: '2026-06-02T00:00:00.000Z', visits: [] },
+  { mr: 'MR000002', patientName: 'Priya Nair', parentName: 'Suresh Nair', mobileNumber: '99860 45678', age: 28, status: 'Follow-up', createdAt: '2026-05-21T00:00:00.000Z', visits: [] },
+  { mr: 'MR000003', patientName: 'Rohan Mehta', parentName: 'Anil Mehta', mobileNumber: '90080 33221', age: 45, status: 'Consulting', createdAt: '2026-05-30T00:00:00.000Z', visits: [] },
 ]
 
 describe('PatientDirectory', () => {
@@ -39,7 +39,7 @@ describe('PatientDirectory', () => {
     await waitFor(() => {
       expect(screen.getAllByText('Aarav Sharma').length).toBeGreaterThan(0)
     })
-    expect(screen.getAllByText('NU000001').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('MR000001').length).toBeGreaterThan(0)
   })
 
   it('filters patients by search query', async () => {

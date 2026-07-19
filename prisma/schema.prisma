@@ -249,8 +249,7 @@ model Staff {
 }
 
 model MRSequence {
-  id         String   @id @default(uuid())
-  centerType String   @unique
+  id         String   @id @default("GLOBAL")
   lastNumber Int      @default(0)
   updatedAt  DateTime @default(now())
 

@@ -21,7 +21,7 @@ describe('Nutrition API', () => {
   it('POST creates a nutrition assessment', async () => {
     const patient = await prisma.patient.create({
       data: {
-        mr: 'NU000001', consultationType: 'NUTRITION', patientName: 'Test', parentName: 'P',
+        mr: 'MR000001', consultationType: 'NUTRITION', patientName: 'Test', parentName: 'P',
         gender: 'Male', mobileNumber: '9999999999', address: 'Addr', district: 'D', state: 'S', pinCode: '123456',
       },
     });
@@ -39,7 +39,7 @@ describe('Nutrition API', () => {
   it('POST returns 404 for missing patient', async () => {
     const req = new Request('http://localhost/api/nutrition/assessments', {
       method: 'POST',
-      body: JSON.stringify({ patientMr: 'NU999999', assessmentDate: '2026-07-12' }),
+      body: JSON.stringify({ patientMr: 'MR999999', assessmentDate: '2026-07-12' }),
     });
     const res = await POST(req);
     expect(res.status).toBe(404);

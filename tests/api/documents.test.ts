@@ -20,7 +20,7 @@ describe('Documents API', () => {
   it('POST creates a document', async () => {
     const patient = await prisma.patient.create({
       data: {
-        mr: 'NU000001', consultationType: 'NUTRITION', patientName: 'Test', parentName: 'P',
+        mr: 'MR000001', consultationType: 'NUTRITION', patientName: 'Test', parentName: 'P',
         gender: 'Male', mobileNumber: '9999999999', address: 'Addr', district: 'D', state: 'S', pinCode: '123456',
       },
     });
@@ -38,7 +38,7 @@ describe('Documents API', () => {
   it('GET returns documents for patient', async () => {
     const patient = await prisma.patient.create({
       data: {
-        mr: 'NU000001', consultationType: 'NUTRITION', patientName: 'Test', parentName: 'P',
+        mr: 'MR000001', consultationType: 'NUTRITION', patientName: 'Test', parentName: 'P',
         gender: 'Male', mobileNumber: '9999999999', address: 'Addr', district: 'D', state: 'S', pinCode: '123456',
       },
     });
@@ -57,7 +57,7 @@ describe('Documents API', () => {
   it('PATCH updates document', async () => {
     const patient = await prisma.patient.create({
       data: {
-        mr: 'NU000001', consultationType: 'NUTRITION', patientName: 'Test', parentName: 'P',
+        mr: 'MR000001', consultationType: 'NUTRITION', patientName: 'Test', parentName: 'P',
         gender: 'Male', mobileNumber: '9999999999', address: 'Addr', district: 'D', state: 'S', pinCode: '123456',
       },
     });
@@ -79,7 +79,7 @@ describe('Documents API', () => {
   it('DELETE removes document', async () => {
     const patient = await prisma.patient.create({
       data: {
-        mr: 'NU000001', consultationType: 'NUTRITION', patientName: 'Test', parentName: 'P',
+        mr: 'MR000001', consultationType: 'NUTRITION', patientName: 'Test', parentName: 'P',
         gender: 'Male', mobileNumber: '9999999999', address: 'Addr', district: 'D', state: 'S', pinCode: '123456',
       },
     });

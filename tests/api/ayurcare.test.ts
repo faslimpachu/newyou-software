@@ -20,7 +20,7 @@ describe('Ayurcare API', () => {
   it('POST creates an ayurcare treatment', async () => {
     const patient = await prisma.patient.create({
       data: {
-        mr: 'AY000001', consultationType: 'AYURCARE', patientName: 'Test', parentName: 'P',
+        mr: 'MR000001', consultationType: 'AYURCARE', patientName: 'Test', parentName: 'P',
         gender: 'Female', mobileNumber: '8888888888', address: 'Addr', district: 'D', state: 'S', pinCode: '123456',
       },
     });

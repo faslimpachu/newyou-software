@@ -21,7 +21,7 @@ describe('Billing API', () => {
   it('POST creates an invoice', async () => {
     const patient = await prisma.patient.create({
       data: {
-        mr: 'NU000001', consultationType: 'NUTRITION', patientName: 'Test', parentName: 'P',
+        mr: 'MR000001', consultationType: 'NUTRITION', patientName: 'Test', parentName: 'P',
         gender: 'Male', mobileNumber: '9999999999', address: 'Addr', district: 'D', state: 'S', pinCode: '123456',
       },
     });
@@ -50,7 +50,7 @@ describe('Billing API', () => {
   it('GET returns invoices for patient', async () => {
     const patient = await prisma.patient.create({
       data: {
-        mr: 'NU000001', consultationType: 'NUTRITION', patientName: 'Test', parentName: 'P',
+        mr: 'MR000001', consultationType: 'NUTRITION', patientName: 'Test', parentName: 'P',
         gender: 'Male', mobileNumber: '9999999999', address: 'Addr', district: 'D', state: 'S', pinCode: '123456',
       },
     });

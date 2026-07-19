@@ -117,9 +117,9 @@ const EXPENSE_PAYMENT_METHODS = ['Cash', 'UPI', 'Bank Transfer', 'Card']
 /* ------------------------------------------------------------------ */
 
 const PATIENT_DIRECTORY: Record<string, Omit<Patient, 'mrNumber'>> = {
-  NU000001: { name: 'Aarav Sharma', age: '34', dob: '1992-03-12', gender: 'Male', bloodGroup: 'B+', address: 'Thalassery, Kannur', contact: '9847012345' },
-  AY000001: { name: 'Rohan Mehta', age: '41', dob: '1985-07-05', gender: 'Male', bloodGroup: 'O+', address: 'Kannur Town', contact: '9847098765' },
-  NU000002: { name: 'Priya Nair', age: '29', dob: '1997-01-18', gender: 'Female', bloodGroup: 'A+', address: 'Kanhangad, Kasaragod', contact: '9847011223' },
+  MR000001: { name: 'Aarav Sharma', age: '34', dob: '1992-03-12', gender: 'Male', bloodGroup: 'B+', address: 'Thalassery, Kannur', contact: '9847012345' },
+  MR000002: { name: 'Rohan Mehta', age: '41', dob: '1985-07-05', gender: 'Male', bloodGroup: 'O+', address: 'Kannur Town', contact: '9847098765' },
+  MR000002: { name: 'Priya Nair', age: '29', dob: '1997-01-18', gender: 'Female', bloodGroup: 'A+', address: 'Kanhangad, Kasaragod', contact: '9847011223' },
 }
 
 /* ------------------------------------------------------------------ */
@@ -187,7 +187,7 @@ const seedInvoices: Invoice[] = [
     id: 'INV-90112',
     center: 'nutrition',
     billType: 'Consultation Bill',
-    patient: { name: 'Aarav Sharma', mrNumber: 'NU000001', age: '34', dob: '1992-03-12', gender: 'Male', bloodGroup: 'B+', address: 'Thalassery, Kannur', contact: '9847012345' },
+    patient: { name: 'Aarav Sharma', mrNumber: 'MR000001', age: '34', dob: '1992-03-12', gender: 'Male', bloodGroup: 'B+', address: 'Thalassery, Kannur', contact: '9847012345' },
     date: '02 Jun 2026',
     items: [{ id: 1, name: 'Nutrition consultation', quantity: 1, rate: 1800 }],
     discount: 0,
@@ -199,7 +199,7 @@ const seedInvoices: Invoice[] = [
     id: 'INV-90230',
     center: 'ayurcare',
     billType: 'Therapy / Procedure Bill',
-    patient: { name: 'Rohan Mehta', mrNumber: 'AY000001', age: '41', dob: '1985-07-05', gender: 'Male', bloodGroup: 'O+', address: 'Kannur Town', contact: '9847098765' },
+    patient: { name: 'Rohan Mehta', mrNumber: 'MR000002', age: '41', dob: '1985-07-05', gender: 'Male', bloodGroup: 'O+', address: 'Kannur Town', contact: '9847098765' },
     date: '30 May 2026',
     items: [
       { id: 1, name: 'Abhyanga therapy (7 days)', quantity: 7, rate: 900 },
@@ -214,7 +214,7 @@ const seedInvoices: Invoice[] = [
     id: 'INV-90301',
     center: 'nutrition',
     billType: 'Consultation Bill',
-    patient: { name: 'Priya Nair', mrNumber: 'NU000002', age: '29', dob: '1997-01-18', gender: 'Female', bloodGroup: 'A+', address: 'Kanhangad, Kasaragod', contact: '9847011223' },
+    patient: { name: 'Priya Nair', mrNumber: 'MR000002', age: '29', dob: '1997-01-18', gender: 'Female', bloodGroup: 'A+', address: 'Kanhangad, Kasaragod', contact: '9847011223' },
     date: '21 May 2026',
     items: [{ id: 1, name: 'Follow-up consultation', quantity: 1, rate: 1200 }],
     discount: 0,
@@ -975,7 +975,7 @@ function NewInvoiceModal({ onClose, onSave, saving }: { onClose: () => void; onS
               <Input
                 value={patient.mrNumber}
                 onChange={(e) => handleMrNumberChange(e.target.value)}
-                placeholder="e.g. NU000003"
+                placeholder="e.g. MR000003"
                 className={!mrNumberValid ? 'border-destructive' : undefined}
               />
               {mrStatus === 'found' && <p className="mt-1 text-xs font-medium text-primary">Existing patient found — details auto-filled.</p>}

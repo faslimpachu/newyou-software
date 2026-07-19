@@ -48,8 +48,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Mobile number already registered' }, { status: 409 });
     }
 
-    const centerType = consultationType === 'NUTRITION' ? 'NUTRITION' : 'AYURCARE';
-    const mr = await generateMR(centerType);
+    const mr = await generateMR();
 
     const patient = await prisma.patient.create({
       data: {

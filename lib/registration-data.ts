@@ -35,7 +35,7 @@ export const centerOptions: CenterOption[] = [
 export type SearchField = 'mr' | 'mobile' | 'name' | 'parent'
 
 export const searchFields: { id: SearchField; label: string; placeholder: string }[] = [
-  { id: 'mr', label: 'MR Number', placeholder: 'e.g. NU000001 or AY000001' },
+  { id: 'mr', label: 'MR Number', placeholder: 'e.g. MR000001' },
   { id: 'mobile', label: 'Mobile', placeholder: 'e.g. 98450 12345' },
   { id: 'name', label: 'Name', placeholder: 'e.g. Aarav Sharma' },
   { id: 'parent', label: 'Parent Name', placeholder: 'e.g. Rajesh Sharma' },
@@ -87,7 +87,7 @@ export interface ExistingPatient {
 
 export const existingPatients: ExistingPatient[] = [
   {
-    mr: 'NU000001',
+    mr: 'MR000001',
     name: 'Aarav Sharma',
     parentName: 'Rajesh Sharma',
     mobile: '98450 12345',
@@ -108,7 +108,7 @@ export const existingPatients: ExistingPatient[] = [
     ],
   },
   {
-    mr: 'NU000002',
+    mr: 'MR000002',
     name: 'Priya Nair',
     parentName: 'Suresh Nair',
     mobile: '99860 45678',
@@ -125,7 +125,7 @@ export const existingPatients: ExistingPatient[] = [
     bills: [],
   },
   {
-    mr: 'AY000001',
+    mr: 'MR000003',
     name: 'Rohan Mehta',
     parentName: 'Anil Mehta',
     mobile: '90080 33221',
@@ -145,20 +145,17 @@ export const existingPatients: ExistingPatient[] = [
   },
 ]
 
-export function generateMR(center: 'nutrition' | 'ayurcare', patients: ExistingPatient[]): string {
-  const prefix = center === 'nutrition' ? 'NU' : 'AY'
+export function generateMR(patients: ExistingPatient[]): string {
   const maxNum = patients
-    .filter((p) => p.mr.startsWith(prefix))
     .reduce((max, p) => {
-      const num = parseInt(p.mr.replace(prefix, ''), 10)
+      const num = parseInt(p.mr.replace('MR', ''), 10)
       return isNaN(num) ? max : Math.max(max, num)
     }, 0)
-  return `${prefix}${String(maxNum + 1).padStart(6, '0')}`
+  return `MR${String(maxNum + 1).padStart(6, '0')}`
 }
 
 export const centersByPrefix: Record<string, string> = {
-  NU: 'Nutrition Center',
-  AY: 'Ayurcare Center',
+  MR: 'Global',
 }
 
 export const bloodGroups = ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-']

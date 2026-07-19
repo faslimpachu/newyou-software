@@ -17,12 +17,12 @@ interface AyurRow {
 }
 
 const nutritionRows: NutritionRow[] = [
-  { mr:'NU000001', name:'Aarav Sharma', phone:'98450 12345', dietPlan:'Diabetes nutrition plan', observations:'HbA1c 7.2%, overweight', recommendations:'Low carb, high fiber', notes:'Patient compliant', clinician:'Dr. Neha Verma', review:'16 Jul 2026', status:'Due' },
-  { mr:'NU000002', name:'Priya Nair', phone:'99860 45678', dietPlan:'Weight management', observations:'BMI 28.4', recommendations:'Calorie deficit 500 kcal/day', notes:'Monthly review scheduled', clinician:'Dr. Neha Verma', review:'18 Jul 2026', status:'Active' },
+  { mr:'MR000001', name:'Aarav Sharma', phone:'98450 12345', dietPlan:'Diabetes nutrition plan', observations:'HbA1c 7.2%, overweight', recommendations:'Low carb, high fiber', notes:'Patient compliant', clinician:'Dr. Neha Verma', review:'16 Jul 2026', status:'Due' },
+  { mr:'MR000002', name:'Priya Nair', phone:'99860 45678', dietPlan:'Weight management', observations:'BMI 28.4', recommendations:'Calorie deficit 500 kcal/day', notes:'Monthly review scheduled', clinician:'Dr. Neha Verma', review:'18 Jul 2026', status:'Active' },
 ]
 const ayurRows: AyurRow[] = [
-  { mr:'AY000001', name:'Rohan Mehta', phone:'90080 33221', diagnosis:'Vata imbalance', treatmentPlan:'Panchakarma program', medicines:'Arishtam, Asavam', procedures:'Abhyanga, Shirodhara', therapies:'Panchakarma - 5 sessions', advice:'Avoid cold foods, maintain routine', notes:'Progressing well', clinician:'Dr. Arjun Das', review:'14 Jul 2026', status:'Active' },
-  { mr:'AY000002', name:'Anjali Menon', phone:'98765 21430', diagnosis:'Skin disorder', treatmentPlan:'Herbal therapy', medicines:'Guggulu based', procedures:'Lepanam', therapies:'Internal medications', advice:'Follow diet restrictions', notes:'First week response good', clinician:'Dr. Arjun Das', review:'17 Jul 2026', status:'Planned' },
+  { mr:'MR000003', name:'Rohan Mehta', phone:'90080 33221', diagnosis:'Vata imbalance', treatmentPlan:'Panchakarma program', medicines:'Arishtam, Asavam', procedures:'Abhyanga, Shirodhara', therapies:'Panchakarma - 5 sessions', advice:'Avoid cold foods, maintain routine', notes:'Progressing well', clinician:'Dr. Arjun Das', review:'14 Jul 2026', status:'Active' },
+  { mr:'MR000004', name:'Anjali Menon', phone:'98765 21430', diagnosis:'Skin disorder', treatmentPlan:'Herbal therapy', medicines:'Guggulu based', procedures:'Lepanam', therapies:'Internal medications', advice:'Follow diet restrictions', notes:'First week response good', clinician:'Dr. Arjun Das', review:'17 Jul 2026', status:'Planned' },
 ]
 
 type AnyRow = NutritionRow | AyurRow
@@ -93,7 +93,7 @@ function CareEditor({ nutrition, patient, onClose }: { nutrition: boolean; patie
         <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="Close editor"><X className="size-4"/></Button>
       </CardHeader>
       <CardContent className="grid gap-4 md:grid-cols-2">
-        <div className="md:col-span-2"><Label className="text-xs text-muted-foreground">MR number</Label><div className="mt-1.5 flex gap-2"><Input defaultValue={patient?.mr} placeholder={nutrition ? 'NU000001' : 'AY000001'}/><Button variant="outline" size="sm">Fetch patient</Button></div></div>
+        <div className="md:col-span-2"><Label className="text-xs text-muted-foreground">MR number</Label><div className="mt-1.5 flex gap-2"><Input defaultValue={patient?.mr} placeholder="MR000001"/><Button variant="outline" size="sm">Fetch patient</Button></div></div>
         {fields.map((field) => {
           const isMulti = multiFields.includes(field)
           const isDate = dateFields.includes(field)
