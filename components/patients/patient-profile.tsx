@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 import { type ExistingPatient, centerOptions, type ConsultationCenter, doctorsFor } from '@/lib/registration-data'
-import { mapApiPatient, readApiError, type ApiDocument, type ApiOPSheet, type ApiPatient, type ApiPrescription, type PatientRecord } from '@/lib/patient-api'
+import { mapApiPatient, readApiError, type ApiOPSheet, type ApiPatient, type ApiPrescription, type PatientRecord } from '@/lib/patient-api'
 import { PatientProfileEditor } from './patient-profile-editor'
 
 const measurements = ['Weight (kg)', 'Height (cm)', 'BMI', 'Body Fat (%)', 'Lean Mass (kg)', 'Waist (cm)', 'Hip (cm)', 'WHR', 'Muscle Mass (kg)', 'Water (%)', 'BMR (kcal)', 'Metabolic Age']
@@ -128,7 +128,7 @@ export function PatientProfile({ patient, center, generatedMR, justRegistered, o
   if (error) return <Card className="rounded-lg shadow-sm"><CardContent className="py-12 text-center text-sm text-destructive">{error}</CardContent></Card>
   if (editing) return <PatientProfileEditor patient={p} center={center} onCancel={() => setEditing(false)} onSaved={(updated) => { setLoadedPatient(updated); setEditing(false) }} />
   return <>
-    <div className="grid gap-6 xl:grid-cols-[280px_1fr]"><aside><Card className="sticky top-20 rounded-lg shadow-sm"><CardContent className="p-5"><div className="flex size-16 items-center justify-center rounded-full bg-primary/10 text-xl font-semibold text-primary">{p.name.split(' ').map((part) => part[0]).join('')}</div><h2 className="mt-4 font-display text-xl font-semibold">{p.name}</h2><p className="mt-1 text-sm text-muted-foreground">{p.mr}</p><dl className="mt-6 space-y-3 border-t pt-5 text-sm"><Info label="Age / Gender" value={`${p.age || '-'} / ${p.gender}`} /><Info label="Blood group" value={p.bloodGroup} /><Info label="Phone" value={p.mobile} /><Info label="Last visit" value={p.lastVisit} /></dl><div className="mt-6 grid grid-cols-2 gap-2"><Button size="sm" onClick={handleNewVisit}><CalendarDays className="mr-2 size-4" />New visit</Button><Button size="sm" variant="outline" onClick={() => setEditing(true)}><Pencil className="mr-2 size-4" />Edit</Button></div></CardContent></Card></aside><main><div className="mb-4 flex flex-wrap justify-between gap-2"><div><h2 className="font-display text-xl font-semibold">Patient profile</h2><p className="mt-1 text-sm text-muted-foreground">{center} ? Active outpatient record</p></div><div className="flex gap-2"><Button variant="outline" size="sm" onClick={print}><Printer className="mr-2 size-4" />Print</Button></div></div><Tabs defaultValue={justRegistered ? 'prescriptions' : 'overview'}><div className="overflow-x-auto"><TabsList className="h-10 bg-muted/70"><TabsTrigger value="overview">Overview</TabsTrigger><TabsTrigger value="visits">Visits</TabsTrigger><TabsTrigger value="op">OP Sheet</TabsTrigger><TabsTrigger value="prescriptions">Prescriptions</TabsTrigger><TabsTrigger value="documents">Documents</TabsTrigger></TabsList></div><TabsContent value="overview" className="mt-5"><Overview patient={p} onUpdateStatus={handleUpdateStatus} /></TabsContent><TabsContent value="visits" className="mt-5"><Visits patient={p} onUpdateStatus={handleUpdateStatus} /></TabsContent><TabsContent value="op" className="mt-5"><OPSheet patient={p} center={center} onRefresh={refreshPatient} onUpdateStatus={handleUpdateStatus} /></TabsContent><TabsContent value="prescriptions" className="mt-5"><Prescription patient={p} center={center} onRefresh={refreshPatient} /></TabsContent><TabsContent value="documents" className="mt-5"><Documents patient={p} /></TabsContent></Tabs></main></div>
+    <div className="grid gap-6 xl:grid-cols-[280px_1fr]"><aside><Card className="sticky top-20 rounded-lg shadow-sm"><CardContent className="p-5"><div className="flex size-16 items-center justify-center rounded-full bg-primary/10 text-xl font-semibold text-primary">{p.name.split(' ').map((part) => part[0]).join('')}</div><h2 className="mt-4 font-display text-xl font-semibold">{p.name}</h2><p className="mt-1 text-sm text-muted-foreground">{p.mr}</p><dl className="mt-6 space-y-3 border-t pt-5 text-sm"><Info label="Age / Gender" value={`${p.age || '-'} / ${p.gender}`} /><Info label="Blood group" value={p.bloodGroup} /><Info label="Phone" value={p.mobile} /><Info label="Last visit" value={p.lastVisit} /></dl><div className="mt-6 grid grid-cols-2 gap-2"><Button size="sm" onClick={handleNewVisit}><CalendarDays className="mr-2 size-4" />New visit</Button><Button size="sm" variant="outline" onClick={() => setEditing(true)}><Pencil className="mr-2 size-4" />Edit</Button></div></CardContent></Card></aside><main><div className="mb-4 flex flex-wrap justify-between gap-2"><div><h2 className="font-display text-xl font-semibold">Patient profile</h2><p className="mt-1 text-sm text-muted-foreground">{center} ? Active outpatient record</p></div><div className="flex gap-2"><Button variant="outline" size="sm" onClick={print}><Printer className="mr-2 size-4" />Print</Button></div></div><Tabs defaultValue={justRegistered ? 'prescriptions' : 'overview'}><div className="overflow-x-auto"><TabsList className="h-10 bg-muted/70"><TabsTrigger value="overview">Overview</TabsTrigger><TabsTrigger value="visits">Visits</TabsTrigger><TabsTrigger value="op">OP Sheet</TabsTrigger><TabsTrigger value="prescriptions">Prescriptions</TabsTrigger></TabsList></div><TabsContent value="overview" className="mt-5"><Overview patient={p} onUpdateStatus={handleUpdateStatus} /></TabsContent><TabsContent value="visits" className="mt-5"><Visits patient={p} onUpdateStatus={handleUpdateStatus} /></TabsContent><TabsContent value="op" className="mt-5"><OPSheet patient={p} center={center} onRefresh={refreshPatient} onUpdateStatus={handleUpdateStatus} /></TabsContent><TabsContent value="prescriptions" className="mt-5"><Prescription patient={p} center={center} onRefresh={refreshPatient} /></TabsContent></Tabs></main></div>
     {newVisitDialog && (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/20 p-4">
         <Card className="w-full max-w-md rounded-lg shadow-xl">
@@ -186,7 +186,7 @@ function Overview({ patient, onUpdateStatus }: { patient: PatientRecord; onUpdat
   const latestVisit = patient.visits[0]
   const primaryCenter = patient.consultationType === 'AYURCARE' ? 'Ayurcare Center' : 'Nutrition Center'
   return <div className="grid gap-5 lg:grid-cols-2">
-    <Section title="Care activity"><div className="grid grid-cols-3 gap-3"><Metric label="Visits" value={String(patient.visits.length)} /><Metric label="Prescriptions" value={String(patient.apiPrescriptions?.length ?? 0)} /><Metric label="Documents" value={String(patient.apiDocuments?.length ?? 0)} /></div></Section>
+    <Section title="Care activity"><div className="grid grid-cols-3 gap-3"><Metric label="Visits" value={String(patient.visits.length)} /><Metric label="Prescriptions" value={String(patient.apiPrescriptions?.length ?? 0)} /></div></Section>
     <Section title="Lifestyle"><div className="grid gap-4 sm:grid-cols-2">
       <Info label="Smoking" value={patient.smoking || 'Not recorded'} />
       <Info label="Alcohol" value={patient.alcohol || 'Not recorded'} />
@@ -732,88 +732,7 @@ function ClinicHeader({ center }: { center: string }) {
   return <div><h3 className="font-display text-2xl font-semibold">{nutrition ? 'NEW YOU' : 'Ayurcare Center'}</h3>{nutrition && <p className="mt-1 text-sm font-medium text-primary">Lose Weight. Choose Health.</p>}<p className="mt-1 text-xs text-muted-foreground">{nutrition ? 'Centre for Professional Weight Management' : 'Jubilee Bazar'}<br />Onden Road, Kannur - 670001, Kerala<br />PH: 8111999581 / 8111999582</p></div>
 }
 
-/* ------------------------------------------------------------------ */
-/*  Medical Documents module � upload metadata, patient-aware list,     */
-/*  print/export/delete-with-confirmation (Medical Documents Module)    */
-/* ------------------------------------------------------------------ */
 
-type PatientDocument = {
-  id?: string
-  title: string
-  category: string
-  fileName: string
-  filePath: string
-  date: string
-  uploadedBy: string
-  notes: string
-}
-
-function mapPatientDocument(doc: ApiDocument): PatientDocument {
-  return {
-    id: doc.id,
-    title: doc.title || doc.fileName,
-    category: doc.category || 'Clinical report',
-    fileName: doc.fileName,
-    filePath: doc.filePath,
-    date: formatRecordDate(doc.uploadedAt),
-    uploadedBy: doc.uploadedBy || 'Reception desk',
-    notes: doc.remarks || '',
-  }
-}
-
-function Documents({ patient }: { patient: PatientRecord }) {
-  const [documents, setDocuments] = useState<PatientDocument[]>(() => (patient.apiDocuments ?? []).map(mapPatientDocument))
-  const [title, setTitle] = useState('')
-  const [category, setCategory] = useState('Clinical report')
-  const [uploadedBy, setUploadedBy] = useState('')
-  const [notes, setNotes] = useState('')
-
-  const add = async () => {
-    if (!title.trim()) return
-    const response = await fetch(`/api/patients/${encodeURIComponent(patient.mr)}/documents`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        title,
-        category,
-        fileName: title,
-        filePath: `metadata://${patient.mr}/${encodeURIComponent(title)}`,
-        fileType: 'metadata',
-        uploadedBy: uploadedBy.trim() || 'Reception desk',
-        remarks: notes,
-      }),
-    })
-    if (response.ok) {
-      const body = await response.json() as { document: ApiDocument }
-      setDocuments((items) => [mapPatientDocument(body.document), ...items])
-    } else {
-      setDocuments((items) => [{ title, category, fileName: title, filePath: '', date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }), uploadedBy: uploadedBy.trim() || 'Reception desk', notes }, ...items])
-    }
-    setTitle('')
-    setNotes('')
-  }
-
-  const remove = async (index: number) => {
-    const doc = documents[index]
-    if (!window.confirm(`Delete "${doc.title}"? This cannot be undone.`)) return
-    if (doc.id) {
-      await fetch(`/api/patients/${encodeURIComponent(patient.mr)}/documents`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: doc.id }) })
-    }
-    setDocuments((items) => items.filter((_, i) => i !== index))
-  }
-
-  const printDoc = (doc: PatientDocument) => openA4Print(doc.title, patient, '', {
-    columns: ['Field', 'Value'],
-    rows: [
-      ['Document Type', doc.category],
-      ['Uploaded By', doc.uploadedBy],
-      ['Upload Date', doc.date],
-    ],
-    sections: [{ label: 'Notes', value: doc.notes }],
-  })
-
-  return <Card className="rounded-lg shadow-sm"><CardHeader className="flex-row items-center justify-between"><div><CardTitle>Documents</CardTitle><CardDescription>Clinical reports, scans, images, and supporting records for {patient.name}.</CardDescription></div><Button size="sm" onClick={add}><Upload className="mr-2 size-4" />Upload document</Button></CardHeader><CardContent><div className="mb-5 grid gap-3 md:grid-cols-2"><Input placeholder="Document title" value={title} onChange={(e) => setTitle(e.target.value)} /><select className="h-8 rounded-lg border border-input bg-background px-2.5 text-sm" value={category} onChange={(e) => setCategory(e.target.value)}><option>Clinical report</option><option>Lab report</option><option>Prescription</option><option>Identity document</option><option>Scanned report</option></select><Input placeholder="Uploaded by" value={uploadedBy} onChange={(e) => setUploadedBy(e.target.value)} /><Input placeholder="Notes (optional)" value={notes} onChange={(e) => setNotes(e.target.value)} /></div>{documents.length ? <div className="overflow-x-auto"><table className="w-full min-w-[760px] text-sm"><thead className="border-y bg-muted/40 text-xs text-muted-foreground"><tr><th className="p-3 text-left">File Name</th><th className="p-3 text-left">Document Type</th><th className="p-3 text-left">Patient Name</th><th className="p-3 text-left">Upload Date</th><th className="p-3 text-left">Uploaded By</th><th className="p-3 text-right">Actions</th></tr></thead><tbody>{documents.map((document, index) => <tr key={`${document.title}-${index}`} className="border-b"><td className="p-3 font-medium">{document.title}</td><td className="p-3">{document.category}</td><td className="p-3">{patient.name}</td><td className="p-3">{document.date}</td><td className="p-3">{document.uploadedBy}</td><td className="p-3 text-right"><div className="flex justify-end gap-1"><Button variant="ghost" size="sm"><Eye className="mr-1 size-3.5" />View</Button><Button variant="ghost" size="sm"><Download className="mr-1 size-3.5" />Download</Button><Button variant="ghost" size="sm" onClick={() => printDoc(document)}><Printer className="mr-1 size-3.5" />Print</Button><Button variant="ghost" size="sm" onClick={() => printDoc(document)}><FileText className="mr-1 size-3.5" />Export</Button><Button variant="ghost" size="sm" onClick={() => remove(index)}><Trash2 className="mr-1 size-3.5" />Delete</Button></div></td></tr>)}</tbody></table></div> : <div className="rounded-lg border border-dashed py-10 text-center"><FileText className="mx-auto size-6 text-muted-foreground" /><p className="mt-3 font-medium">No documents added</p><p className="mt-1 text-sm text-muted-foreground">Add a title and category, then upload a patient document.</p></div>}</CardContent></Card>
-}
 
 /* ------------------------------------------------------------------ */
 /*  Print / PDF export                                                  */
