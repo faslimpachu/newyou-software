@@ -30,6 +30,8 @@ export function VisitsWorkspace() {
   const [visits, setVisits] = useState<Visit[]>([])
   const [selected, setSelected] = useState<Visit | null>(null)
   const [query, setQuery] = useState('')
+  const [center, setCenter] = useState('All centres')
+  const [status, setStatus] = useState('All statuses')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [scheduleOpen, setScheduleOpen] = useState(false)
@@ -38,7 +40,11 @@ export function VisitsWorkspace() {
   const fetchVisits = useCallback(async () => {
     setError('')
     try {
-      const res = await fetch('/api/visits')
+      const params = new URLSearchParams()
+      if (status !== 'All statuses') params.set('status', status)
+      if (center !== 'All centres') params.set('center', center)
+      const queryString = params.toString()
+      const res = await fetch(queryString ? `/api/visits?${queryString}` : '/api/visits')
       if (!res.ok) throw new Error('Failed to load visits')
       const data = await res.json()
       const mapped = (data.visits || []).map(mapApiVisit)
@@ -48,7 +54,7 @@ export function VisitsWorkspace() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [center, status])
 
   useEffect(() => {
     let mounted = true
@@ -69,8 +75,13 @@ export function VisitsWorkspace() {
   }, [fetchVisits])
 
   const visible = useMemo(() => {
-    return visits.filter((visit) => `${visit.patient} ${visit.mr} ${visit.op}`.toLowerCase().includes(query.toLowerCase()))
-  }, [visits, query])
+    return visits.filter((visit) => {
+      const matchesQuery = `${visit.patient} ${visit.mr} ${visit.op}`.toLowerCase().includes(query.toLowerCase())
+      const matchesCenter = center === 'All centres' || visit.center === center
+      const matchesStatus = status === 'All statuses' || visit.status === status
+      return matchesQuery && matchesCenter && matchesStatus
+    })
+  }, [visits, query, center, status])
 
   const updateStatus = async (status: VisitStatus) => {
     if (!selected) return
@@ -125,7 +136,11 @@ export function VisitsWorkspace() {
               <CardTitle>Today's visits</CardTitle>
               <CardDescription>{visible.length} appointments scheduled.</CardDescription>
             </div>
-            <div className="relative"><Search className="absolute left-2.5 top-2 size-4 text-muted-foreground"/><Input className="w-56 pl-8" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search patient or OP no."/></div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Filter label="Centre" value={center} values={['All centres', 'Nutrition Center', 'Ayurcare Center']} onChange={setCenter} />
+              <Filter label="Status" value={status} values={['All statuses', 'Waiting', 'Active', 'Completed', 'Cancelled']} onChange={setStatus} />
+              <div className="relative"><Search className="absolute left-2.5 top-2 size-4 text-muted-foreground"/><Input className="w-56 pl-8" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search patient or OP no."/></div>
+            </div>
           </CardHeader>
           <CardContent className="px-0">
             {loading ? <div className="p-8 text-center text-sm text-muted-foreground">Loading visits...</div> : <div className="overflow-x-auto">
@@ -233,6 +248,15 @@ function SelectField({ label, values }: { label: string; values: string[] }) {
     <Label className="text-xs text-muted-foreground">{label}</Label>
     <select className="mt-1.5 h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm">
       {values.map((value) => <option key={value}>{value}</option>)}
+    </select>
+  </div>
+}
+
+function Filter({ label, value, values, onChange }: { label: string; value: string; values: string[]; onChange: (value: string) => void }) {
+  return <div>
+    <label className="text-xs text-muted-foreground">{label}</label>
+    <select value={value} onChange={(e) => onChange(e.target.value)} className="mt-1.5 h-8 rounded-lg border border-input bg-background px-2.5 text-sm">
+      {values.map((item) => <option key={item} value={item}>{item}</option>)}
     </select>
   </div>
 }

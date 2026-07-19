@@ -6,6 +6,7 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const patientMr = url.searchParams.get('patientMr') || '';
     const status = url.searchParams.get('status') || '';
+    const center = url.searchParams.get('center') || '';
 
     const where: Record<string, unknown> = {};
     if (patientMr) {
@@ -13,6 +14,9 @@ export async function GET(request: Request) {
     }
     if (status) {
       where.status = status;
+    }
+    if (center) {
+      where.center = center;
     }
 
     const visits = await prisma.visit.findMany({
