@@ -25,7 +25,7 @@ export const navGroups: NavGroup[] = [
     heading: 'Overview',
     items: [
       { label: 'Dashboard', icon: LayoutDashboard, href: '/' },
-      { label: 'Registrations', icon: UserPlus, href: '/register', badge: '128' },
+      { label: 'Registrations', icon: UserPlus, href: '/register' },
       { label: 'Visits', icon: Activity, href: '/visits' },
     ],
   },
@@ -38,7 +38,7 @@ export const navGroups: NavGroup[] = [
   {
     heading: 'Operations',
     items: [
-      { label: 'Follow-ups', icon: CalendarClock, href: '/follow-ups', badge: '54' },
+      { label: 'Follow-ups', icon: CalendarClock, href: '/follow-ups' },
       { label: 'Billing', icon: Receipt, href: '/billing' },
     ],
   },
