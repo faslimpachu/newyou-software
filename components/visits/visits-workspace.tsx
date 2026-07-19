@@ -144,23 +144,23 @@ export function VisitsWorkspace() {
           </CardHeader>
           <CardContent className="px-0">
             {loading ? <div className="p-8 text-center text-sm text-muted-foreground">Loading visits...</div> : <div className="overflow-x-auto">
-              <table className="w-full min-w-[780px] text-sm">
-                <thead className="border-y bg-muted/40 text-xs text-muted-foreground">
-                  <tr>{['Time','Patient','Centre','Clinician','Visit status'].map((heading) => <th key={heading} className="px-5 py-3 text-left font-medium">{heading}</th>)}</tr>
-                </thead>
-                <tbody>
-                  {visible.length === 0 && <tr><td colSpan={5} className="p-8 text-center text-sm text-muted-foreground">No visits found.</td></tr>}
-                  {visible.map((visit) => (
-                    <tr key={visit.id} onClick={() => setSelected(visit)} className={'cursor-pointer border-b hover:bg-muted/50 ' + (selected && selected.id === visit.id ? 'bg-primary/5' : '')}>
-                      <td className="px-5 py-4 text-sm font-medium">{visit.time}</td>
-                      <td className="px-5 py-4"><p className="font-medium">{visit.patient}</p><p className="text-xs text-primary">{visit.mr}</p></td>
-                      <td className="px-5 py-4 text-sm text-muted-foreground">{visit.center}</td>
-                      <td className="px-5 py-4 text-sm text-muted-foreground">{visit.clinician}</td>
-                      <td className="px-5 py-4"><StatusBadge status={visit.status}/></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                <table className="w-full min-w-[780px] text-sm">
+                  <thead className="border-y bg-muted/40 text-xs text-muted-foreground">
+                    <tr>{['ID','Patient','Centre','Clinician','Visit status'].map((heading) => <th key={heading} className="px-5 py-3 text-left font-medium">{heading}</th>)}</tr>
+                  </thead>
+                  <tbody>
+                    {visible.length === 0 && <tr><td colSpan={5} className="p-8 text-center text-sm text-muted-foreground">No visits found.</td></tr>}
+                    {visible.map((visit) => (
+                      <tr key={visit.id} onClick={() => setSelected(visit)} className={'cursor-pointer border-b hover:bg-muted/50 ' + (selected && selected.id === visit.id ? 'bg-primary/5' : '')}>
+                        <td className="px-5 py-4 text-sm font-medium">{visit.id}</td>
+                        <td className="px-5 py-4"><p className="font-medium">{visit.patient}</p><p className="text-xs text-primary">{visit.mr}</p></td>
+                        <td className="px-5 py-4 text-sm text-muted-foreground">{visit.center}</td>
+                        <td className="px-5 py-4 text-sm text-muted-foreground">{visit.clinician}</td>
+                        <td className="px-5 py-4"><StatusBadge status={visit.status}/></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
             </div>}
           </CardContent>
         </Card>
