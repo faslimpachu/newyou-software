@@ -80,7 +80,20 @@ export function PatientDirectory() {
   }, [query])
 
   useEffect(() => {
-    fetchPatients()
+    let mounted = true
+    const initial = async () => {
+      try {
+        await fetchPatients()
+      } catch {
+        // handled inside fetchPatients
+      }
+    }
+    initial()
+    const timer = setInterval(fetchPatients, 2000)
+    return () => {
+      mounted = false
+      clearInterval(timer)
+    }
   }, [fetchPatients])
 
   const filtered = useMemo(() => {
