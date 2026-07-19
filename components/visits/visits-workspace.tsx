@@ -2,21 +2,19 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { CalendarDays, Clock3, Plus, Printer, Search, UserRound } from 'lucide-react'
+import { CalendarDays, Plus, Printer, Search, UserRound } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
-import { cn } from '@/lib/utils'
 
-type VisitStatus = 'Waiting' | 'In Consultation' | 'Completed' | 'Cancelled' | 'No Show' | 'Follow-up'
+type VisitStatus = 'Waiting' | 'Active' | 'Completed' | 'Cancelled'
 type Visit = { op: string; mr: string; patient: string; center: string; time: string; clinician: string; status: VisitStatus }
 const initialVisits: Visit[] = [
-  {op:'OP-260712-014',mr:'MR000001',patient:'Aarav Sharma',center:'Nutrition Center',time:'09:30 AM',clinician:'Dr. Neha Verma',status:'In Consultation'},
+  {op:'OP-260712-014',mr:'MR000001',patient:'Aarav Sharma',center:'Nutrition Center',time:'09:30 AM',clinician:'Dr. Neha Verma',status:'Active'},
   {op:'OP-260712-015',mr:'MR000002',patient:'Rohan Mehta',center:'Ayurcare Center',time:'10:00 AM',clinician:'Dr. Arjun Das',status:'Waiting'},
   {op:'OP-260712-016',mr:'MR000002',patient:'Priya Nair',center:'Nutrition Center',time:'10:30 AM',clinician:'Dr. Neha Verma',status:'Completed'},
-  {op:'OP-260712-017',mr:'MR000003',patient:'Anjali Menon',center:'Ayurcare Center',time:'11:00 AM',clinician:'Dr. Arjun Das',status:'Follow-up'},
+  {op:'OP-260712-017',mr:'MR000003',patient:'Anjali Menon',center:'Ayurcare Center',time:'11:00 AM',clinician:'Dr. Arjun Das',status:'Completed'},
 ]
 
 export function VisitsWorkspace() {
@@ -25,7 +23,6 @@ export function VisitsWorkspace() {
   const [selected, setSelected] = useState<Visit | null>(initialVisits[0])
   const [query, setQuery] = useState('')
   const [scheduleOpen, setScheduleOpen] = useState(false)
-  const [detailTab, setDetailTab] = useState<'summary' | 'notes'>('summary')
   const visible = visits.filter((visit) => `${visit.patient} ${visit.mr} ${visit.op}`.toLowerCase().includes(query.toLowerCase()))
   const updateStatus = (status: VisitStatus) => { if (!selected) return; const updated = { ...selected, status }; setSelected(updated); setVisits((items) => items.map((item) => item.op === updated.op ? updated : item)) }
   const openPatient = (mr: string) => router.push(`/patients/${mr}`)
@@ -39,8 +36,8 @@ export function VisitsWorkspace() {
         </div>
         <Button size="sm" onClick={() => setScheduleOpen(true)}><Plus className="mr-2 size-4"/>Schedule visit</Button>
       </div>
-      <div className="grid grid-cols-2 gap-4 xl:grid-cols-6">
-        {(['Waiting','In Consultation','Completed','Cancelled','No Show','Follow-up'] as VisitStatus[]).map((status) => (
+      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+        {(['Waiting','Active','Completed','Cancelled'] as VisitStatus[]).map((status) => (
           <Card key={status} className="rounded-lg shadow-sm">
             <CardContent className="p-4">
               <p className="text-xs text-muted-foreground">{status}</p>
@@ -80,7 +77,7 @@ export function VisitsWorkspace() {
           </CardContent>
         </Card>
         {selected ? (
-          <VisitDetailPanel visit={selected} updateStatus={updateStatus} detailTab={detailTab} setDetailTab={setDetailTab} onOpenPatient={() => openPatient(selected.mr)} />
+          <VisitDetailPanel visit={selected} updateStatus={updateStatus} onOpenPatient={() => openPatient(selected.mr)} />
         ) : (
           <Card className="h-fit rounded-lg shadow-sm"><CardContent className="py-10 text-center text-sm text-muted-foreground">Select a visit to view details.</CardContent></Card>
         )}
@@ -89,36 +86,25 @@ export function VisitsWorkspace() {
     </div>
   )
 }
-function StatusBadge({ status }: { status: VisitStatus }) { return <span className={'rounded-md px-2 py-1 text-xs font-medium ' + (status === 'Completed' ? 'bg-primary/10 text-primary' : status === 'Cancelled' || status === 'No Show' ? 'bg-destructive/10 text-destructive' : 'bg-amber-100 text-amber-800')}>{status}</span> }
-function VisitDetailPanel({ visit, updateStatus, detailTab, setDetailTab, onOpenPatient }: { visit: Visit; updateStatus: (status: VisitStatus) => void; detailTab: 'summary' | 'notes'; setDetailTab: (t: 'summary' | 'notes') => void; onOpenPatient: () => void }) { return <Card className="h-fit rounded-lg shadow-sm"><CardHeader><CardTitle>{visit.patient}</CardTitle><CardDescription>{visit.mr} · {visit.op}</CardDescription></CardHeader><CardContent>
-      <div className="mb-4 flex gap-2 border-b">
-        <button type="button" onClick={() => setDetailTab('summary')} className={cn('pb-2 text-sm font-medium', detailTab === 'summary' ? 'border-b-2 border-primary text-primary' : 'text-muted-foreground')}>Summary</button>
-        <button type="button" onClick={() => setDetailTab('notes')} className={cn('pb-2 text-sm font-medium', detailTab === 'notes' ? 'border-b-2 border-primary text-primary' : 'text-muted-foreground')}>Notes</button>
+function StatusBadge({ status }: { status: VisitStatus }) { return <span className={'rounded-md px-2 py-1 text-xs font-medium ' + (status === 'Completed' || status === 'Active' ? 'bg-primary/10 text-primary' : status === 'Cancelled' ? 'bg-destructive/10 text-destructive' : 'bg-amber-100 text-amber-800')}>{status}</span> }
+function VisitDetailPanel({ visit, updateStatus, onOpenPatient }: { visit: Visit; updateStatus: (status: VisitStatus) => void; onOpenPatient: () => void }) { return <Card className="h-fit rounded-lg shadow-sm"><CardHeader><CardTitle>{visit.patient}</CardTitle><CardDescription>{visit.mr} · {visit.op}</CardDescription></CardHeader><CardContent>
+      <div className="space-y-4">
+        <dl className="space-y-3 text-sm">
+          <Pair label="Appointment" value={'12 Jul 2026, ' + visit.time}/>
+          <Pair label="Centre" value={visit.center}/>
+          <Pair label="Assigned clinician" value={visit.clinician}/>
+        </dl>
+        <div>
+          <Label className="text-xs text-muted-foreground">Visit status</Label>
+          <select value={visit.status} onChange={(e) => updateStatus(e.target.value as VisitStatus)} className="mt-1.5 h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm">
+            {(['Waiting','Active','Completed','Cancelled'] as VisitStatus[]).map((status) => <option key={status}>{status}</option>)}
+          </select>
+        </div>
+        <div className="flex gap-2 border-t pt-4">
+          <Button className="flex-1" size="sm" onClick={onOpenPatient}><UserRound className="mr-2 size-4"/>Open patient profile</Button>
+          <Button className="flex-1" size="sm" variant="outline" onClick={() => window.print()}><Printer className="mr-2 size-4"/>Print</Button>
+        </div>
       </div>
-      {detailTab === 'summary' ? (
-        <div className="space-y-4">
-          <dl className="space-y-3 text-sm">
-            <Pair label="Appointment" value={'12 Jul 2026, ' + visit.time}/>
-            <Pair label="Centre" value={visit.center}/>
-            <Pair label="Assigned clinician" value={visit.clinician}/>
-          </dl>
-          <div>
-            <Label className="text-xs text-muted-foreground">Visit status</Label>
-            <select value={visit.status} onChange={(e) => updateStatus(e.target.value as VisitStatus)} className="mt-1.5 h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm">
-              {(['Waiting','In Consultation','Completed','Cancelled','No Show','Follow-up'] as VisitStatus[]).map((status) => <option key={status}>{status}</option>)}
-            </select>
-          </div>
-          <div className="flex gap-2 border-t pt-4">
-            <Button className="flex-1" size="sm" onClick={onOpenPatient}><UserRound className="mr-2 size-4"/>Open patient profile</Button>
-            <Button className="flex-1" size="sm" variant="outline" onClick={() => window.print()}><Printer className="mr-2 size-4"/>Print</Button>
-          </div>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          <Textarea className="min-h-40" placeholder="Clinical notes for this visit..."/>
-          <Button size="sm">Save note</Button>
-        </div>
-      )}
     </CardContent>
   </Card>
 }
