@@ -8,6 +8,10 @@ describe('PatientProfile', () => {
     vi.clearAllMocks()
   })
 
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
   it('renders the patient profile and visit history from demo data', () => {
     render(<PatientProfile patient={existingPatients[0]} center="Nutrition Center" />)
 
@@ -450,5 +454,100 @@ describe('PatientProfile', () => {
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: 'Prescriptions' })).toBeDefined()
     })
+  })
+
+  it('prints OP sheet with visit center header instead of patient default', async () => {
+    const printWindows: any[] = []
+    const mockOpen = vi.fn(() => {
+      const doc = { write: vi.fn(), close: vi.fn() }
+      const win = { document: doc, focus: vi.fn(), print: vi.fn() }
+      printWindows.push(win)
+      return win
+    })
+    vi.spyOn(window, 'open').mockImplementation(mockOpen)
+
+    const patientWithVisit = {
+      ...existingPatients[0],
+      visits: [
+        { id: 'NU000001', date: '01 Jan 2026', center: 'Ayurcare Center', doctor: 'Dr. A', reason: 'Checkup' },
+      ],
+      apiOPSheets: [{ id: 'OP-1', visitId: 'NU000001', clinicalExamination: '', vitals: null, diagnosis: '', symptoms: '', status: null, createdAt: new Date().toISOString(), visit: undefined, prescription: null }],
+      apiPrescriptions: [],
+    }
+
+    render(<PatientProfile patient={patientWithVisit} center="Nutrition Center" />)
+
+    fireEvent.click(screen.getByRole('tab', { name: 'OP Sheet' }))
+    fireEvent.click(screen.getByRole('button', { name: /View/ }))
+    const printButtons = screen.getAllByRole('button', { name: /Print/ })
+    fireEvent.click(printButtons[printButtons.length - 1])
+
+    expect(printWindows.length).toBe(1)
+    const writeArg = printWindows[0].document.write.mock.calls[0]?.[0] as string
+    expect(writeArg).toContain('Ayurcare Center')
+    expect(writeArg).not.toContain('NEW YOU')
+  })
+
+  it('prints prescription with visit center header instead of patient default', async () => {
+    const printWindows: any[] = []
+    const mockOpen = vi.fn(() => {
+      const doc = { write: vi.fn(), close: vi.fn() }
+      const win = { document: doc, focus: vi.fn(), print: vi.fn() }
+      printWindows.push(win)
+      return win
+    })
+    vi.spyOn(window, 'open').mockImplementation(mockOpen)
+
+    const patientWithVisit = {
+      ...existingPatients[0],
+      visits: [
+        { id: 'NU000001', date: '01 Jan 2026', center: 'Ayurcare Center', doctor: 'Dr. A', reason: 'Checkup' },
+      ],
+      apiOPSheets: [],
+      apiPrescriptions: [{ id: 'RX-1', visitId: 'NU000001', opSheetId: 'OP-1', diagnosis: '', medicines: '[]', advice: '', followUp: '', createdAt: new Date().toISOString(), opSheet: { id: 'OP-1', visitId: 'NU000001', clinicalExamination: '', vitals: null, diagnosis: '', symptoms: '', status: null, createdAt: new Date().toISOString(), visit: undefined, prescription: null } }],
+    }
+
+    render(<PatientProfile patient={patientWithVisit} center="Nutrition Center" />)
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Prescriptions' }))
+    fireEvent.click(screen.getByRole('button', { name: /View/ }))
+    const printButtons = screen.getAllByRole('button', { name: /Print/ })
+    fireEvent.click(printButtons[printButtons.length - 1])
+
+    expect(printWindows.length).toBe(1)
+    const writeArg = printWindows[0].document.write.mock.calls[0]?.[0] as string
+    expect(writeArg).toContain('Ayurcare Center')
+    expect(writeArg).not.toContain('NEW YOU')
+  })
+
+  it('falls back to patient default center for print when visit center is missing', async () => {
+    const printWindows: any[] = []
+    const mockOpen = vi.fn(() => {
+      const doc = { write: vi.fn(), close: vi.fn() }
+      const win = { document: doc, focus: vi.fn(), print: vi.fn() }
+      printWindows.push(win)
+      return win
+    })
+    vi.spyOn(window, 'open').mockImplementation(mockOpen)
+
+    const patientWithVisit = {
+      ...existingPatients[0],
+      visits: [
+        { id: 'NU000001', date: '01 Jan 2026', center: '', doctor: 'Dr. A', reason: 'Checkup' },
+      ],
+      apiOPSheets: [{ id: 'OP-1', visitId: 'NU000001', clinicalExamination: '', vitals: null, diagnosis: '', symptoms: '', status: null, createdAt: new Date().toISOString(), visit: undefined, prescription: null }],
+      apiPrescriptions: [],
+    }
+
+    render(<PatientProfile patient={patientWithVisit} center="Nutrition Center" />)
+
+    fireEvent.click(screen.getByRole('tab', { name: 'OP Sheet' }))
+    fireEvent.click(screen.getByRole('button', { name: /View/ }))
+    const printButtons = screen.getAllByRole('button', { name: /Print/ })
+    fireEvent.click(printButtons[printButtons.length - 1])
+
+    expect(printWindows.length).toBe(1)
+    const writeArg = printWindows[0].document.write.mock.calls[0]?.[0] as string
+    expect(writeArg).toContain('NEW YOU')
   })
 })

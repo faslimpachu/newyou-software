@@ -370,7 +370,7 @@ function OPSheet({ patient, center, onRefresh, onUpdateStatus }: { patient: Pati
     setMode('list')
   }
 
-  const printRecord = (record: OPSheetRecord) => openA4Print('OP Registration Sheet', patient, center, buildOPPrintContent(record))
+  const printRecord = (record: OPSheetRecord) => openA4Print('OP Registration Sheet', patient, getVisit(record.visitId)?.center || center, buildOPPrintContent(record))
 
   const getVisit = (visitId: string) => patient.visits.find((v) => v.id === visitId)
 
@@ -444,7 +444,7 @@ function OPSheetEditor({ patient, center, record, readOnly, onCancel, onSave }: 
   }
 
   const currentRecord = (): OPSheetRecord => ({ ...record, clinicalNotes, investigations, treatmentPlan, measurementValues, status })
-  const doPrint = () => openA4Print('OP Registration Sheet', patient, center, buildOPPrintContent(currentRecord()))
+  const doPrint = () => openA4Print('OP Registration Sheet', patient, patient.visits.find((v) => v.id === record.visitId)?.center || center, buildOPPrintContent(currentRecord()))
   const handleSave = () => onSave({ ...currentRecord(), status: status === 'Draft' ? 'Completed' : status })
 
   return <div className="print-sheet space-y-5">
@@ -591,7 +591,7 @@ function Prescription({ patient, center, onRefresh }: { patient: PatientRecord; 
     onRefresh?.()
   }
 
-  const printRecord = (record: PrescriptionRecord) => openA4Print('Prescription', patient, center, buildPrescriptionPrintContent(record))
+  const printRecord = (record: PrescriptionRecord) => openA4Print('Prescription', patient, getVisit(record.visitId)?.center || center, buildPrescriptionPrintContent(record))
 
   const getVisit = (visitId: string) => patient.visits.find((v) => v.id === visitId)
 
@@ -662,13 +662,13 @@ function PrescriptionEditor({ patient, center, record, readOnly, onCancel, onSav
   const removeRow = (id: string) => setMedicines((rows) => (rows.length > 1 ? rows.filter((row) => row.id !== id) : rows))
 
   const currentRecord = (): PrescriptionRecord => ({ ...record, diagnosis, medicines, advice, followUp, status })
-  const doPrint = () => openA4Print('Prescription', patient, center, buildPrescriptionPrintContent(currentRecord()))
-  const doBlank = () => openA4Print('Prescription', patient, center)
+  const doPrint = () => openA4Print('Prescription', patient, patient.visits.find((v) => v.id === record.visitId)?.center || center, buildPrescriptionPrintContent(currentRecord()))
+  const doBlank = () => openA4Print('Prescription', patient, patient.visits.find((v) => v.id === record.visitId)?.center || center)
   const handleSave = () => onSave({ ...currentRecord(), status: status === 'Draft' ? 'Completed' : status })
 
   return <div className="print-sheet">
     <div className="flex items-start justify-between border-b-2 border-primary pb-5">
-      <ClinicHeader center={center} />
+      <ClinicHeader center={patient.visits.find((v) => v.id === record.visitId)?.center || center} />
       <div className="flex gap-2">
         <Button variant="outline" size="sm" onClick={onCancel}><ArrowLeft className="mr-2 size-4" />Back to list</Button>
         <Button variant="outline" size="sm" onClick={doPrint}><Printer className="mr-2 size-4" />Print</Button>
