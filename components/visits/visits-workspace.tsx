@@ -9,16 +9,19 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
 type VisitStatus = 'Waiting' | 'Active' | 'Completed' | 'Cancelled'
-type Visit = { id: string; op: string; mr: string; patient: string; center: string; time: string; clinician: string; status: VisitStatus }
+type Visit = { id: string; op: string; mr: string; patient: string; center: string; date: string; time: string; clinician: string; status: VisitStatus }
 
 function mapApiVisit(visit: any): Visit {
-  const time = visit.appointmentTimeSlot || (visit.appointmentDate ? new Date(visit.appointmentDate).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '--')
+  const appointmentDate = visit.appointmentDate ? new Date(visit.appointmentDate) : null
+  const date = appointmentDate ? appointmentDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : (visit.createdAt ? new Date(visit.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '--')
+  const time = visit.appointmentTimeSlot || (appointmentDate ? appointmentDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : (visit.createdAt ? new Date(visit.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '--'))
   return {
     id: visit.id,
     op: visit.id.slice(0, 8).toUpperCase(),
     mr: visit.patientMr,
     patient: visit.patient?.patientName || 'Unknown',
     center: visit.center || '--',
+    date,
     time,
     clinician: visit.doctor || 'Not assigned',
     status: (visit.status as VisitStatus) || 'Waiting',
@@ -144,17 +147,18 @@ export function VisitsWorkspace() {
           </CardHeader>
           <CardContent className="px-0">
             {loading ? <div className="p-8 text-center text-sm text-muted-foreground">Loading visits...</div> : <div className="overflow-x-auto">
-                <table className="w-full min-w-[780px] text-sm">
+                <table className="w-full min-w-[900px] text-sm">
                   <thead className="border-y bg-muted/40 text-xs text-muted-foreground">
-                    <tr>{['ID','MR','Patient','Centre','Clinician','Visit status'].map((heading) => <th key={heading} className="px-5 py-3 text-left font-medium">{heading}</th>)}</tr>
+                    <tr>{['ID','MR','Patient','Date & time','Centre','Clinician','Visit status'].map((heading) => <th key={heading} className="px-5 py-3 text-left font-medium">{heading}</th>)}</tr>
                   </thead>
                   <tbody>
-                    {visible.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-sm text-muted-foreground">No visits found.</td></tr>}
+                    {visible.length === 0 && <tr><td colSpan={7} className="p-8 text-center text-sm text-muted-foreground">No visits found.</td></tr>}
                     {visible.map((visit) => (
                       <tr key={visit.id} onClick={() => setSelected(visit)} className={'cursor-pointer border-b hover:bg-muted/50 ' + (selected && selected.id === visit.id ? 'bg-primary/5' : '')}>
                         <td className="px-5 py-4 text-sm font-medium">{visit.id}</td>
                         <td className="px-5 py-4 text-sm font-medium">{visit.mr}</td>
                         <td className="px-5 py-4"><p className="font-medium">{visit.patient}</p></td>
+                        <td className="px-5 py-4 text-sm text-muted-foreground">{visit.date}, {visit.time}</td>
                         <td className="px-5 py-4 text-sm text-muted-foreground">{visit.center}</td>
                         <td className="px-5 py-4 text-sm text-muted-foreground">{visit.clinician}</td>
                         <td className="px-5 py-4"><StatusBadge status={visit.status}/></td>
@@ -189,7 +193,7 @@ function VisitDetailPanel({ visit, updateStatus, updating, onOpenPatient }: { vi
     <CardContent>
       <div className="space-y-4">
         <dl className="space-y-3 text-sm">
-          <Pair label="Appointment" value={visit.time}/>
+          <Pair label="Date & time" value={`${visit.date}, ${visit.time}`}/>
           <Pair label="Centre" value={visit.center}/>
           <Pair label="Assigned clinician" value={visit.clinician}/>
         </dl>
