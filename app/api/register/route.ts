@@ -41,14 +41,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Mobile number must be exactly 10 digits' }, { status: 400 });
     }
 
-    const existing = await prisma.patient.findUnique({
-      where: { mobileNumber },
-    });
-
-    if (existing) {
-      return NextResponse.json({ error: 'Mobile number already registered' }, { status: 409 });
-    }
-
     const centerType = consultationType === 'NUTRITION' ? 'NUTRITION' : 'AYURCARE';
     const mr = await generateMR();
     const visitId = await generateVisitId(centerType);

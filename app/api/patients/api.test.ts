@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { NextRequest } from 'next/server'
 import { POST as registerPost } from '@/app/api/register/route'
+import { POST as patientsPost } from '@/app/api/patients/route'
 import { PATCH as patientPatch, GET as patientGet } from '@/app/api/patients/[mr]/route'
 import { prisma } from '@/lib/prisma'
 
@@ -186,5 +187,86 @@ describe('Patient register and update APIs', () => {
 
     await prisma.visit.deleteMany({ where: { patientMr: created.mr } })
     await prisma.patient.delete({ where: { mr: created.mr } })
+  })
+
+  it('POST /api/register allows reusing an existing mobile number', async () => {
+    const mobile = uniqueMobile()
+    const payload = {
+      consultationType: 'AYURCARE',
+      patientName: 'First Patient',
+      parentName: 'Parent',
+      gender: 'Female',
+      mobileNumber: mobile,
+      address: '123 Street',
+      district: 'City',
+      state: 'Karnataka',
+      pinCode: '560001',
+      doctor: 'Dr. One',
+    }
+
+    const first = new NextRequest('http://localhost/api/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    const firstRes = await registerPost(first)
+    expect(firstRes.status).toBe(201)
+    const firstBody = await firstRes.json()
+    const mr = firstBody.mr as string
+
+    const second = new NextRequest('http://localhost/api/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...payload, patientName: 'Second Patient' }),
+    })
+    const secondRes = await registerPost(second)
+    expect(secondRes.status).toBe(201)
+    const secondBody = await secondRes.json()
+    expect(secondBody.mr).not.toBe(mr)
+
+    await prisma.visit.deleteMany({ where: { patientMr: mr } })
+    await prisma.visit.deleteMany({ where: { patientMr: secondBody.mr } })
+    await prisma.patient.delete({ where: { mr } })
+    await prisma.patient.delete({ where: { mr: secondBody.mr } })
+  })
+
+  it('POST /api/patients allows reusing an existing mobile number', async () => {
+    const mobile = uniqueMobile()
+    const firstPayload = {
+      consultationType: 'NUTRITION',
+      patientName: 'First Patient',
+      parentName: 'Parent',
+      gender: 'Male',
+      mobileNumber: mobile,
+      address: '123 Street',
+      district: 'City',
+      state: 'Karnataka',
+      pinCode: '560001',
+    }
+
+    const first = new NextRequest('http://localhost/api/patients', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(firstPayload),
+    })
+    const firstRes = await patientsPost(first)
+    expect(firstRes.status).toBe(201)
+    const firstBody = await firstRes.json()
+
+    const secondPayload = { ...firstPayload, patientName: 'Second Patient' }
+    const second = new NextRequest('http://localhost/api/patients', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(secondPayload),
+    })
+    const secondRes = await patientsPost(second)
+    expect(secondRes.status).toBe(201)
+    const secondBody = await secondRes.json()
+    expect(secondBody.patient.mr).not.toBe(firstBody.patient.mr)
+
+    await prisma.visit.deleteMany({ where: { patientMr: firstBody.patient.mr } })
+    await prisma.visit.deleteMany({ where: { patientMr: secondBody.patient.mr } })
+    await prisma.patient.delete({ where: { mr: firstBody.patient.mr } })
+    await prisma.patient.delete({ where: { mr: secondBody.patient.mr } })
   })
 })

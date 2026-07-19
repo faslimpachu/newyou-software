@@ -45,7 +45,6 @@ model Patient {
   followUps        FollowUp[]
   documents        Document[]
 
-  @@unique([mobileNumber])
   @@map("patients")
 }
 
