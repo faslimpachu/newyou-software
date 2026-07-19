@@ -296,6 +296,10 @@ const seedExpenses: Expense[] = [
 /*  Helpers                                                             */
 /* ------------------------------------------------------------------ */
 
+function getCenterName(center: Center): string {
+  return CENTERS[center]?.name ?? center
+}
+
 const money = (value: number) => `Rs. ${value.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
 
 function computeTotals(items: Line[], discount: number, tax: number, paid: number) {
@@ -582,7 +586,7 @@ export function BillingWorkspace() {
             const totals = computeTotals(inv.items, inv.discount, inv.tax, inv.paid)
             return {
               Invoice: inv.id,
-              Center: CENTERS[inv.center].name,
+              Center: getCenterName(inv.center),
               Patient: inv.patient.name,
               MR: inv.patient.mrNumber,
               'Bill type': inv.billType,
@@ -777,7 +781,7 @@ export function BillingWorkspace() {
                           className="cursor-pointer border-b hover:bg-muted/50"
                         >
                           <td className="px-5 py-4 font-medium text-primary">{invoice.id}</td>
-                          <td className="px-5 py-4 text-muted-foreground">{CENTERS[invoice.center].name}</td>
+                          <td className="px-5 py-4 text-muted-foreground">{getCenterName(invoice.center)}</td>
                           <td className="px-5 py-4">
                             <p className="font-medium">{invoice.patient.name}</p>
                             <p className="text-xs text-muted-foreground">{invoice.patient.mrNumber}</p>
