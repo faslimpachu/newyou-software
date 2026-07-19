@@ -50,7 +50,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Patient not found' }, { status: 404 });
     }
 
-    const centerType = patient.consultationType === 'AYURCARE' ? 'AYURCARE' : 'NUTRITION';
+    const centerType = center?.toLowerCase().includes('ayurcare') ? 'AYURCARE' : 'NUTRITION';
     const visitId = await generateVisitId(centerType);
 
     const visit = await prisma.visit.create({
