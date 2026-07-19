@@ -892,7 +892,6 @@ function FollowUpEditor({ record, saving, onCancel, onSave }: { record: FollowUp
 function FollowUpDetails({ record, onEdit }: { record: FollowUpRecord; onEdit: () => void }) {
   return <div className="space-y-5">
     <div className="grid gap-4 text-sm md:grid-cols-2">
-      <Info label="Follow-up ID" value={record.id} />
       <Info label="Program" value={record.program || 'Not recorded'} />
       <Info label="Review date" value={formatRecordDate(record.reviewDate)} />
       <Info label="Due date" value={formatRecordDate(record.dueDate)} />

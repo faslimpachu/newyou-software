@@ -894,7 +894,7 @@ describe('PatientProfile', () => {
     fireEvent.click(screen.getByRole('button', { name: /View/ }))
 
     expect(screen.getByText('Follow-up details')).toBeDefined()
-    expect(screen.getByText('FU-1')).toBeDefined()
+    expect(screen.queryByText('Follow-up ID')).toBeNull()
     expect(screen.getByText('Weight Loss')).toBeDefined()
   })
 
