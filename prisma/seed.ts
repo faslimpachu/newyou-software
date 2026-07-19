@@ -40,10 +40,22 @@ async function main() {
     ],
   });
 
-  await prisma.mRSequence.createMany({
-    data: [
-      { id: 'GLOBAL', lastNumber: 0 },
-    ],
+  await prisma.mRSequence.upsert({
+    where: { id: 'GLOBAL' },
+    update: {},
+    create: { id: 'GLOBAL', lastNumber: 0 },
+  });
+
+  await prisma.visitSequence.upsert({
+    where: { id: 'NUTRITION' },
+    update: {},
+    create: { id: 'NUTRITION', centerType: 'NUTRITION', lastNumber: 0 },
+  });
+
+  await prisma.visitSequence.upsert({
+    where: { id: 'AYURCARE' },
+    update: {},
+    create: { id: 'AYURCARE', centerType: 'AYURCARE', lastNumber: 0 },
   });
 
   console.log('Seed completed');

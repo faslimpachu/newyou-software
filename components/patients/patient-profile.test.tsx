@@ -62,14 +62,14 @@ describe('PatientProfile', () => {
       ...existingPatients[0],
       visits: [
         ...existingPatients[0].visits,
-        { id: 'V-1234', doctor: 'Dr. Anjali Menon', center: 'Nutrition Center', reason: 'Waiting', createdAt: new Date().toISOString() },
+        { id: 'NU000001', doctor: 'Dr. Anjali Menon', center: 'Nutrition Center', reason: 'Waiting', createdAt: new Date().toISOString() },
       ],
     }
 
     const mockFetch = vi.fn()
       .mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ visit: { id: 'V-1234', doctor: 'Dr. Anjali Menon' } }),
+        json: async () => ({ visit: { id: 'NU000001', doctor: 'Dr. Anjali Menon' } }),
       })
       .mockResolvedValueOnce({
         ok: true,
@@ -171,24 +171,24 @@ describe('PatientProfile', () => {
     const patientWithOP = {
       ...existingPatients[0],
       visits: [
-        { id: 'V-1', date: '01 Jan 2026', center: 'Nutrition Center', doctor: 'Dr. A', reason: 'Checkup' },
+        { id: 'NU000001', date: '01 Jan 2026', center: 'Nutrition Center', doctor: 'Dr. A', reason: 'Checkup' },
       ],
       apiOPSheets: [],
     }
 
     const refreshedPatient = {
       ...patientWithOP,
-      apiOPSheets: [{ id: 'OP-1', visitId: 'V-1', clinicalExamination: '', vitals: null, diagnosis: '', symptoms: '', status: null, createdAt: new Date().toISOString(), visit: undefined, prescription: null }],
+      apiOPSheets: [{ id: 'OP-1', visitId: 'NU000001', clinicalExamination: '', vitals: null, diagnosis: '', symptoms: '', status: null, createdAt: new Date().toISOString(), visit: undefined, prescription: null }],
     }
 
     const mockFetch = vi.fn()
       .mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ sheet: { id: 'OP-1', visitId: 'V-1' } }),
+        json: async () => ({ sheet: { id: 'OP-1', visitId: 'NU000001' } }),
       })
       .mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ patient: { id: 'V-1', status: 'Active' } }),
+        json: async () => ({ patient: { id: 'NU000001', status: 'Active' } }),
       })
       .mockResolvedValueOnce({
         ok: true,
@@ -240,7 +240,7 @@ describe('PatientProfile', () => {
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith('/api/op-sheets', expect.objectContaining({
         method: 'POST',
-        body: JSON.stringify({ patientMr: 'MR000001', visitId: 'V-1', clinicalExamination: '', vitals: '{}', diagnosis: '', symptoms: '' }),
+        body: JSON.stringify({ patientMr: 'MR000001', visitId: 'NU000001', clinicalExamination: '', vitals: '{}', diagnosis: '', symptoms: '' }),
       }))
     })
   })
@@ -249,7 +249,7 @@ describe('PatientProfile', () => {
     const patientWithOP = {
       ...existingPatients[0],
       visits: [
-        { id: 'V-1', date: '01 Jan 2026', center: 'Nutrition Center', doctor: 'Dr. A', reason: 'Checkup' },
+        { id: 'NU000001', date: '01 Jan 2026', center: 'Nutrition Center', doctor: 'Dr. A', reason: 'Checkup' },
       ],
       apiOPSheets: [],
     }
@@ -257,17 +257,17 @@ describe('PatientProfile', () => {
     const refreshedPatient = {
       ...patientWithOP,
       visits: [{ ...patientWithOP.visits[0], status: 'Active' }],
-      apiOPSheets: [{ id: 'OP-1', visitId: 'V-1', clinicalExamination: '', vitals: null, diagnosis: '', symptoms: '', status: null, createdAt: new Date().toISOString(), visit: undefined, prescription: null }],
+      apiOPSheets: [{ id: 'OP-1', visitId: 'NU000001', clinicalExamination: '', vitals: null, diagnosis: '', symptoms: '', status: null, createdAt: new Date().toISOString(), visit: undefined, prescription: null }],
     }
 
     const mockFetch = vi.fn()
       .mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ sheet: { id: 'OP-1', visitId: 'V-1' } }),
+        json: async () => ({ sheet: { id: 'OP-1', visitId: 'NU000001' } }),
       })
       .mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ patient: { id: 'V-1', status: 'Active' } }),
+        json: async () => ({ patient: { id: 'NU000001', status: 'Active' } }),
       })
       .mockResolvedValueOnce({
         ok: true,
@@ -317,7 +317,7 @@ describe('PatientProfile', () => {
     fireEvent.click(screen.getByRole('button', { name: /Save/ }))
 
     await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledWith('/api/visits/V-1', expect.objectContaining({
+      expect(mockFetch).toHaveBeenCalledWith('/api/visits/NU000001', expect.objectContaining({
         method: 'PATCH',
         body: JSON.stringify({ status: 'Active' }),
       }))
@@ -334,7 +334,7 @@ describe('PatientProfile', () => {
     const patientWithVisit = {
       ...existingPatients[0],
       visits: [
-        { id: 'V-1', date: '01 Jan 2026', center: 'Nutrition Center', doctor: 'Dr. A', reason: 'Checkup' },
+        { id: 'NU000001', date: '01 Jan 2026', center: 'Nutrition Center', doctor: 'Dr. A', reason: 'Checkup' },
       ],
       apiOPSheets: [],
       apiPrescriptions: [],
@@ -352,9 +352,9 @@ describe('PatientProfile', () => {
     const patientWithOP = {
       ...existingPatients[0],
       visits: [
-        { id: 'V-1', date: '01 Jan 2026', center: 'Nutrition Center', doctor: 'Dr. A', reason: 'Checkup' },
+        { id: 'NU000001', date: '01 Jan 2026', center: 'Nutrition Center', doctor: 'Dr. A', reason: 'Checkup' },
       ],
-      apiOPSheets: [{ id: 'OP-1', visitId: 'V-1', clinicalExamination: '', vitals: null, diagnosis: '', symptoms: '', status: null, createdAt: new Date().toISOString(), visit: undefined, prescription: null }],
+      apiOPSheets: [{ id: 'OP-1', visitId: 'NU000001', clinicalExamination: '', vitals: null, diagnosis: '', symptoms: '', status: null, createdAt: new Date().toISOString(), visit: undefined, prescription: null }],
       apiPrescriptions: [],
     }
 
@@ -369,7 +369,7 @@ describe('PatientProfile', () => {
     const patientWithVisit = {
       ...existingPatients[0],
       visits: [
-        { id: 'V-1', date: '01 Jan 2026', center: 'Nutrition Center', doctor: 'Dr. A', reason: 'Checkup' },
+        { id: 'NU000001', date: '01 Jan 2026', center: 'Nutrition Center', doctor: 'Dr. A', reason: 'Checkup' },
       ],
       apiOPSheets: [],
       apiPrescriptions: [],
@@ -387,10 +387,10 @@ describe('PatientProfile', () => {
     const patientWithOP = {
       ...existingPatients[0],
       visits: [
-        { id: 'V-1', date: '01 Jan 2026', center: 'Nutrition Center', doctor: 'Dr. A', reason: 'Checkup' },
+        { id: 'NU000001', date: '01 Jan 2026', center: 'Nutrition Center', doctor: 'Dr. A', reason: 'Checkup' },
       ],
-      apiOPSheets: [{ id: 'OP-1', visitId: 'V-1', clinicalExamination: '', vitals: null, diagnosis: '', symptoms: '', status: null, createdAt: new Date().toISOString(), visit: undefined, prescription: null }],
-      apiPrescriptions: [{ id: 'RX-1', opSheetId: 'OP-1', diagnosis: '', medicines: '[]', advice: '', followUp: '', createdAt: new Date().toISOString(), opSheet: { id: 'OP-1', visitId: 'V-1', clinicalExamination: '', vitals: null, diagnosis: '', symptoms: '', status: null, createdAt: new Date().toISOString(), visit: undefined, prescription: null } }],
+      apiOPSheets: [{ id: 'OP-1', visitId: 'NU000001', clinicalExamination: '', vitals: null, diagnosis: '', symptoms: '', status: null, createdAt: new Date().toISOString(), visit: undefined, prescription: null }],
+      apiPrescriptions: [{ id: 'RX-1', opSheetId: 'OP-1', diagnosis: '', medicines: '[]', advice: '', followUp: '', createdAt: new Date().toISOString(), opSheet: { id: 'OP-1', visitId: 'NU000001', clinicalExamination: '', vitals: null, diagnosis: '', symptoms: '', status: null, createdAt: new Date().toISOString(), visit: undefined, prescription: null } }],
     }
 
     render(<PatientProfile patient={patientWithOP} center="Nutrition Center" />)
@@ -402,11 +402,11 @@ describe('PatientProfile', () => {
   })
 
   it('creates a prescription and refreshes the prescription list automatically', async () => {
-    const opSheet = { id: 'OP-1', visitId: 'V-1', clinicalExamination: '', vitals: null, diagnosis: '', symptoms: '', status: null, createdAt: new Date().toISOString(), visit: undefined, prescription: null }
+    const opSheet = { id: 'OP-1', visitId: 'NU000001', clinicalExamination: '', vitals: null, diagnosis: '', symptoms: '', status: null, createdAt: new Date().toISOString(), visit: undefined, prescription: null }
     const patientWithOP = {
       ...existingPatients[0],
       visits: [
-        { id: 'V-1', date: '01 Jan 2026', center: 'Nutrition Center', doctor: 'Dr. A', reason: 'Checkup' },
+        { id: 'NU000001', date: '01 Jan 2026', center: 'Nutrition Center', doctor: 'Dr. A', reason: 'Checkup' },
       ],
       apiOPSheets: [opSheet],
       apiPrescriptions: [],

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { generateVisitId } from '@/lib/api-helpers';
 
 export async function GET(request: Request) {
   try {
@@ -49,8 +50,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Patient not found' }, { status: 404 });
     }
 
+    const centerType = patient.consultationType === 'AYURCARE' ? 'AYURCARE' : 'NUTRITION';
+    const visitId = await generateVisitId(centerType);
+
     const visit = await prisma.visit.create({
       data: {
+        id: visitId,
         patientMr,
         doctor: doctor || null,
         dietitian: dietitian || null,

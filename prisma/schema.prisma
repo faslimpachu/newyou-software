@@ -49,7 +49,7 @@ model Patient {
 }
 
 model Visit {
-  id                  String   @id @default(uuid())
+  id                  String   @id
   patientMr           String
   doctor              String?
   dietitian           String?
@@ -254,4 +254,13 @@ model MRSequence {
   updatedAt  DateTime @default(now())
 
   @@map("mr_sequences")
+}
+
+model VisitSequence {
+  id         String   @id
+  centerType String   @unique
+  lastNumber Int      @default(0)
+  updatedAt  DateTime @default(now())
+
+  @@map("visit_sequences")
 }

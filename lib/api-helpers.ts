@@ -24,6 +24,30 @@ export async function generateMR(): Promise<string> {
   });
 }
 
+export async function generateVisitId(centerType: 'NUTRITION' | 'AYURCARE'): Promise<string> {
+  const prefix = centerType === 'NUTRITION' ? 'NU' : 'AY';
+
+  return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    let seq = await tx.visitSequence.findUnique({
+      where: { centerType },
+    });
+
+    if (!seq) {
+      seq = await tx.visitSequence.create({
+        data: { id: centerType, centerType, lastNumber: 1 },
+      });
+      return `${prefix}${String(seq.lastNumber).padStart(6, '0')}`;
+    }
+
+    const updated = await tx.visitSequence.update({
+      where: { centerType },
+      data: { lastNumber: { increment: 1 } },
+    });
+
+    return `${prefix}${String(updated.lastNumber).padStart(6, '0')}`;
+  });
+}
+
 export function success<T>(data: T, status = 200) {
   return NextResponse.json(data, { status });
 }

@@ -12,6 +12,7 @@ beforeEach(async () => {
   await prisma.visit.deleteMany();
   await prisma.patient.deleteMany();
   await prisma.mRSequence.deleteMany();
+  await prisma.visitSequence.deleteMany();
 });
 
 afterAll(async () => {
@@ -28,7 +29,7 @@ describe('OP Sheets API', () => {
     });
 
     const visit = await prisma.visit.create({
-      data: { patientMr: patient.mr, status: 'Waiting' },
+      data: { id: 'NU000001', patientMr: patient.mr, status: 'Waiting' },
     });
 
     const req = new Request('http://localhost/api/op-sheets', {

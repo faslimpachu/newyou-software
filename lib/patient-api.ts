@@ -98,7 +98,7 @@ export function consultationTypeFromCenter(center: 'nutrition' | 'ayurcare' | nu
 }
 
 export function centerNameFromMr(mr?: string) {
-  return mr?.startsWith('AY') ? 'Ayurcare Center' : 'Nutrition Center'
+  return 'Nutrition Center'
 }
 
 function formatDate(value?: string | null) {
