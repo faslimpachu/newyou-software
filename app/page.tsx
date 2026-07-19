@@ -1,4 +1,5 @@
-import { Download, Plus } from 'lucide-react'
+import { Plus } from 'lucide-react'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { DashboardShell } from '@/components/dashboard/dashboard-shell'
 import { StatCards } from '@/components/dashboard/stat-cards'
@@ -23,16 +24,12 @@ export default function Page() {
               Wednesday, 11 July 2026 · Real-time hospital activity
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="gap-2">
-              <Download className="size-4" />
-              Export
-            </Button>
+          <Link href="/register" className="inline-flex">
             <Button size="sm" className="gap-2">
               <Plus className="size-4" />
               New Registration
             </Button>
-          </div>
+          </Link>
         </div>
 
         {/* Stat cards */}
