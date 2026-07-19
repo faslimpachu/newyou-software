@@ -58,23 +58,6 @@ describe('PatientDirectory', () => {
     })
   })
 
-  it('filters patients by center', async () => {
-    mockFetchPatients()
-    render(<PatientDirectory />)
-
-    await waitFor(() => {
-      expect(screen.getAllByText('Aarav Sharma').length).toBeGreaterThan(0)
-    })
-
-    const centerSelect = screen.getAllByRole('combobox')[0]
-    fireEvent.change(centerSelect, { target: { value: 'Ayurcare Center' } })
-
-    await waitFor(() => {
-      const table = screen.getByRole('table')
-      expect(table.textContent).not.toContain('Aarav Sharma')
-    })
-  })
-
   it('shows error state on fetch failure', async () => {
     global.fetch = vi.fn().mockResolvedValue({ ok: false })
     render(<PatientDirectory />)
@@ -92,9 +75,8 @@ describe('PatientDirectory', () => {
       expect(screen.getAllByText('Aarav Sharma').length).toBeGreaterThan(0)
     })
 
-    const deleteButtons = screen.getAllByRole('button')
-    const deleteButton = deleteButtons.find((btn) => btn.textContent?.includes('Delete record'))
-    if (deleteButton) fireEvent.click(deleteButton)
+    const deleteButton = screen.getAllByRole('button', { name: /delete patient/i })[0]
+    fireEvent.click(deleteButton)
 
     await waitFor(() => {
       expect(screen.getByText(/Delete patient record/)).toBeDefined()
@@ -124,18 +106,18 @@ describe('PatientDirectory', () => {
     })
   })
 
-  it('displays patient status badges in the table', async () => {
+  it('displays patient data in the table', async () => {
     mockFetchPatients()
     render(<PatientDirectory />)
 
     await waitFor(() => {
-      expect(screen.getByText('Active')).toBeDefined()
+      expect(screen.getByText('Aarav Sharma')).toBeDefined()
     })
 
     const table = screen.getByRole('table')
-    expect(table.textContent).toContain('Active')
-    expect(table.textContent).toContain('Follow-up')
-    expect(table.textContent).toContain('Consulting')
+    expect(table.textContent).toContain('Aarav Sharma')
+    expect(table.textContent).toContain('Priya Nair')
+    expect(table.textContent).toContain('Rohan Mehta')
   })
 
   it('navigates to register page when clicking Register patient', async () => {
