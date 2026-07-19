@@ -29,7 +29,7 @@ describe('WorkflowWorkspace', () => {
       }),
     })
 
-    render(<WorkflowWorkspace mode="followups" />)
+    render(<WorkflowWorkspace />)
 
     expect(screen.getByText('Follow-up Management')).toBeDefined()
 

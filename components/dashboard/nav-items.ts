@@ -38,7 +38,6 @@ export const navGroups: NavGroup[] = [
     heading: 'Clinical',
     items: [
       { label: 'Patients', icon: Users, href: '/patients' },
-      { label: 'Consultations', icon: Stethoscope, href: '/consultations' },
       { label: 'Nutrition', icon: Leaf, href: '/nutrition' },
       { label: 'Ayurcare', icon: FlaskConical, href: '/ayurcare' },
     ],
