@@ -203,6 +203,7 @@ function RegistrationForm({ form, set, center, centerName, existingPatient, save
           alcohol: form.alcohol || undefined,
           exercise: form.exercise || undefined,
           diet: form.diet || undefined,
+          center: centerName,
         }),
       })
       if (!response.ok) throw new Error(await readApiError(response))

@@ -225,6 +225,7 @@ describe('PatientWorkspace registration flow', () => {
       expect(registerCall).toBeDefined()
       const body = JSON.parse(registerCall![1].body)
       expect(body.email).toBe('test@example.com')
+      expect(body.center).toBe('Nutrition Center')
     })
   })
 
@@ -274,6 +275,7 @@ describe('PatientWorkspace registration flow', () => {
       expect(registerCall).toBeDefined()
       const body = JSON.parse(registerCall![1].body)
       expect(body.dob).toBe('1990-05-15')
+      expect(body.center).toBe('Nutrition Center')
     })
   })
 })

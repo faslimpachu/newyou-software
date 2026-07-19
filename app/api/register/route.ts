@@ -31,6 +31,7 @@ export async function POST(request: Request) {
       alcohol,
       exercise,
       diet,
+      center,
     } = body;
 
     if (!consultationType || !patientName || !gender || !mobileNumber || !address || !district || !state || !pinCode) {
@@ -81,6 +82,7 @@ export async function POST(request: Request) {
         doctor: doctor || null,
         dietitian: dietitian || null,
         status: 'Waiting',
+        center: center || null,
       },
     });
 
