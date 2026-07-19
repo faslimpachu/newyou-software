@@ -7,6 +7,13 @@ export async function GET(request: Request) {
     const date = url.searchParams.get('date') || '';
     const month = url.searchParams.get('month') || '';
     const category = url.searchParams.get('category') || '';
+    const search = url.searchParams.get('search') || '';
+    const dateFrom = url.searchParams.get('dateFrom') || '';
+    const dateTo = url.searchParams.get('dateTo') || '';
+    const sortOrder = url.searchParams.get('sortOrder') === 'oldest' ? 'oldest' : 'latest';
+    const page = Math.max(1, Number(url.searchParams.get('page')) || 1);
+    const pageSize = Math.min(100, Math.max(1, Number(url.searchParams.get('pageSize')) || 20));
+    const skip = (page - 1) * pageSize;
 
     const where: Record<string, unknown> = {};
     if (date) where.date = date;
@@ -19,13 +26,29 @@ export async function GET(request: Request) {
       }
     }
     if (category && category !== 'all') where.category = category;
+    if (dateFrom || dateTo) {
+      where.date = { ...(dateFrom ? { gte: dateFrom } : {}), ...(dateTo ? { lte: dateTo } : {}) };
+    }
+    if (search) {
+      where.OR = [
+        { expenseNumber: { contains: search } },
+        { description: { contains: search } },
+        { paidTo: { contains: search } },
+        { category: { contains: search } },
+      ];
+    }
 
-    const expenses = await prisma.expense.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-    });
+    const [expenses, total] = await Promise.all([
+      prisma.expense.findMany({
+        where,
+        orderBy: { createdAt: sortOrder === 'latest' ? 'desc' : 'asc' },
+        skip,
+        take: pageSize,
+      }),
+      prisma.expense.count({ where }),
+    ]);
 
-    return NextResponse.json({ expenses });
+    return NextResponse.json({ expenses, page, pageSize, total, totalPages: Math.ceil(total / pageSize) });
   } catch (e) {
     console.error('Expenses GET error', e);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

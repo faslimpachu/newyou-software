@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { act, render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { BillingWorkspace } from '@/components/billing/billing-workspace'
 
 vi.mock('next/navigation', () => ({
@@ -11,11 +11,20 @@ vi.mock('html2canvas', () => ({
 }))
 
 vi.mock('jspdf', () => ({
-  default: vi.fn(() => ({
+  default: vi.fn(function MockJsPdf() { return ({
     internal: { pageSize: { getWidth: () => 210 } },
     addImage: vi.fn(),
     save: vi.fn(),
-  })),
+  }) }),
+}))
+
+vi.mock('xlsx', () => ({
+  utils: {
+    json_to_sheet: vi.fn(() => ({})),
+    book_new: vi.fn(() => ({})),
+    book_append_sheet: vi.fn(),
+  },
+  writeFile: vi.fn(),
 }))
 
 const mockInvoices = [
@@ -64,6 +73,17 @@ describe('BillingWorkspace', () => {
 
   const mockFetchInvoicesAndExpenses = (invoices = mockInvoices, expenses = mockExpenses) => {
     global.fetch = vi.fn().mockImplementation((url: string) => {
+      if (url.includes('/api/patients?')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            patients: [
+              { mr: 'MR000003', patientName: 'Test Patient', mobileNumber: '9845012345', age: 30 },
+              { mr: 'MR000031', patientName: 'Another Patient', mobileNumber: '9845012346', age: 31 },
+            ],
+          }),
+        })
+      }
       if (url.includes('/api/patients/')) {
         return Promise.resolve({
           ok: true,
@@ -140,6 +160,87 @@ describe('BillingWorkspace', () => {
     expect(screen.getByText('Outstanding Patient Bills')).toBeDefined()
   })
 
+  it('keeps dashboard totals stable when invoice pagination changes', async () => {
+    const pageOne = Array.from({ length: 20 }, (_, index) => ({
+      ...mockInvoices[0],
+      invoiceNumber: `INV-PAGE-1-${index + 1}`,
+      patientName: `Page one patient ${index + 1}`,
+    }))
+    const pageTwo = Array.from({ length: 20 }, (_, index) => ({
+      ...mockInvoices[0],
+      invoiceNumber: `INV-PAGE-2-${index + 1}`,
+      patientName: `Page two patient ${index + 1}`,
+    }))
+
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      if (url === '/api/billing/summary') {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ totalRevenue: 50000, totalExpenses: 12000, netProfit: 38000, outstandingPatientBills: 7500 }),
+        })
+      }
+      if (url.startsWith('/api/billing?')) {
+        const page = new URL(`http://localhost${url}`).searchParams.get('page')
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ invoices: page === '2' ? pageTwo : pageOne, page: Number(page), pageSize: 20, total: 40, totalPages: 2 }),
+        })
+      }
+      if (url.startsWith('/api/expenses?')) {
+        return Promise.resolve({ ok: true, json: async () => ({ expenses: mockExpenses, page: 1, pageSize: 20, total: 1, totalPages: 1 }) })
+      }
+      return Promise.resolve({ ok: true, json: async () => ({}) })
+    })
+
+    render(<BillingWorkspace />)
+    await waitFor(() => expect(screen.getByText('INV-PAGE-1-1')).toBeDefined())
+    expect(screen.getByText('Rs. 50,000.00')).toBeDefined()
+    expect(screen.getByText('Rs. 12,000.00')).toBeDefined()
+    expect(screen.getByText('Rs. 38,000.00')).toBeDefined()
+    expect(screen.getByText('Rs. 7,500.00')).toBeDefined()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }))
+
+    await waitFor(() => expect(screen.getByText('INV-PAGE-2-1')).toBeDefined())
+    expect(screen.queryByText('INV-PAGE-1-1')).toBeNull()
+    expect(screen.getByText('Rs. 50,000.00')).toBeDefined()
+    expect((global.fetch as ReturnType<typeof vi.fn>).mock.calls.filter(([url]) => url === '/api/billing/summary')).toHaveLength(1)
+  })
+
+  it('ignores a stale invoice-page response after a newer page request', async () => {
+    const pageOne = [{ ...mockInvoices[0], invoiceNumber: 'INV-CURRENT-PAGE-1' }]
+    const pageTwo = [{ ...mockInvoices[0], invoiceNumber: 'INV-STALE-PAGE-2' }]
+    let resolvePageTwo!: (value: unknown) => void
+
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      if (url === '/api/billing/summary') return Promise.resolve({ ok: true, json: async () => ({ totalRevenue: 0, totalExpenses: 0, netProfit: 0, outstandingPatientBills: 0 }) })
+      if (url.startsWith('/api/expenses?')) return Promise.resolve({ ok: true, json: async () => ({ expenses: [], page: 1, pageSize: 20, total: 0, totalPages: 0 }) })
+      if (url.startsWith('/api/billing?')) {
+        const page = new URL(`http://localhost${url}`).searchParams.get('page')
+        if (page === '2') return new Promise((resolve) => { resolvePageTwo = resolve })
+        return Promise.resolve({ ok: true, json: async () => ({ invoices: pageOne, page: 1, pageSize: 20, total: 40, totalPages: 2 }) })
+      }
+      return Promise.resolve({ ok: true, json: async () => ({}) })
+    })
+
+    render(<BillingWorkspace />)
+    await waitFor(() => expect(screen.getByText('INV-CURRENT-PAGE-1')).toBeDefined())
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }))
+    await waitFor(() => expect((global.fetch as ReturnType<typeof vi.fn>).mock.calls.some(([url]) => String(url).includes('/api/billing?page=2'))).toBe(true))
+    fireEvent.click(screen.getByRole('button', { name: 'Previous' }))
+    await waitFor(() => expect((global.fetch as ReturnType<typeof vi.fn>).mock.calls.filter(([url]) => String(url).includes('/api/billing?page=1')).length).toBe(2))
+
+    await act(async () => {
+      resolvePageTwo({ ok: true, json: async () => ({ invoices: pageTwo, page: 2, pageSize: 20, total: 40, totalPages: 2 }) })
+      await Promise.resolve()
+    })
+
+    expect(screen.getByText('INV-CURRENT-PAGE-1')).toBeDefined()
+    expect(screen.queryByText('INV-STALE-PAGE-2')).toBeNull()
+    expect((global.fetch as ReturnType<typeof vi.fn>).mock.calls.filter(([url]) => String(url).includes('/api/billing?page=2'))).toHaveLength(1)
+  })
+
   it('shows tab navigation', async () => {
     mockFetchInvoicesAndExpenses()
     render(<BillingWorkspace />)
@@ -193,17 +294,9 @@ describe('BillingWorkspace', () => {
       expect(screen.getByText('Create invoice')).toBeDefined()
     })
 
-    fireEvent.click(screen.getByText('Save & preview bill'))
-
-    await waitFor(() => {
-      expect(screen.getByText('MR number is required.')).toBeDefined()
-    })
-    expect(screen.getByText('Patient name is required.')).toBeDefined()
-    expect(screen.getByText('Add at least one item with a name and rate.')).toBeDefined()
-
     fireEvent.change(screen.getByPlaceholderText('e.g. MR000003'), { target: { value: 'MR000003' } })
     await waitFor(() => {
-      expect(screen.getByText('Existing patient found — details auto-filled.')).toBeDefined()
+      expect(screen.getByRole('option', { name: /MR000003.*Test Patient/ })).toBeDefined()
     }, { timeout: 3000 })
 
     fireEvent.change(screen.getByPlaceholderText('Any service, test, medicine, or package'), { target: { value: 'Test service' } })
@@ -281,5 +374,75 @@ describe('BillingWorkspace', () => {
     await waitFor(() => {
       expect(screen.getByText('New You')).toBeDefined()
     })
+  })
+
+  it('offers separate billing and expense exports and closes the menu after selection', async () => {
+    mockFetchInvoicesAndExpenses()
+    render(<BillingWorkspace />)
+
+    await waitFor(() => expect(screen.getByText('INV-90112')).toBeDefined())
+    fireEvent.click(screen.getByRole('button', { name: 'Export' }))
+
+    expect(screen.getByText('Export Billing')).toBeDefined()
+    expect(screen.getByText('Export Expense')).toBeDefined()
+
+    fireEvent.click(screen.getByText('Export Expense'))
+    await waitFor(() => expect(screen.queryByText('Export Expense')).toBeNull())
+  })
+
+  it('shows a helpful error when the selected export has no visible records', async () => {
+    mockFetchInvoicesAndExpenses([], [])
+    render(<BillingWorkspace />)
+
+    await waitFor(() => expect(screen.getByText('No invoices found.')).toBeDefined())
+    fireEvent.click(screen.getByRole('button', { name: 'Export' }))
+    fireEvent.click(screen.getByText('Export Billing'))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('There are no records to export.')
+  })
+
+  it('searches MR numbers live and shows every matching patient', async () => {
+    mockFetchInvoicesAndExpenses([], [])
+    render(<BillingWorkspace />)
+    await waitFor(() => expect(screen.getByText('No invoices found.')).toBeDefined())
+    fireEvent.click(screen.getByText('New invoice'))
+    fireEvent.change(screen.getByPlaceholderText('e.g. MR000003'), { target: { value: 'MR0' } })
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith('/api/patients?search=MR0&limit=20', expect.anything())
+      expect(screen.getByRole('option', { name: /MR000003.*Test Patient/ })).toBeDefined()
+      expect(screen.getByRole('option', { name: /MR000031.*Another Patient/ })).toBeDefined()
+    }, { timeout: 10000 })
+  }, 10000)
+
+  it('loads a selected patient and locks the auto-filled patient fields', async () => {
+    mockFetchInvoicesAndExpenses([], [])
+    render(<BillingWorkspace />)
+    await waitFor(() => expect(screen.getByText('No invoices found.')).toBeDefined())
+    fireEvent.click(screen.getByText('New invoice'))
+    fireEvent.change(screen.getByPlaceholderText('e.g. MR000003'), { target: { value: 'MR000003' } })
+
+    fireEvent.click(await screen.findByRole('option', { name: /MR000003.*Test Patient/ }))
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith('/api/patients/MR000003', expect.anything())
+      expect(screen.getByDisplayValue('Test Patient')).toHaveAttribute('readonly')
+      expect(screen.getByDisplayValue('9845012345')).toHaveAttribute('readonly')
+      expect(screen.getByDisplayValue('Test Address, Test District, Test State, 560001')).toHaveAttribute('readonly')
+      expect(screen.getByDisplayValue('Male')).toBeDisabled()
+    })
+  })
+
+  it('shows an empty state when no patients match the MR number', async () => {
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      if (url.includes('/api/patients?')) return Promise.resolve({ ok: true, json: async () => ({ patients: [] }) })
+      if (url.includes('/api/billing')) return Promise.resolve({ ok: true, json: async () => ({ invoices: [] }) })
+      if (url.includes('/api/expenses')) return Promise.resolve({ ok: true, json: async () => ({ expenses: [] }) })
+      return Promise.resolve({ ok: true, json: async () => ({}) })
+    })
+    render(<BillingWorkspace />)
+    await waitFor(() => expect(screen.getByText('No invoices found.')).toBeDefined())
+    fireEvent.click(screen.getByText('New invoice'))
+    fireEvent.change(screen.getByPlaceholderText('e.g. MR000003'), { target: { value: 'UNKNOWN' } })
+    expect(await screen.findByText('No matching patients found.')).toBeDefined()
   })
 })

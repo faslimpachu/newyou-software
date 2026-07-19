@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -37,6 +38,23 @@ type Patient = {
   bloodGroup: string
   address: string
   contact: string
+}
+
+type ApiPatientSummary = {
+  mr: string
+  patientName: string
+  mobileNumber: string
+  age?: number | null
+}
+
+type ApiPatient = ApiPatientSummary & {
+  dob?: string | null
+  gender?: string | null
+  bloodGroup?: string | null
+  address?: string | null
+  district?: string | null
+  state?: string | null
+  pinCode?: string | null
 }
 
 type Line = { id: number; name: string; quantity: number; rate: number }
@@ -116,25 +134,9 @@ const EXPENSE_PAYMENT_METHODS = ['Cash', 'UPI', 'Bank Transfer', 'Card']
 /*  call in production, e.g. GET /api/patients/:mrNumber)              */
 /* ------------------------------------------------------------------ */
 
-const PATIENT_DIRECTORY: Record<string, Omit<Patient, 'mrNumber'>> = {
-  MR000001: { name: 'Aarav Sharma', age: '34', dob: '1992-03-12', gender: 'Male', bloodGroup: 'B+', address: 'Thalassery, Kannur', contact: '9847012345' },
-  MR000002: { name: 'Rohan Mehta', age: '41', dob: '1985-07-05', gender: 'Male', bloodGroup: 'O+', address: 'Kannur Town', contact: '9847098765' },
-  MR000002: { name: 'Priya Nair', age: '29', dob: '1997-01-18', gender: 'Female', bloodGroup: 'A+', address: 'Kanhangad, Kasaragod', contact: '9847011223' },
-}
-
 /* ------------------------------------------------------------------ */
 /*  Date / age / validation helpers                                    */
 /* ------------------------------------------------------------------ */
-
-function computeAgeFromDob(dob: string): string {
-  const date = new Date(dob)
-  if (Number.isNaN(date.getTime())) return ''
-  const today = new Date()
-  let age = today.getFullYear() - date.getFullYear()
-  const monthDiff = today.getMonth() - date.getMonth()
-  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < date.getDate())) age -= 1
-  return age >= 0 ? String(age) : ''
-}
 
 function formatDob(dob: string): string {
   if (!dob) return '-'
@@ -169,8 +171,6 @@ function monthLabel(key: string): string {
   return d.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })
 }
 
-const MOBILE_REGEX = /^\d{10}$/
-
 // Professional, standard fonts — clean sans for the on-screen workspace,
 // classic serif for the printed/exported hospital bill.
 const UI_FONT = '"Helvetica Neue", Helvetica, Arial, "Segoe UI", ui-sans-serif, system-ui, sans-serif'
@@ -181,6 +181,32 @@ const PRINT_FONT = '"Times New Roman", Times, Georgia, serif'
 /* ------------------------------------------------------------------ */
 
 const emptyPatient: Patient = { name: '', mrNumber: '', age: '', dob: '', gender: '', bloodGroup: '', address: '', contact: '' }
+
+function toInvoicePatient(patient: ApiPatient): Patient {
+  return {
+    name: patient.patientName || '',
+    mrNumber: patient.mr || '',
+    age: patient.age === null || patient.age === undefined ? '' : String(patient.age),
+    dob: patient.dob ? new Date(patient.dob).toISOString().slice(0, 10) : '',
+    gender: patient.gender || '',
+    bloodGroup: patient.bloodGroup || '',
+    address: [patient.address, patient.district, patient.state, patient.pinCode].filter(Boolean).join(', '),
+    contact: patient.mobileNumber || '',
+  }
+}
+
+type Pagination = { page: number; pageSize: number; total: number; totalPages: number }
+type SortOrder = 'latest' | 'oldest'
+type BillingSummary = {
+  totalRevenue: number
+  totalExpenses: number
+  netProfit: number
+  outstandingPatientBills: number
+}
+
+const PAGE_SIZE = 20
+const emptyPagination: Pagination = { page: 1, pageSize: PAGE_SIZE, total: 0, totalPages: 0 }
+const emptyBillingSummary: BillingSummary = { totalRevenue: 0, totalExpenses: 0, netProfit: 0, outstandingPatientBills: 0 }
 
 const seedInvoices: Invoice[] = [
   {
@@ -227,6 +253,7 @@ const seedInvoices: Invoice[] = [
 const seedExpenses: Expense[] = [
   {
     id: 'EXP-10001',
+    expenseNumber: 'EXP-10001',
     date: '2026-06-01',
     category: 'Rent',
     description: 'Monthly clinic rent — Jubilee Bazar premises',
@@ -239,6 +266,7 @@ const seedExpenses: Expense[] = [
   },
   {
     id: 'EXP-10002',
+    expenseNumber: 'EXP-10002',
     date: '2026-06-03',
     category: 'Medical Supplies',
     description: 'Ayurvedic oils and therapy consumables restock',
@@ -251,6 +279,7 @@ const seedExpenses: Expense[] = [
   },
   {
     id: 'EXP-10003',
+    expenseNumber: 'EXP-10003',
     date: '2026-06-05',
     category: 'Electricity',
     description: 'KSEB electricity bill — May',
@@ -320,21 +349,20 @@ function downloadBlob(content: BlobPart, filename: string, type: string) {
   URL.revokeObjectURL(url)
 }
 
-function exportRowsToExcel(rows: Record<string, string | number>[], filename: string) {
-  if (rows.length === 0) return
-  import('xlsx')
-    .then((XLSX) => {
-      const worksheet = XLSX.utils.json_to_sheet(rows)
-      const workbook = XLSX.utils.book_new()
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Report')
-      XLSX.writeFile(workbook, filename)
-    })
-    .catch(() => {
-      // Fallback to CSV if the xlsx package isn't available in this environment.
-      const headers = Object.keys(rows[0])
-      const csv = [headers.join(','), ...rows.map((row) => headers.map((h) => `"${String(row[h]).replace(/"/g, '""')}"`).join(','))].join('\n')
-      downloadBlob(csv, filename.replace(/\.xlsx$/, '.csv'), 'text/csv')
-    })
+async function exportRowsToExcel(rows: Record<string, string | number>[], filename: string) {
+  if (rows.length === 0) throw new Error('There are no records to export.')
+  try {
+    const XLSX = await import('xlsx')
+    const worksheet = XLSX.utils.json_to_sheet(rows)
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Report')
+    XLSX.writeFile(workbook, filename)
+  } catch {
+    // Fallback to CSV if the xlsx package isn't available in this environment.
+    const headers = Object.keys(rows[0])
+    const csv = [headers.join(','), ...rows.map((row) => headers.map((h) => `"${String(row[h]).replace(/"/g, '""')}"`).join(','))].join('\n')
+    downloadBlob(csv, filename.replace(/\.xlsx$/, '.csv'), 'text/csv')
+  }
 }
 
 async function exportNodeToPdf(node: HTMLElement, filename: string) {
@@ -355,9 +383,28 @@ async function exportNodeToPdf(node: HTMLElement, filename: string) {
 type ModuleTab = 'billing' | 'expenses'
 
 export function BillingWorkspace() {
+  const invoiceRequestId = useRef(0)
+  const expenseRequestId = useRef(0)
+  const summaryRequestId = useRef(0)
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [expenseCategories, setExpenseCategories] = useState<string[]>(DEFAULT_EXPENSE_CATEGORIES)
+  const [invoiceSearch, setInvoiceSearch] = useState('')
+  const [invoiceSortOrder, setInvoiceSortOrder] = useState<SortOrder>('latest')
+  const [invoicePagination, setInvoicePagination] = useState<Pagination>(emptyPagination)
+  const [expenseSearch, setExpenseSearch] = useState('')
+  const [expenseDateFrom, setExpenseDateFrom] = useState('')
+  const [expenseDateTo, setExpenseDateTo] = useState('')
+  const [expenseCategory, setExpenseCategory] = useState('all')
+  const [expenseSortOrder, setExpenseSortOrder] = useState<SortOrder>('latest')
+  const [expensePagination, setExpensePagination] = useState<Pagination>(emptyPagination)
+  const [invoiceRefresh, setInvoiceRefresh] = useState(0)
+  const [expenseRefresh, setExpenseRefresh] = useState(0)
+  const [summaryRefresh, setSummaryRefresh] = useState(0)
+  const [billingSummary, setBillingSummary] = useState<BillingSummary>(emptyBillingSummary)
+  const [exporting, setExporting] = useState<'billing' | 'expense' | null>(null)
+  const [exportError, setExportError] = useState('')
+  const [exportMenuOpen, setExportMenuOpen] = useState(false)
 
   const [activeTab, setActiveTab] = useState<ModuleTab>('billing')
 
@@ -373,107 +420,99 @@ export function BillingWorkspace() {
   const [savingExpense, setSavingExpense] = useState(false)
   const [loadingExpenses, setLoadingExpenses] = useState(true)
   const [errorExpenses, setErrorExpenses] = useState('')
+  const [errorSummary, setErrorSummary] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<Expense | null>(null)
 
   /* ---------------- dashboard summary ---------------- */
 
-  const totalRevenue = useMemo(
-    () => invoices.reduce((sum, inv) => sum + computeTotals(inv.items, inv.discount, inv.tax, inv.paid).total, 0),
-    [invoices],
-  )
-  const totalExpenses = useMemo(() => expenses.reduce((sum, exp) => sum + exp.amount, 0), [expenses])
-  const netProfit = totalRevenue - totalExpenses
-  const outstanding = useMemo(
-    () => invoices.reduce((sum, inv) => sum + computeTotals(inv.items, inv.discount, inv.tax, inv.paid).balance, 0),
-    [invoices],
-  )
   const openCount = useMemo(
     () => invoices.filter((inv) => computeTotals(inv.items, inv.discount, inv.tax, inv.paid).balance > 0).length,
     [invoices],
   )
 
-  const fetchInvoices = useCallback(async () => {
+  const fetchInvoices = useCallback(async (signal?: AbortSignal) => {
+    const requestId = ++invoiceRequestId.current
     try {
-      const res = await fetch('/api/billing')
+      const params = new URLSearchParams({ page: String(invoicePagination.page), pageSize: String(PAGE_SIZE), sortOrder: invoiceSortOrder })
+      if (invoiceSearch.trim()) params.set('search', invoiceSearch.trim())
+      const res = await fetch(`/api/billing?${params}`, { signal })
       if (!res.ok) throw new Error('Failed to load invoices')
       const data = await res.json()
-      const mapped = (data.invoices || []).map(mapDbInvoiceToFrontend).sort((a, b) => b.date.localeCompare(a.date))
+      if (signal?.aborted || requestId !== invoiceRequestId.current) return
+      const mapped = (data.invoices || []).map(mapDbInvoiceToFrontend)
       setInvoices(mapped)
+      const total = data.total ?? mapped.length
+      setInvoicePagination({ page: data.page ?? invoicePagination.page, pageSize: data.pageSize ?? PAGE_SIZE, total, totalPages: data.totalPages ?? Math.ceil(total / PAGE_SIZE) })
       setErrorInvoices('')
     } catch (err: any) {
+      if (signal?.aborted || requestId !== invoiceRequestId.current) return
       setErrorInvoices(err.message || 'Failed to load invoices')
     }
-  }, [])
+  }, [invoicePagination.page, invoiceSearch, invoiceSortOrder, invoiceRefresh])
 
-  const fetchExpenses = useCallback(async () => {
+  const fetchExpenses = useCallback(async (signal?: AbortSignal) => {
+    const requestId = ++expenseRequestId.current
     try {
-      const res = await fetch('/api/expenses')
+      const params = new URLSearchParams({ page: String(expensePagination.page), pageSize: String(PAGE_SIZE), sortOrder: expenseSortOrder, category: expenseCategory })
+      if (expenseSearch.trim()) params.set('search', expenseSearch.trim())
+      if (expenseDateFrom) params.set('dateFrom', expenseDateFrom)
+      if (expenseDateTo) params.set('dateTo', expenseDateTo)
+      const res = await fetch(`/api/expenses?${params}`, { signal })
       if (!res.ok) throw new Error('Failed to load expenses')
       const data = await res.json()
-      const sorted = (data.expenses || []).sort((a: any, b: any) => {
-        const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0
-        const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0
-        return bTime - aTime
-      })
-      setExpenses(sorted)
+      if (signal?.aborted || requestId !== expenseRequestId.current) return
+      setExpenses(data.expenses || [])
+      const total = data.total ?? data.expenses?.length ?? 0
+      setExpensePagination({ page: data.page ?? expensePagination.page, pageSize: data.pageSize ?? PAGE_SIZE, total, totalPages: data.totalPages ?? Math.ceil(total / PAGE_SIZE) })
       setErrorExpenses('')
     } catch (err: any) {
+      if (signal?.aborted || requestId !== expenseRequestId.current) return
       setErrorExpenses(err.message || 'Failed to load expenses')
     }
-  }, [])
+  }, [expensePagination.page, expenseSearch, expenseDateFrom, expenseDateTo, expenseCategory, expenseSortOrder, expenseRefresh])
+
+  const fetchBillingSummary = useCallback(async (signal?: AbortSignal) => {
+    const requestId = ++summaryRequestId.current
+    try {
+      const res = await fetch('/api/billing/summary', { signal })
+      if (!res.ok) throw new Error('Failed to load billing summary')
+      const data = await res.json()
+      if (signal?.aborted || requestId !== summaryRequestId.current) return
+      setBillingSummary({
+        totalRevenue: data.totalRevenue ?? 0,
+        totalExpenses: data.totalExpenses ?? 0,
+        netProfit: data.netProfit ?? 0,
+        outstandingPatientBills: data.outstandingPatientBills ?? 0,
+      })
+    } catch (err: any) {
+      if (signal?.aborted || requestId !== summaryRequestId.current) return
+      setErrorSummary(err.message || 'Failed to load billing summary')
+    }
+  }, [summaryRefresh])
 
   useEffect(() => {
-    let mounted = true
-    const initialInvoices = async () => {
-      setLoadingInvoices(true)
-      try {
-      const res = await fetch('/api/billing')
-        if (!res.ok) throw new Error('Failed to load invoices')
-        const data = await res.json()
-        if (mounted) {
-          const mapped = (data.invoices || []).map(mapDbInvoiceToFrontend)
-          setInvoices(mapped)
-          setErrorInvoices('')
-        }
-      } catch (err: any) {
-        if (mounted) setErrorInvoices(err.message || 'Failed to load invoices')
-      } finally {
-        if (mounted) setLoadingInvoices(false)
-      }
-    }
-    initialInvoices()
-    const timer = setInterval(fetchInvoices, 2000)
-    return () => {
-      mounted = false
-      clearInterval(timer)
-    }
+    const controller = new AbortController()
+    setLoadingInvoices(true)
+    fetchInvoices(controller.signal).finally(() => {
+      if (!controller.signal.aborted) setLoadingInvoices(false)
+    })
+    return () => controller.abort()
   }, [fetchInvoices])
 
   useEffect(() => {
-    let mounted = true
-    const initialExpenses = async () => {
-      setLoadingExpenses(true)
-      try {
-        const res = await fetch('/api/expenses')
-        if (!res.ok) throw new Error('Failed to load expenses')
-        const data = await res.json()
-        if (mounted) {
-          setExpenses(data.expenses || [])
-          setErrorExpenses('')
-        }
-      } catch (err: any) {
-        if (mounted) setErrorExpenses(err.message || 'Failed to load expenses')
-      } finally {
-        if (mounted) setLoadingExpenses(false)
-      }
-    }
-    initialExpenses()
-    const timer = setInterval(fetchExpenses, 3000)
-    return () => {
-      mounted = false
-      clearInterval(timer)
-    }
+    const controller = new AbortController()
+    setLoadingExpenses(true)
+    fetchExpenses(controller.signal).finally(() => {
+      if (!controller.signal.aborted) setLoadingExpenses(false)
+    })
+    return () => controller.abort()
   }, [fetchExpenses])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    void fetchBillingSummary(controller.signal)
+    return () => controller.abort()
+  }, [fetchBillingSummary])
 
   const handleSaveInvoice = async (invoice: Invoice) => {
     setSavingInvoice(true)
@@ -500,7 +539,9 @@ export function BillingWorkspace() {
 
       const data = await res.json()
       const saved = mapDbInvoiceToFrontend(data.invoice)
-      setInvoices((current) => [saved, ...current])
+      setInvoicePagination((current) => ({ ...current, page: 1 }))
+      setInvoiceRefresh((current) => current + 1)
+      setSummaryRefresh((current) => current + 1)
       setCreating(false)
       setViewInvoice(saved)
     } catch (err: any) {
@@ -510,27 +551,49 @@ export function BillingWorkspace() {
     }
   }
 
-  const handleExportInvoices = () => {
-    const rows = invoices.map((inv) => {
-      const totals = computeTotals(inv.items, inv.discount, inv.tax, inv.paid)
-      return {
-        Invoice: inv.id,
-        Center: CENTERS[inv.center].name,
-        Patient: inv.patient.name,
-        MR: inv.patient.mrNumber,
-        'Bill type': inv.billType,
-        Date: inv.date,
-        Items: inv.items.map((item) => item.name).join('; '),
-        Subtotal: totals.subtotal,
-        Discount: inv.discount,
-        Tax: inv.tax,
-        Total: totals.total,
-        Paid: inv.paid,
-        Balance: totals.balance,
-        'Payment method': inv.paymentMethod,
-      }
-    })
-    exportRowsToExcel(rows, `billing-invoices-${new Date().toISOString().slice(0, 10)}.xlsx`)
+  const handleExport = async (type: 'billing' | 'expense') => {
+    setExportMenuOpen(false)
+    setExporting(type)
+    setExportError('')
+    try {
+      const rows = type === 'billing'
+        ? invoices.map((inv) => {
+            const totals = computeTotals(inv.items, inv.discount, inv.tax, inv.paid)
+            return {
+              Invoice: inv.id,
+              Center: CENTERS[inv.center].name,
+              Patient: inv.patient.name,
+              MR: inv.patient.mrNumber,
+              'Bill type': inv.billType,
+              Date: inv.date,
+              Items: inv.items.map((item) => item.name).join('; '),
+              Subtotal: totals.subtotal,
+              Discount: inv.discount,
+              Tax: inv.tax,
+              Total: totals.total,
+              Paid: inv.paid,
+              Balance: totals.balance,
+              'Payment method': inv.paymentMethod,
+            }
+          })
+        : expenses.map((expense) => ({
+            'Expense number': expense.expenseNumber,
+            Date: expense.date,
+            Category: expense.category,
+            Description: expense.description,
+            Amount: expense.amount,
+            'Payment method': expense.paymentMethod,
+            'Paid to': expense.paidTo,
+            Remarks: expense.remarks,
+            'Added by': expense.addedBy,
+            'Created date': expense.createdDate,
+          }))
+      await exportRowsToExcel(rows, `${type === 'billing' ? 'billing-invoices' : 'expenses'}-${new Date().toISOString().slice(0, 10)}.xlsx`)
+    } catch (err: any) {
+      setExportError(err.message || `Failed to export ${type} records.`)
+    } finally {
+      setExporting(null)
+    }
   }
 
   const handleSaveExpense = async (expense: Expense) => {
@@ -553,10 +616,9 @@ export function BillingWorkspace() {
 
       const data = await res.json()
       const saved = data.expense
-      setExpenses((current) => {
-        const exists = current.some((exp) => exp.id === saved.id)
-        return exists ? current.map((exp) => (exp.id === saved.id ? saved : exp)) : [saved, ...current]
-      })
+      setExpensePagination((current) => ({ ...current, page: 1 }))
+      setExpenseRefresh((current) => current + 1)
+      setSummaryRefresh((current) => current + 1)
       setAddingExpense(false)
       setEditingExpense(null)
       setViewExpense(saved)
@@ -574,7 +636,9 @@ export function BillingWorkspace() {
         const err = await res.json()
         throw new Error(err.error || 'Failed to delete expense')
       }
-      setExpenses((current) => current.filter((exp) => exp.id !== expense.id))
+      setExpensePagination((current) => ({ ...current, page: current.page > 1 && current.total <= (current.page - 1) * PAGE_SIZE + 1 ? current.page - 1 : current.page }))
+      setExpenseRefresh((current) => current + 1)
+      setSummaryRefresh((current) => current + 1)
       setDeleteTarget(null)
       if (viewExpense?.id === expense.id) setViewExpense(null)
     } catch (err: any) {
@@ -595,14 +659,20 @@ export function BillingWorkspace() {
           <p className="mt-1 text-sm text-muted-foreground">Create invoices, track expenses, and manage clinic finances across New You Nutrition Center and Ayurcare Center.</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => window.print()}>
-            <Printer className="mr-2 size-4" />
-            Print list
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleExportInvoices}>
-            <Download className="mr-2 size-4" />
-            Export
-          </Button>
+          <DropdownMenu open={exportMenuOpen} onOpenChange={setExportMenuOpen}>
+            <DropdownMenuTrigger
+              render={
+                <Button variant="outline" size="sm" disabled={exporting !== null}>
+                  <Download className="mr-2 size-4" />
+                  {exporting ? 'Exporting…' : 'Export'}
+                </Button>
+              }
+            />
+            <DropdownMenuContent align="end" className="w-44">
+              <DropdownMenuItem onClick={() => void handleExport('billing')}>Export Billing</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => void handleExport('expense')}>Export Expense</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button size="sm" onClick={() => setCreating(true)}>
             <Plus className="mr-2 size-4" />
             New invoice
@@ -611,14 +681,16 @@ export function BillingWorkspace() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Metric label="Total Revenue" value={money(totalRevenue)} icon={<TrendingUp className="size-4" />} />
-        <Metric label="Total Expenses" value={money(totalExpenses)} icon={<TrendingDown className="size-4" />} />
-        <Metric label="Net Profit" value={money(netProfit)} icon={<Wallet className="size-4" />} tone={netProfit >= 0 ? 'positive' : 'negative'} />
-        <Metric label="Outstanding Patient Bills" value={money(outstanding)} tone={outstanding > 0 ? 'negative' : undefined} />
+        <Metric label="Total Revenue" value={money(billingSummary.totalRevenue)} icon={<TrendingUp className="size-4" />} />
+        <Metric label="Total Expenses" value={money(billingSummary.totalExpenses)} icon={<TrendingDown className="size-4" />} />
+        <Metric label="Net Profit" value={money(billingSummary.netProfit)} icon={<Wallet className="size-4" />} tone={billingSummary.netProfit >= 0 ? 'positive' : 'negative'} />
+        <Metric label="Outstanding Patient Bills" value={money(billingSummary.outstandingPatientBills)} tone={billingSummary.outstandingPatientBills > 0 ? 'negative' : undefined} />
       </div>
 
       {errorInvoices && <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">{errorInvoices}</div>}
       {errorExpenses && <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">{errorExpenses}</div>}
+      {errorSummary && <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">{errorSummary}</div>}
+      {exportError && <div role="alert" className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">{exportError}</div>}
 
       {/* Module tabs — Billing / Expenses */}
       <div className="flex gap-1 rounded-lg border bg-muted/40 p-1 w-fit">
@@ -645,6 +717,13 @@ export function BillingWorkspace() {
           <CardHeader>
             <CardTitle>Invoices</CardTitle>
             <CardDescription>Click any row to view, print, or export the bill. {openCount} invoice{openCount === 1 ? '' : 's'} currently open.</CardDescription>
+            <div className="mt-3 flex flex-wrap justify-between gap-2">
+              <Input className="max-w-sm" placeholder="Search invoice, patient, MR, or bill type" value={invoiceSearch} onChange={(e) => { setInvoiceSearch(e.target.value); setInvoicePagination((current) => ({ ...current, page: 1 })) }} />
+              <select className="h-9 rounded-lg border border-input bg-background px-2 text-sm" value={invoiceSortOrder} onChange={(e) => { setInvoiceSortOrder(e.target.value as SortOrder); setInvoicePagination((current) => ({ ...current, page: 1 })) }}>
+                <option value="latest">Sort: Latest first</option>
+                <option value="oldest">Sort: Oldest first</option>
+              </select>
+            </div>
           </CardHeader>
           <CardContent className="px-0">
             <div className="overflow-x-auto">
@@ -695,6 +774,7 @@ export function BillingWorkspace() {
                 </tbody>
               </table>
             </div>
+            <PaginationControls pagination={invoicePagination} onPageChange={(page) => setInvoicePagination((current) => ({ ...current, page }))} />
           </CardContent>
         </Card>
       )}
@@ -703,6 +783,18 @@ export function BillingWorkspace() {
         <ExpensesPanel
           expenses={expenses}
           categories={expenseCategories}
+          search={expenseSearch}
+          dateFrom={expenseDateFrom}
+          dateTo={expenseDateTo}
+          filterCategory={expenseCategory}
+          sortOrder={expenseSortOrder}
+          pagination={expensePagination}
+          onSearchChange={(value) => { setExpenseSearch(value); setExpensePagination((current) => ({ ...current, page: 1 })) }}
+          onDateFromChange={(value) => { setExpenseDateFrom(value); setExpensePagination((current) => ({ ...current, page: 1 })) }}
+          onDateToChange={(value) => { setExpenseDateTo(value); setExpensePagination((current) => ({ ...current, page: 1 })) }}
+          onCategoryChange={(value) => { setExpenseCategory(value); setExpensePagination((current) => ({ ...current, page: 1 })) }}
+          onSortOrderChange={(value) => { setExpenseSortOrder(value); setExpensePagination((current) => ({ ...current, page: 1 })) }}
+          onPageChange={(page) => setExpensePagination((current) => ({ ...current, page }))}
           onAdd={() => setAddingExpense(true)}
           onView={setViewExpense}
           onEdit={setEditingExpense}
@@ -824,96 +916,93 @@ function NewInvoiceModal({ onClose, onSave, saving }: { onClose: () => void; onS
   const [center, setCenter] = useState<Center>('nutrition')
   const [billType, setBillType] = useState(BILL_TYPE_PRESETS[0])
   const [patient, setPatient] = useState<Patient>(emptyPatient)
-  const [mrStatus, setMrStatus] = useState<'idle' | 'found' | 'new' | 'loading'>('idle')
+  const [patientMatches, setPatientMatches] = useState<ApiPatientSummary[]>([])
+  const [patientSearchStatus, setPatientSearchStatus] = useState<'idle' | 'loading' | 'error'>('idle')
+  const [patientLoadStatus, setPatientLoadStatus] = useState<'idle' | 'loading' | 'selected' | 'error'>('idle')
   const [items, setItems] = useState<Line[]>([{ id: Date.now(), name: '', quantity: 1, rate: 0 }])
   const [discount, setDiscount] = useState(0)
   const [tax, setTax] = useState(0)
   const [paid, setPaid] = useState(0)
   const [paymentMethod, setPaymentMethod] = useState('Cash')
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
-  const mrTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const abortControllerRef = useRef<AbortController | null>(null)
+  const searchAbortControllerRef = useRef<AbortController | null>(null)
+  const patientAbortControllerRef = useRef<AbortController | null>(null)
 
   const totals = useMemo(() => computeTotals(items, discount, tax, paid), [items, discount, tax, paid])
 
   const updateLine = (id: number, key: keyof Line, value: string) =>
     setItems((current) => current.map((item) => (item.id === id ? { ...item, [key]: key === 'name' ? value : Math.max(0, Number(value) || 0) } : item)))
 
-  const updatePatient = (key: keyof Patient, value: string) => setPatient((current) => ({ ...current, [key]: value }))
+  const patientSelected = patientLoadStatus === 'selected'
 
   useEffect(() => {
     return () => {
-      if (mrTimerRef.current) clearTimeout(mrTimerRef.current)
-      if (abortControllerRef.current) abortControllerRef.current.abort()
+      if (searchAbortControllerRef.current) searchAbortControllerRef.current.abort()
+      if (patientAbortControllerRef.current) patientAbortControllerRef.current.abort()
     }
   }, [])
 
-  const handleMrNumberChange = useCallback(async (value: string) => {
+  const handleMrNumberChange = (value: string) => {
     const mrNumber = value.toUpperCase()
+    setPatient({ ...emptyPatient, mrNumber })
+    setPatientMatches([])
+    setPatientLoadStatus('idle')
+    setValidationErrors((current) => ({ ...current, mrNumber: '', patientName: '', contact: '' }))
+  }
+
+  useEffect(() => {
+    const mrNumber = patient.mrNumber.trim()
     if (!mrNumber.trim()) {
-      setPatient(emptyPatient)
-      setMrStatus('idle')
+      setPatientMatches([])
+      setPatientSearchStatus('idle')
       return
     }
-    if (mrTimerRef.current) clearTimeout(mrTimerRef.current)
-    if (abortControllerRef.current) abortControllerRef.current.abort()
-    setMrStatus('loading')
-    const timer = setTimeout(async () => {
-      const controller = new AbortController()
-      abortControllerRef.current = controller
-      try {
-        const res = await fetch(`/api/patients/${encodeURIComponent(mrNumber)}`, { signal: controller.signal })
-        if (res.ok) {
-          const data = await res.json()
-          const p = data.patient
-          const record: Patient = {
-            name: p.patientName,
-            mrNumber: p.mr,
-            age: p.age ? String(p.age) : '',
-            dob: p.dob ? new Date(p.dob).toISOString().slice(0, 10) : '',
-            gender: p.gender,
-            bloodGroup: p.bloodGroup || '',
-            address: [p.address, p.district, p.state, p.pinCode].filter(Boolean).join(', '),
-            contact: p.mobileNumber,
-          }
-          setPatient(record)
-          setMrStatus('found')
-        } else {
-          setPatient((current) => ({ ...current, mrNumber }))
-          setMrStatus('new')
-        }
-      } catch {
-        setPatient((current) => ({ ...current, mrNumber }))
-        setMrStatus('new')
-      } finally {
-        if (abortControllerRef.current === controller) {
-          abortControllerRef.current = null
-        }
-      }
-    }, 400)
-    mrTimerRef.current = timer
+    if (searchAbortControllerRef.current) searchAbortControllerRef.current.abort()
+    const controller = new AbortController()
+    searchAbortControllerRef.current = controller
+    setPatientSearchStatus('loading')
+
+    fetch(`/api/patients?search=${encodeURIComponent(mrNumber)}&limit=20`, { signal: controller.signal })
+      .then(async (res) => {
+        if (!res.ok) throw new Error('Unable to search patients')
+        const data = await res.json()
+        setPatientMatches(data.patients || [])
+        setPatientSearchStatus('idle')
+      })
+      .catch((error: unknown) => {
+        if ((error as { name?: string }).name === 'AbortError') return
+        setPatientMatches([])
+        setPatientSearchStatus('error')
+      })
+
+    return () => controller.abort()
+  }, [patient.mrNumber])
+
+  const selectPatient = useCallback(async (mrNumber: string) => {
+    if (patientAbortControllerRef.current) patientAbortControllerRef.current.abort()
+    const controller = new AbortController()
+    patientAbortControllerRef.current = controller
+    setPatientLoadStatus('loading')
+    setPatientMatches([])
+    try {
+      const res = await fetch(`/api/patients/${encodeURIComponent(mrNumber)}`, { signal: controller.signal })
+      if (!res.ok) throw new Error('Unable to load patient')
+      const { patient: record } = await res.json()
+      setPatient(toInvoicePatient(record))
+      setPatientLoadStatus('selected')
+    } catch (error: unknown) {
+      if ((error as { name?: string }).name === 'AbortError') return
+      setPatientLoadStatus('error')
+    } finally {
+      if (patientAbortControllerRef.current === controller) patientAbortControllerRef.current = null
+    }
   }, [])
 
-  // DOB drives Age automatically; Age stays editable for cases where DOB is unknown.
-  const handleDobChange = (value: string) => {
-    setPatient((current) => ({ ...current, dob: value, age: value ? computeAgeFromDob(value) : current.age }))
-  }
-
-  // Mobile number: digits only, capped at 10, validated before save.
-  const handleContactChange = (value: string) => {
-    const digitsOnly = value.replace(/\D/g, '').slice(0, 10)
-    setPatient((current) => ({ ...current, contact: digitsOnly }))
-  }
-
   const mrNumberValid = patient.mrNumber.trim().length > 0
-  const contactValid = patient.contact.length === 0 || MOBILE_REGEX.test(patient.contact)
-  const contactComplete = MOBILE_REGEX.test(patient.contact)
-
   const validate = () => {
     const errors: Record<string, string> = {}
     if (!patient.mrNumber.trim()) errors.mrNumber = 'MR number is required.'
-    if (!patient.name.trim()) errors.patientName = 'Patient name is required.'
-    if (!contactComplete) errors.contact = 'Enter a valid 10-digit mobile number.'
+    if (!patientSelected) errors.mrNumber = 'Select a patient from the MR number search results.'
     const hasValidItem = items.some((item) => item.name.trim().length > 0 && item.rate > 0)
     if (!hasValidItem) errors.items = 'Add at least one item with a name and rate.'
     setValidationErrors(errors)
@@ -977,18 +1066,32 @@ function NewInvoiceModal({ onClose, onSave, saving }: { onClose: () => void; onS
                 onChange={(e) => handleMrNumberChange(e.target.value)}
                 placeholder="e.g. MR000003"
                 className={!mrNumberValid ? 'border-destructive' : undefined}
+                aria-autocomplete="list"
+                aria-expanded={patientMatches.length > 0}
               />
-              {mrStatus === 'found' && <p className="mt-1 text-xs font-medium text-primary">Existing patient found — details auto-filled.</p>}
-              {mrStatus === 'loading' && <p className="mt-1 text-xs text-muted-foreground">Looking up patient...</p>}
-              {mrStatus === 'new' && <p className="mt-1 text-xs text-muted-foreground">No record on file — enter details for a new patient.</p>}
+              {patientSearchStatus === 'loading' && <p className="mt-1 text-xs text-muted-foreground">Searching patients...</p>}
+              {patientSearchStatus === 'error' && <p className="mt-1 text-xs text-destructive">Unable to search patients. Please try again.</p>}
+              {patientLoadStatus === 'loading' && <p className="mt-1 text-xs text-muted-foreground">Loading patient details...</p>}
+              {patientLoadStatus === 'selected' && <p className="mt-1 text-xs font-medium text-primary">Patient selected — details auto-filled and locked.</p>}
+              {patientLoadStatus === 'error' && <p className="mt-1 text-xs text-destructive">Unable to load patient details. Please select the patient again.</p>}
+              {patient.mrNumber && patientSearchStatus === 'idle' && !patientSelected && patientLoadStatus !== 'loading' && patientMatches.length === 0 && <p className="mt-1 text-xs text-muted-foreground">No matching patients found.</p>}
+              {patientMatches.length > 0 && !patientSelected && (
+                <div className="relative z-10 mt-1 rounded-lg border bg-popover shadow-md" role="listbox" aria-label="Matching patients">
+                  {patientMatches.map((match) => (
+                    <button type="button" key={match.mr} role="option" className="block w-full border-b px-3 py-2 text-left text-sm last:border-b-0 hover:bg-muted focus:bg-muted focus:outline-none" onClick={() => selectPatient(match.mr)}>
+                      <span className="font-medium">{match.mr} — {match.patientName}</span>
+                      <span className="block text-xs text-muted-foreground">Mobile: {match.mobileNumber || '-'} · Age: {match.age ?? '-'}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
               {!mrNumberValid && validationErrors.mrNumber && <p className="mt-1 text-xs text-destructive">{validationErrors.mrNumber}</p>}
             </FormField>
             <FormField label="Patient name" required>
-              <Input value={patient.name} onChange={(e) => updatePatient('name', e.target.value)} className={validationErrors.patientName ? 'border-destructive' : undefined} />
+              <Input value={patient.name} readOnly aria-readonly="true" />
             </FormField>
-            {validationErrors.patientName && <p className="mt-1 text-xs text-destructive col-span-1">{validationErrors.patientName}</p>}
             <FormField label="Gender">
-              <select className="h-9 w-full rounded-lg border border-input bg-background px-2 text-sm" value={patient.gender} onChange={(e) => updatePatient('gender', e.target.value)}>
+              <select className="h-9 w-full rounded-lg border border-input bg-muted px-2 text-sm" value={patient.gender} disabled>
                 <option value="">Select</option>
                 <option>Male</option>
                 <option>Female</option>
@@ -996,25 +1099,22 @@ function NewInvoiceModal({ onClose, onSave, saving }: { onClose: () => void; onS
               </select>
             </FormField>
             <FormField label="Date of birth">
-              <Input type="date" value={patient.dob} onChange={(e) => handleDobChange(e.target.value)} />
+              <Input type="date" value={patient.dob} readOnly aria-readonly="true" />
             </FormField>
             <FormField label="Age">
-              <Input value={patient.age} onChange={(e) => updatePatient('age', e.target.value)} placeholder="Auto-calculated from DOB" />
+              <Input value={patient.age} readOnly aria-readonly="true" />
             </FormField>
-            <FormField label="Blood group"><Input placeholder="e.g. B+" value={patient.bloodGroup} onChange={(e) => updatePatient('bloodGroup', e.target.value)} /></FormField>
+            <FormField label="Blood group"><Input value={patient.bloodGroup} readOnly aria-readonly="true" /></FormField>
             <FormField label="Contact number" required>
               <Input
                 inputMode="numeric"
                 value={patient.contact}
-                onChange={(e) => handleContactChange(e.target.value)}
-                placeholder="10-digit mobile number"
-                className={(!contactValid || (patient.contact.length > 0 && !contactComplete) || !!validationErrors.contact) ? 'border-destructive' : undefined}
+                readOnly
+                aria-readonly="true"
               />
-              {patient.contact.length > 0 && !contactComplete && <p className="mt-1 text-xs text-destructive">Enter a valid 10-digit mobile number.</p>}
-              {validationErrors.contact && <p className="mt-1 text-xs text-destructive">{validationErrors.contact}</p>}
             </FormField>
             <div className="sm:col-span-2">
-              <FormField label="Address"><Input value={patient.address} onChange={(e) => updatePatient('address', e.target.value)} /></FormField>
+              <FormField label="Address"><Input value={patient.address} readOnly aria-readonly="true" /></FormField>
             </div>
           </div>
         </div>
@@ -1246,9 +1346,38 @@ function InvoiceModal({ invoice, onClose }: { invoice: Invoice; onClose: () => v
 /*  Expenses panel — list, search, filter                               */
 /* ------------------------------------------------------------------ */
 
+function PaginationControls({ pagination, onPageChange }: { pagination: Pagination; onPageChange: (page: number) => void }) {
+  if (pagination.totalPages <= 1) return null
+  const pages = Array.from({ length: pagination.totalPages }, (_, index) => index + 1).filter((page) => page === 1 || page === pagination.totalPages || Math.abs(page - pagination.page) <= 1)
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-4 text-sm text-muted-foreground">
+      <span>{pagination.total} records · Page {pagination.page} of {pagination.totalPages}</span>
+      <div className="flex items-center gap-1">
+        <Button variant="outline" size="sm" onClick={() => onPageChange(1)} disabled={pagination.page === 1}>First</Button>
+        <Button variant="outline" size="sm" onClick={() => onPageChange(pagination.page - 1)} disabled={pagination.page === 1}>Previous</Button>
+        {pages.map((page, index) => <Button key={page} variant={page === pagination.page ? 'default' : 'outline'} size="sm" onClick={() => onPageChange(page)}>{index > 0 && page - pages[index - 1] > 1 ? `… ${page}` : page}</Button>)}
+        <Button variant="outline" size="sm" onClick={() => onPageChange(pagination.page + 1)} disabled={pagination.page === pagination.totalPages}>Next</Button>
+        <Button variant="outline" size="sm" onClick={() => onPageChange(pagination.totalPages)} disabled={pagination.page === pagination.totalPages}>Last</Button>
+      </div>
+    </div>
+  )
+}
+
 function ExpensesPanel({
   expenses,
   categories,
+  search,
+  dateFrom,
+  dateTo,
+  filterCategory,
+  sortOrder,
+  pagination,
+  onSearchChange,
+  onDateFromChange,
+  onDateToChange,
+  onCategoryChange,
+  onSortOrderChange,
+  onPageChange,
   onAdd,
   onView,
   onEdit,
@@ -1256,44 +1385,31 @@ function ExpensesPanel({
 }: {
   expenses: Expense[]
   categories: string[]
+  search: string
+  dateFrom: string
+  dateTo: string
+  filterCategory: string
+  sortOrder: SortOrder
+  pagination: Pagination
+  onSearchChange: (value: string) => void
+  onDateFromChange: (value: string) => void
+  onDateToChange: (value: string) => void
+  onCategoryChange: (value: string) => void
+  onSortOrderChange: (value: SortOrder) => void
+  onPageChange: (page: number) => void
   onAdd: () => void
   onView: (expense: Expense) => void
   onEdit: (expense: Expense) => void
   onDelete: (expense: Expense) => void
 }) {
-  const [search, setSearch] = useState('')
-  const [dateFrom, setDateFrom] = useState('')
-  const [dateTo, setDateTo] = useState('')
-  const [filterCategory, setFilterCategory] = useState('all')
-  const [sortOrder, setSortOrder] = useState<'latest' | 'oldest'>('latest')
-
-  const filtered = useMemo(() => {
-    const term = search.trim().toLowerCase()
-    let rows = expenses.filter((exp) => {
-      const matchesSearch =
-        term.length === 0 ||
-        exp.expenseNumber.toLowerCase().includes(term) ||
-        exp.id.toLowerCase().includes(term) ||
-        exp.description.toLowerCase().includes(term) ||
-        exp.paidTo.toLowerCase().includes(term) ||
-        exp.category.toLowerCase().includes(term)
-      const matchesFrom = !dateFrom || exp.date >= dateFrom
-      const matchesTo = !dateTo || exp.date <= dateTo
-      const matchesCategory = filterCategory === 'all' || exp.category === filterCategory
-      return matchesSearch && matchesFrom && matchesTo && matchesCategory
-    })
-    rows = rows.sort((a, b) => (sortOrder === 'latest' ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date)))
-    return rows
-  }, [expenses, search, dateFrom, dateTo, filterCategory, sortOrder])
-
-  const total = filtered.reduce((sum, exp) => sum + exp.amount, 0)
+  const total = expenses.reduce((sum, exp) => sum + exp.amount, 0)
 
   return (
     <Card className="rounded-lg shadow-sm">
       <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3">
         <div>
           <CardTitle>Expenses</CardTitle>
-          <CardDescription>Track clinic expenditure across both centers. {filtered.length} record{filtered.length === 1 ? '' : 's'} · {money(total)}</CardDescription>
+          <CardDescription>Track clinic expenditure across both centers. {pagination.total} record{pagination.total === 1 ? '' : 's'} · {money(total)}</CardDescription>
         </div>
         <Button size="sm" onClick={onAdd}>
           <Plus className="mr-2 size-4" />
@@ -1304,11 +1420,11 @@ function ExpensesPanel({
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
           <div className="relative lg:col-span-2">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input className="pl-8" placeholder="Search description, vendor, category…" value={search} onChange={(e) => setSearch(e.target.value)} />
+            <Input className="pl-8" placeholder="Search description, vendor, category…" value={search} onChange={(e) => onSearchChange(e.target.value)} />
           </div>
-          <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} aria-label="From date" />
-          <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} aria-label="To date" />
-          <select className="h-9 w-full rounded-lg border border-input bg-background px-2 text-sm" value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
+          <Input type="date" value={dateFrom} onChange={(e) => onDateFromChange(e.target.value)} aria-label="From date" />
+          <Input type="date" value={dateTo} onChange={(e) => onDateToChange(e.target.value)} aria-label="To date" />
+          <select className="h-9 w-full rounded-lg border border-input bg-background px-2 text-sm" value={filterCategory} onChange={(e) => onCategoryChange(e.target.value)}>
             <option value="all">All categories</option>
             {categories.map((cat) => (
               <option key={cat} value={cat}>{cat}</option>
@@ -1322,17 +1438,17 @@ function ExpensesPanel({
                 variant="ghost"
                 size="sm"
                 onClick={() => {
-                  setSearch('')
-                  setDateFrom('')
-                  setDateTo('')
-                  setFilterCategory('all')
+                  onSearchChange('')
+                  onDateFromChange('')
+                  onDateToChange('')
+                  onCategoryChange('all')
                 }}
               >
                 Clear filters
               </Button>
             )}
           </div>
-          <select className="h-8 rounded-lg border border-input bg-background px-2 text-xs" value={sortOrder} onChange={(e) => setSortOrder(e.target.value as 'latest' | 'oldest')}>
+          <select className="h-8 rounded-lg border border-input bg-background px-2 text-xs" value={sortOrder} onChange={(e) => onSortOrderChange(e.target.value as SortOrder)}>
             <option value="latest">Sort: Latest first</option>
             <option value="oldest">Sort: Oldest first</option>
           </select>
@@ -1354,7 +1470,7 @@ function ExpensesPanel({
               </tr>
             </thead>
             <tbody>
-              {filtered.map((exp) => (
+              {expenses.map((exp) => (
                 <tr key={exp.id} className="border-b last:border-0 hover:bg-muted/30">
                   <td className="px-4 py-3 font-medium text-primary">{exp.expenseNumber}</td>
                   <td className="px-4 py-3 text-muted-foreground">{formatDateDisplay(exp.date)}</td>
@@ -1379,7 +1495,7 @@ function ExpensesPanel({
                   </td>
                 </tr>
               ))}
-              {filtered.length === 0 && (
+              {expenses.length === 0 && (
                 <tr>
                   <td colSpan={9} className="px-4 py-10 text-center text-sm text-muted-foreground">
                     No expenses match these filters.
@@ -1389,6 +1505,7 @@ function ExpensesPanel({
             </tbody>
           </table>
         </div>
+        <PaginationControls pagination={pagination} onPageChange={onPageChange} />
       </CardContent>
     </Card>
   )
@@ -1467,6 +1584,7 @@ function NewExpenseModal({
     if (!canSave) return
     const expense: Expense = {
       id: initial?.id ?? `EXP-${Math.floor(10000 + Math.random() * 89999)}`,
+      expenseNumber: initial?.expenseNumber ?? '',
       date,
       category,
       description: description.trim(),

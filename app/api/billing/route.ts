@@ -15,17 +15,35 @@ export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
     const patientMr = url.searchParams.get('patientMr') || '';
+    const search = url.searchParams.get('search') || '';
+    const sortOrder = url.searchParams.get('sortOrder') === 'oldest' ? 'oldest' : 'latest';
+    const page = Math.max(1, Number(url.searchParams.get('page')) || 1);
+    const pageSize = Math.min(100, Math.max(1, Number(url.searchParams.get('pageSize')) || 20));
+    const skip = (page - 1) * pageSize;
 
     const where: Record<string, unknown> = {};
     if (patientMr) where.patientMrNumber = patientMr;
+    if (search) {
+      where.OR = [
+        { invoiceNumber: { contains: search } },
+        { patientName: { contains: search } },
+        { patientMrNumber: { contains: search } },
+        { billType: { contains: search } },
+      ];
+    }
 
-    const invoices = await prisma.invoice.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-      include: { items: true },
-    });
+    const [invoices, total] = await Promise.all([
+      prisma.invoice.findMany({
+        where,
+        orderBy: { createdAt: sortOrder === 'latest' ? 'desc' : 'asc' },
+        skip,
+        take: pageSize,
+        include: { items: true },
+      }),
+      prisma.invoice.count({ where }),
+    ]);
 
-    return NextResponse.json({ invoices });
+    return NextResponse.json({ invoices, page, pageSize, total, totalPages: Math.ceil(total / pageSize) });
   } catch (e) {
     console.error('Billing GET error', e);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

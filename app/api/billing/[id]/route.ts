@@ -90,6 +90,15 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
   try {
     const { id } = await context.params;
     const body = await request.json();
+    const invoiceNumber = decodeURIComponent(id)
+    const existing = await prisma.invoice.findUnique({
+      where: { invoiceNumber },
+      include: { items: true },
+    })
+
+    if (!existing) {
+      return NextResponse.json({ error: 'Invoice not found' }, { status: 404 })
+    }
 
     const allowedFields = [
       'center', 'billType', 'patientName', 'patientMrNumber', 'patientAge',
@@ -115,8 +124,20 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       if (body.patient.contact !== undefined) updateData.patientContact = body.patient.contact
     }
 
+    // The dashboard aggregates these persisted values. Keep them in sync when
+    // an invoice's financial inputs are edited instead of relying on a page of
+    // invoice rows to recalculate them.
+    const discount = body.discount === undefined ? existing.discount : Number(body.discount)
+    const tax = body.tax === undefined ? existing.tax : Number(body.tax)
+    const paid = body.paid === undefined ? existing.paid : Number(body.paid)
+    const totals = computeTotals(existing.items, discount, tax, paid)
+    updateData.subtotal = totals.subtotal
+    updateData.grandTotal = totals.total
+    updateData.balance = totals.balance
+    updateData.status = totals.balance > 0 ? 'Pending' : 'Paid'
+
     const invoice = await prisma.invoice.update({
-      where: { invoiceNumber: decodeURIComponent(id) },
+      where: { invoiceNumber },
       data: updateData,
       include: { items: true },
     });
