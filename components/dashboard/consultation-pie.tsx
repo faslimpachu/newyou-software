@@ -8,7 +8,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from '@/components/ui/chart'
-import { consultationTypes } from '@/lib/dashboard-data'
+import { useDashboardData } from './use-dashboard-data'
 
 const chartConfig = {
   value: { label: 'Consultations' },
@@ -18,9 +18,25 @@ const chartConfig = {
   followup: { label: 'Follow-up', color: 'var(--chart-4)' },
 } satisfies ChartConfig
 
-const total = consultationTypes.reduce((sum, item) => sum + item.value, 0)
-
 export function ConsultationPie() {
+  const { data, loading } = useDashboardData(3000)
+  const consultationTypes = data?.consultationTypes || []
+  const total = consultationTypes.reduce((sum, item) => sum + item.value, 0)
+
+  if (loading) {
+    return (
+      <Card className="flex flex-col rounded-2xl border-border/70 shadow-sm">
+        <CardHeader>
+          <CardTitle className="font-display text-base">Consultation Types</CardTitle>
+          <CardDescription>Distribution across service lines this month</CardDescription>
+        </CardHeader>
+        <CardContent className="flex-1">
+          <div className="mx-auto h-[240px] w-full animate-pulse rounded bg-muted" />
+        </CardContent>
+      </Card>
+    )
+  }
+
   return (
     <Card className="flex flex-col rounded-2xl border-border/70 shadow-sm">
       <CardHeader>

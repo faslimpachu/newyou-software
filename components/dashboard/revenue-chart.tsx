@@ -10,7 +10,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from '@/components/ui/chart'
-import { monthlyRevenue } from '@/lib/dashboard-data'
+import { useDashboardData } from './use-dashboard-data'
 
 const chartConfig = {
   revenue: { label: 'Revenue (₹L)', color: 'var(--chart-1)' },
@@ -18,6 +18,23 @@ const chartConfig = {
 } satisfies ChartConfig
 
 export function RevenueChart() {
+  const { data, loading } = useDashboardData(3000)
+  const chartData = data?.monthlyRevenue || []
+
+  if (loading) {
+    return (
+      <Card className="rounded-2xl border-border/70 shadow-sm">
+        <CardHeader>
+          <CardTitle className="font-display text-base">Monthly Revenue</CardTitle>
+          <CardDescription>Revenue vs. operating expenses (in ₹ lakhs)</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="h-[280px] w-full animate-pulse rounded bg-muted" />
+        </CardContent>
+      </Card>
+    )
+  }
+
   return (
     <Card className="rounded-2xl border-border/70 shadow-sm">
       <CardHeader>
@@ -26,7 +43,7 @@ export function RevenueChart() {
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="h-[280px] w-full">
-          <AreaChart data={monthlyRevenue} margin={{ left: -12, right: 4, top: 4 }}>
+          <AreaChart data={chartData} margin={{ left: -12, right: 4, top: 4 }}>
             <defs>
               <linearGradient id="fillRevenue" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="var(--color-revenue)" stopOpacity={0.35} />
