@@ -3,7 +3,6 @@ import {
   CalendarClock,
   LayoutDashboard,
   Receipt,
-  Settings,
   UserPlus,
   Users,
   type LucideIcon,
@@ -41,7 +40,6 @@ export const navGroups: NavGroup[] = [
     items: [
       { label: 'Follow-ups', icon: CalendarClock, href: '/follow-ups', badge: '54' },
       { label: 'Billing', icon: Receipt, href: '/billing' },
-      { label: 'Settings', icon: Settings, href: '/settings' },
     ],
   },
 ]
