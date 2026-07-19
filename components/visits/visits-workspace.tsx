@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { CalendarDays, Plus, Search, UserRound } from 'lucide-react'
+import { Search, UserRound } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -37,7 +37,6 @@ export function VisitsWorkspace() {
   const [status, setStatus] = useState('All statuses')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [scheduleOpen, setScheduleOpen] = useState(false)
   const [updating, setUpdating] = useState(false)
 
   const fetchVisits = useCallback(async () => {
@@ -110,14 +109,13 @@ export function VisitsWorkspace() {
 
   return (
     <div className="mx-auto max-w-[1600px] space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="text-xs font-medium uppercase tracking-wider text-primary">Patient Care</p>
-          <h1 className="mt-1 font-display text-2xl font-semibold">Visit Management</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Manage today's outpatient queue, consultation assignments, and visit progression.</p>
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wider text-primary">Patient Care</p>
+            <h1 className="mt-1 font-display text-2xl font-semibold">Visit Management</h1>
+            <p className="mt-1 text-sm text-muted-foreground">Manage today's outpatient queue, consultation assignments, and visit progression.</p>
+          </div>
         </div>
-        <Button size="sm" onClick={() => setScheduleOpen(true)}><Plus className="mr-2 size-4"/>Schedule visit</Button>
-      </div>
 
       {error && <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">{error}</div>}
 
@@ -175,7 +173,6 @@ export function VisitsWorkspace() {
           <Card className="h-fit rounded-lg shadow-sm"><CardContent className="py-10 text-center text-sm text-muted-foreground">Select a visit to view details.</CardContent></Card>
         )}
       </div>
-      {scheduleOpen && <ScheduleVisit onClose={() => setScheduleOpen(false)} />}
     </div>
   )
 }
@@ -212,50 +209,6 @@ function VisitDetailPanel({ visit, updateStatus, updating, onOpenPatient }: { vi
 }
 
 function Pair({ label, value }: { label: string; value: string }) { return <div className="flex justify-between gap-3"><dt className="text-muted-foreground">{label}</dt><dd className="text-right font-medium">{value}</dd></div> }
-
-function ScheduleVisit({ onClose }: { onClose: () => void }) {
-  return <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/20 p-4">
-    <Card className="w-full max-w-xl rounded-lg shadow-xl">
-      <CardHeader>
-        <CardTitle>Schedule outpatient visit</CardTitle>
-        <CardDescription>Enter the MR number, then assign an appointment and clinical staff.</CardDescription>
-      </CardHeader>
-      <CardContent className="grid gap-4 sm:grid-cols-2">
-        <div className="sm:col-span-2">
-          <Label className="text-xs text-muted-foreground">MR number</Label>
-          <div className="mt-1.5 flex gap-2">
-            <Input placeholder="MR000001"/>
-            <Button variant="outline" size="sm">Fetch patient</Button>
-          </div>
-        </div>
-        <FormField label="Appointment date" type="date"/>
-        <FormField label="Time slot" placeholder="10:30 AM"/>
-        <SelectField label="Doctor" values={['Dr. Neha Verma','Dr. Arjun Das']}/>
-        <SelectField label="Dietitian" values={['Dr. Neha Verma','Not required']}/>
-        <div className="sm:col-span-2 flex justify-end gap-2 border-t pt-4">
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={onClose}><CalendarDays className="mr-2 size-4"/>Schedule visit</Button>
-        </div>
-      </CardContent>
-    </Card>
-  </div>
-}
-
-function FormField({ label, type = 'text', placeholder }: { label: string; type?: string; placeholder?: string }) {
-  return <div>
-    <Label className="text-xs text-muted-foreground">{label}</Label>
-    <Input className="mt-1.5" type={type} placeholder={placeholder}/>
-  </div>
-}
-
-function SelectField({ label, values }: { label: string; values: string[] }) {
-  return <div>
-    <Label className="text-xs text-muted-foreground">{label}</Label>
-    <select className="mt-1.5 h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm">
-      {values.map((value) => <option key={value}>{value}</option>)}
-    </select>
-  </div>
-}
 
 function Filter({ label, value, values, onChange }: { label: string; value: string; values: string[]; onChange: (value: string) => void }) {
   return <div>
