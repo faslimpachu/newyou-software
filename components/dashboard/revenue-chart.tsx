@@ -13,8 +13,8 @@ import {
 import { useDashboardData } from './use-dashboard-data'
 
 const chartConfig = {
-  revenue: { label: 'Revenue (₹L)', color: 'var(--chart-1)' },
-  expenses: { label: 'Expenses (₹L)', color: 'var(--chart-4)' },
+  revenue: { label: 'Revenue (₹)', color: 'var(--chart-1)' },
+  expenses: { label: 'Expenses (₹)', color: 'var(--chart-4)' },
 } satisfies ChartConfig
 
 export function RevenueChart() {
@@ -26,7 +26,7 @@ export function RevenueChart() {
       <Card className="rounded-2xl border-border/70 shadow-sm">
         <CardHeader>
           <CardTitle className="font-display text-base">Monthly Revenue</CardTitle>
-          <CardDescription>Revenue vs. operating expenses (in ₹ lakhs)</CardDescription>
+          <CardDescription>Revenue vs. operating expenses</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="h-[280px] w-full animate-pulse rounded bg-muted" />
@@ -39,7 +39,7 @@ export function RevenueChart() {
     <Card className="rounded-2xl border-border/70 shadow-sm">
       <CardHeader>
         <CardTitle className="font-display text-base">Monthly Revenue</CardTitle>
-        <CardDescription>Revenue vs. operating expenses (in ₹ lakhs)</CardDescription>
+          <CardDescription>Revenue vs. operating expenses</CardDescription>
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="h-[280px] w-full">

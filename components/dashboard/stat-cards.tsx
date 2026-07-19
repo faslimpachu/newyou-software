@@ -6,7 +6,6 @@ import { cn } from '@/lib/utils'
 import { useDashboardData } from './use-dashboard-data'
 
 const fmt = (n: number) => {
-  if (n >= 100000) return `${(n / 100000).toFixed(2)}L`
   if (n >= 1000) return `${(n / 1000).toFixed(1)}K`
   return n.toLocaleString('en-IN')
 }
