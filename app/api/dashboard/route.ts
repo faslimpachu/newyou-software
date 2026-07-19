@@ -40,6 +40,7 @@ export async function GET() {
       todayRegistrations,
       todayVisits,
       pendingBills,
+      todayFollowUps,
       consultationTypeData,
     ] = await Promise.all([
       prisma.patient.count(),
@@ -48,6 +49,14 @@ export async function GET() {
       prisma.patient.count({ where: { createdAt: { gte: todayStart } } }),
       prisma.visit.count({ where: { createdAt: { gte: todayStart } } }),
       prisma.invoice.count({ where: { status: 'Pending' } }),
+      prisma.followUp.count({
+        where: {
+          OR: [
+            { reviewDate: { gte: todayStart, lt: new Date(todayStart.getTime() + 86400000) } },
+            { createdAt: { gte: todayStart, lt: new Date(todayStart.getTime() + 86400000) } },
+          ],
+        },
+      }),
       prisma.patient.groupBy({
         by: ['consultationType'],
         _count: { consultationType: true },
@@ -178,6 +187,7 @@ export async function GET() {
         ayurcarePatients,
         revenueToday: todayRevenue,
         pendingBills,
+        followupToday: todayFollowUps,
       },
       monthlyRegistrations,
       consultationTypes,

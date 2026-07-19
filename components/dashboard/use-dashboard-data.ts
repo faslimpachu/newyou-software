@@ -10,6 +10,7 @@ export interface DashboardStats {
   ayurcarePatients: number
   revenueToday: number
   pendingBills: number
+  followupToday: number
 }
 
 export interface DashboardChartData {
