@@ -352,7 +352,7 @@ async function exportNodeToPdf(node: HTMLElement, filename: string) {
 /*  Root workspace                                                      */
 /* ------------------------------------------------------------------ */
 
-type ModuleTab = 'billing' | 'expenses' | 'reports'
+type ModuleTab = 'billing' | 'expenses'
 
 export function BillingWorkspace() {
   const [invoices, setInvoices] = useState<Invoice[]>([])
@@ -620,13 +620,12 @@ export function BillingWorkspace() {
       {errorInvoices && <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">{errorInvoices}</div>}
       {errorExpenses && <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">{errorExpenses}</div>}
 
-      {/* Module tabs — Billing / Expenses / Reports, all within this same page */}
+      {/* Module tabs — Billing / Expenses */}
       <div className="flex gap-1 rounded-lg border bg-muted/40 p-1 w-fit">
         {(
           [
             { key: 'billing', label: 'Billing & Revenue' },
             { key: 'expenses', label: 'Expenses' },
-            { key: 'reports', label: 'Reports' },
           ] as { key: ModuleTab; label: string }[]
         ).map((tab) => (
           <button
@@ -710,8 +709,6 @@ export function BillingWorkspace() {
           onDelete={setDeleteTarget}
         />
       )}
-
-      {activeTab === 'reports' && <ReportsPanel invoices={invoices} expenses={expenses} />}
 
       {creating && <NewInvoiceModal onClose={() => setCreating(false)} onSave={handleSaveInvoice} saving={savingInvoice} />}
       {viewInvoice && <InvoiceModal invoice={viewInvoice} onClose={() => setViewInvoice(null)} />}
@@ -1697,182 +1694,3 @@ function ExpenseDetailModal({
   )
 }
 
-/* ------------------------------------------------------------------ */
-/*  Reports panel — daily / monthly revenue, expenses, profit           */
-/* ------------------------------------------------------------------ */
-
-function ReportsPanel({ invoices, expenses }: { invoices: Invoice[]; expenses: Expense[] }) {
-  const dailyRef = useRef<HTMLDivElement>(null)
-  const monthlyRef = useRef<HTMLDivElement>(null)
-  const [exportingDaily, setExportingDaily] = useState(false)
-  const [exportingMonthly, setExportingMonthly] = useState(false)
-
-  const dailyReport = useMemo(() => {
-    const map = new Map<string, { revenue: number; expenses: number }>()
-    invoices.forEach((inv) => {
-      const key = toDayKey(inv.date)
-      const totals = computeTotals(inv.items, inv.discount, inv.tax, inv.paid)
-      const entry = map.get(key) ?? { revenue: 0, expenses: 0 }
-      entry.revenue += Math.min(inv.paid, totals.total)
-      map.set(key, entry)
-    })
-    expenses.forEach((exp) => {
-      const key = toDayKey(exp.date)
-      const entry = map.get(key) ?? { revenue: 0, expenses: 0 }
-      entry.expenses += exp.amount
-      map.set(key, entry)
-    })
-    return Array.from(map.entries())
-      .filter(([key]) => key !== 'unknown')
-      .map(([date, v]) => ({ date, revenue: v.revenue, expenses: v.expenses, profit: v.revenue - v.expenses }))
-      .sort((a, b) => b.date.localeCompare(a.date))
-  }, [invoices, expenses])
-
-  const monthlyReport = useMemo(() => {
-    const map = new Map<string, { revenue: number; expenses: number }>()
-    invoices.forEach((inv) => {
-      const key = toMonthKey(inv.date)
-      const totals = computeTotals(inv.items, inv.discount, inv.tax, inv.paid)
-      const entry = map.get(key) ?? { revenue: 0, expenses: 0 }
-      entry.revenue += Math.min(inv.paid, totals.total)
-      map.set(key, entry)
-    })
-    expenses.forEach((exp) => {
-      const key = toMonthKey(exp.date)
-      const entry = map.get(key) ?? { revenue: 0, expenses: 0 }
-      entry.expenses += exp.amount
-      map.set(key, entry)
-    })
-    return Array.from(map.entries())
-      .filter(([key]) => key !== 'unknown')
-      .map(([month, v]) => ({ month, revenue: v.revenue, expenses: v.expenses, profit: v.revenue - v.expenses }))
-      .sort((a, b) => b.month.localeCompare(a.month))
-  }, [invoices, expenses])
-
-  const exportDailyExcel = () =>
-    exportRowsToExcel(
-      dailyReport.map((r) => ({ Date: formatDateDisplay(r.date), Revenue: r.revenue, Expenses: r.expenses, Profit: r.profit })),
-      'daily-report.xlsx',
-    )
-  const exportMonthlyExcel = () =>
-    exportRowsToExcel(
-      monthlyReport.map((r) => ({ Month: monthLabel(r.month), Revenue: r.revenue, Expenses: r.expenses, Profit: r.profit })),
-      'monthly-report.xlsx',
-    )
-
-  const exportDailyPdf = async () => {
-    if (!dailyRef.current) return
-    setExportingDaily(true)
-    try {
-      await exportNodeToPdf(dailyRef.current, 'daily-report.pdf')
-    } finally {
-      setExportingDaily(false)
-    }
-  }
-
-  const exportMonthlyPdf = async () => {
-    if (!monthlyRef.current) return
-    setExportingMonthly(true)
-    try {
-      await exportNodeToPdf(monthlyRef.current, 'monthly-report.pdf')
-    } finally {
-      setExportingMonthly(false)
-    }
-  }
-
-  return (
-    <div className="space-y-6">
-      <Card className="rounded-lg shadow-sm">
-        <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3">
-          <div>
-            <CardTitle>Daily report</CardTitle>
-            <CardDescription>Revenue, expenses, and profit broken down by day.</CardDescription>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={exportDailyExcel}>
-              <Download className="mr-2 size-4" />
-              Export Excel
-            </Button>
-            <Button variant="outline" size="sm" onClick={exportDailyPdf} disabled={exportingDaily}>
-              <FileText className="mr-2 size-4" />
-              {exportingDaily ? 'Exporting…' : 'Export PDF'}
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="px-5">
-          <div ref={dailyRef} className="overflow-x-auto rounded-lg border bg-white">
-            <table className="w-full min-w-[560px] text-left text-sm">
-              <thead className="border-b bg-muted/40 text-xs text-muted-foreground">
-                <tr>
-                  <th className="px-4 py-3">Date</th>
-                  <th className="px-4 py-3 text-right">Revenue</th>
-                  <th className="px-4 py-3 text-right">Expenses</th>
-                  <th className="px-4 py-3 text-right">Profit</th>
-                </tr>
-              </thead>
-              <tbody>
-                {dailyReport.map((row) => (
-                  <tr key={row.date} className="border-b last:border-0">
-                    <td className="px-4 py-3">{formatDateDisplay(row.date)}</td>
-                    <td className="px-4 py-3 text-right">{money(row.revenue)}</td>
-                    <td className="px-4 py-3 text-right">{money(row.expenses)}</td>
-                    <td className={`px-4 py-3 text-right font-medium ${row.profit >= 0 ? 'text-primary' : 'text-destructive'}`}>{money(row.profit)}</td>
-                  </tr>
-                ))}
-                {dailyReport.length === 0 && (
-                  <tr><td colSpan={4} className="px-4 py-8 text-center text-sm text-muted-foreground">No records yet.</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="rounded-lg shadow-sm">
-        <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3">
-          <div>
-            <CardTitle>Monthly report</CardTitle>
-            <CardDescription>Revenue, expenses, and profit broken down by month.</CardDescription>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={exportMonthlyExcel}>
-              <Download className="mr-2 size-4" />
-              Export Excel
-            </Button>
-            <Button variant="outline" size="sm" onClick={exportMonthlyPdf} disabled={exportingMonthly}>
-              <FileText className="mr-2 size-4" />
-              {exportingMonthly ? 'Exporting…' : 'Export PDF'}
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="px-5">
-          <div ref={monthlyRef} className="overflow-x-auto rounded-lg border bg-white">
-            <table className="w-full min-w-[560px] text-left text-sm">
-              <thead className="border-b bg-muted/40 text-xs text-muted-foreground">
-                <tr>
-                  <th className="px-4 py-3">Month</th>
-                  <th className="px-4 py-3 text-right">Revenue</th>
-                  <th className="px-4 py-3 text-right">Expenses</th>
-                  <th className="px-4 py-3 text-right">Profit</th>
-                </tr>
-              </thead>
-              <tbody>
-                {monthlyReport.map((row) => (
-                  <tr key={row.month} className="border-b last:border-0">
-                    <td className="px-4 py-3">{monthLabel(row.month)}</td>
-                    <td className="px-4 py-3 text-right">{money(row.revenue)}</td>
-                    <td className="px-4 py-3 text-right">{money(row.expenses)}</td>
-                    <td className={`px-4 py-3 text-right font-medium ${row.profit >= 0 ? 'text-primary' : 'text-destructive'}`}>{money(row.profit)}</td>
-                  </tr>
-                ))}
-                {monthlyReport.length === 0 && (
-                  <tr><td colSpan={4} className="px-4 py-8 text-center text-sm text-muted-foreground">No records yet.</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  )
-}

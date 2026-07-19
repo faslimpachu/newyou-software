@@ -148,7 +148,6 @@ describe('BillingWorkspace', () => {
       expect(screen.getByText('Billing & Revenue')).toBeDefined()
     })
     expect(screen.getByText('Expenses')).toBeDefined()
-    expect(screen.getByText('Reports')).toBeDefined()
   })
 
   it('switches to Expenses tab', async () => {
@@ -163,21 +162,6 @@ describe('BillingWorkspace', () => {
     await waitFor(() => {
       expect(screen.getByText('EXP-00001')).toBeDefined()
     })
-  })
-
-  it('switches to Reports tab', async () => {
-    mockFetchInvoicesAndExpenses()
-    render(<BillingWorkspace />)
-
-    await waitFor(() => {
-      expect(screen.getByText('Billing & Revenue')).toBeDefined()
-    })
-
-    fireEvent.click(screen.getByText('Reports'))
-    await waitFor(() => {
-      expect(screen.getByText('Daily report')).toBeDefined()
-    })
-    expect(screen.getByText('Monthly report')).toBeDefined()
   })
 
   it('opens new invoice modal', async () => {
