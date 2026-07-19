@@ -67,6 +67,7 @@ type Expense = {
   receiptDataUrl?: string
   addedBy: string
   createdDate: string // display date, set once on creation
+  createdAt?: string
 }
 
 /* ------------------------------------------------------------------ */
@@ -395,7 +396,7 @@ export function BillingWorkspace() {
       const res = await fetch('/api/billing?limit=100')
       if (!res.ok) throw new Error('Failed to load invoices')
       const data = await res.json()
-      const mapped = (data.invoices || []).map(mapDbInvoiceToFrontend)
+      const mapped = (data.invoices || []).map(mapDbInvoiceToFrontend).sort((a, b) => b.date.localeCompare(a.date))
       setInvoices(mapped)
       setErrorInvoices('')
     } catch (err: any) {
@@ -408,7 +409,12 @@ export function BillingWorkspace() {
       const res = await fetch('/api/expenses')
       if (!res.ok) throw new Error('Failed to load expenses')
       const data = await res.json()
-      setExpenses(data.expenses || [])
+      const sorted = (data.expenses || []).sort((a: any, b: any) => {
+        const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0
+        const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0
+        return bTime - aTime
+      })
+      setExpenses(sorted)
       setErrorExpenses('')
     } catch (err: any) {
       setErrorExpenses(err.message || 'Failed to load expenses')
