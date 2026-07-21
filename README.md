@@ -72,3 +72,96 @@ cp .env.example .env
 ## License
 
 MIT
+
+# Prisma + MySQL Setup Guide
+
+## 1. Configure the Database Connection
+
+Update your `.env` file:
+
+```env
+DATABASE_URL="mysql://root:password@localhost:3306/newyou_hms"
+```
+
+---
+
+## 2. Generate the Prisma Client
+
+Run:
+
+```bash
+npx prisma generate
+```
+
+---
+
+## 3. Create the Database Tables
+
+### Recommended (Using Migrations)
+
+```bash
+npx prisma migrate dev --name init_mysql
+```
+
+This command will:
+
+* Create the database (if it doesn't exist)
+* Create all tables from `schema.prisma`
+* Create a migration inside `prisma/migrations/`
+* Generate the Prisma Client automatically
+
+---
+
+### Alternative (Without Migrations)
+
+If you don't want migration history, you can use:
+
+```bash
+npx prisma db push
+```
+
+> **Note:** For production applications, using migrations is recommended.
+
+---
+
+## 4. After Changing `schema.prisma`
+
+Whenever you modify your Prisma schema, create a new migration:
+
+```bash
+npx prisma migrate dev --name describe_change
+```
+
+### Examples
+
+```bash
+npx prisma migrate dev --name add_patient_status
+npx prisma migrate dev --name add_invoice_fields
+npx prisma migrate dev --name update_followup_table
+```
+
+---
+
+## Recommended Workflow
+
+### First-Time Setup
+
+```bash
+npx prisma generate
+npx prisma migrate dev --name init_mysql
+```
+
+### Future Schema Changes
+
+```bash
+npx prisma migrate dev --name describe_change
+```
+
+---
+
+## Best Practice
+
+* ✅ Use `prisma migrate dev` during development.
+* ✅ Commit the `prisma/migrations/` folder to Git.
+* ✅ Use `prisma migrate deploy` when deploying to production.
+* ❌ Avoid mixing `prisma db push` and `prisma migrate dev` in the same project.
