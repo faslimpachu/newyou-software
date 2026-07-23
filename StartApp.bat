@@ -8,7 +8,7 @@ cd /d "%~dp0"
 REM Check if the app is already running
 curl -s http://localhost:%PORT% >nul 2>&1
 if not errorlevel 1 (
-    start "" http://localhost:%PORT%
+    start "" msedge --app=http://localhost:%PORT%
     exit /b
 )
 
@@ -21,7 +21,7 @@ timeout /t 1 /nobreak >nul
 curl -s http://localhost:%PORT% >nul 2>&1
 if errorlevel 1 goto wait
 
-REM Open the app
-start "" http://localhost:%PORT%
+REM Open in Edge App mode
+start "" msedge --app=http://localhost:%PORT%
 
 endlocal
