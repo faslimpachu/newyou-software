@@ -9,7 +9,7 @@ export interface DashboardStats {
   nutritionPatients: number
   ayurcarePatients: number
   revenueToday: number
-  pendingBills: number
+  collectedRevenue: number
   followupToday: number
 }
 

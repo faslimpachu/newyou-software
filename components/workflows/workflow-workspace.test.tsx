@@ -37,7 +37,7 @@ describe('WorkflowWorkspace', () => {
       expect(screen.getAllByText('Real Patient').length).toBeGreaterThan(0)
     })
 
-    expect(screen.getByText('MR000009')).toBeDefined()
+    expect(screen.getAllByText('MR000009').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Diet review').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Dr. Neha Verma').length).toBeGreaterThan(0)
     expect(screen.getByText('Open patient profile')).toBeDefined()

@@ -10,18 +10,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { cn } from '@/lib/utils'
 import { useDashboardData } from './use-dashboard-data'
 
 function money(value?: number | null) {
   return `Rs. ${(value || 0).toLocaleString('en-IN')}`
-}
-
-function statusStyle(status?: string | null) {
-  const normalized = (status || '').toLowerCase()
-  if (normalized === 'paid') return 'bg-primary/10 text-primary'
-  if (normalized === 'overdue' || normalized === 'cancelled') return 'bg-destructive/10 text-destructive'
-  return 'bg-chart-4/15 text-chart-4'
 }
 
 export function BillingTable() {
@@ -48,7 +40,6 @@ export function BillingTable() {
               <TableHead>Paid</TableHead>
               <TableHead>Balance</TableHead>
               <TableHead>Method</TableHead>
-              <TableHead className="pr-6 text-right">Status</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -68,18 +59,13 @@ export function BillingTable() {
                 <TableCell className="text-sm text-muted-foreground">{money(bill.paid)}</TableCell>
                 <TableCell className="text-sm text-muted-foreground">{money(bill.balance)}</TableCell>
                 <TableCell className="text-sm text-muted-foreground">{bill.paymentMethod || 'Not recorded'}</TableCell>
-                <TableCell className="pr-6 text-right">
-                  <span className={cn('inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold', statusStyle(bill.status))}>
-                    {bill.status || 'Pending'}
-                  </span>
-                </TableCell>
               </TableRow>
             ))}
             {!loading && rows.length === 0 && (
-              <TableRow><TableCell className="py-8 text-center text-sm text-muted-foreground" colSpan={9}>No invoices found.</TableCell></TableRow>
+              <TableRow><TableCell className="py-8 text-center text-sm text-muted-foreground" colSpan={8}>No invoices found.</TableCell></TableRow>
             )}
             {loading && rows.length === 0 && (
-              <TableRow><TableCell className="py-8 text-center text-sm text-muted-foreground" colSpan={9}>Loading billing records...</TableCell></TableRow>
+              <TableRow><TableCell className="py-8 text-center text-sm text-muted-foreground" colSpan={8}>Loading billing records...</TableCell></TableRow>
             )}
           </TableBody>
         </Table>

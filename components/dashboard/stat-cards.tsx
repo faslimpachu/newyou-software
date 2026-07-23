@@ -37,7 +37,7 @@ export function StatCards() {
     { key: 'nutrition', label: 'Nutrition Patients', value: fmt(data.stats.nutritionPatients), delta: '', trend: 'up' as const, icon: Leaf, hint: 'active plans' },
     { key: 'ayurcare', label: 'Ayurcare Patients', value: fmt(data.stats.ayurcarePatients), delta: '', trend: 'down' as const, icon: Stethoscope, hint: 'active plans' },
     { key: 'revenue', label: 'Revenue Today', value: `₹${fmt(data.stats.revenueToday)}`, delta: '', trend: 'up' as const, icon: IndianRupee, hint: 'vs. yesterday' },
-    { key: 'pending-bills', label: 'Pending Bills', value: fmt(data.stats.pendingBills), delta: '', trend: 'down' as const, icon: Receipt, hint: 'awaiting payment' },
+    { key: 'pending-bills', label: 'Cash Collected', value: fmt(data.stats.collectedRevenue), delta: '', trend: 'up' as const, icon: Receipt, hint: 'total collected' },
     { key: 'followup', label: 'Follow-up Today', value: fmt(data.stats.followupToday), delta: '', trend: 'up' as const, icon: CalendarClock, hint: 'scheduled' },
   ]
 
