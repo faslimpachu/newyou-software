@@ -1,11 +1,27 @@
 @echo off
+setlocal
+
+set PORT=3000
+
 cd /d "%~dp0"
 
-start "" /min cmd /c "npm run start"
+REM Check if the app is already running
+curl -s http://localhost:%PORT% >nul 2>&1
+if not errorlevel 1 (
+    start "" http://localhost:%PORT%
+    exit /b
+)
 
+REM Start the server
+start "NewYou HMS Server" /min cmd /c "npm run start"
+
+REM Wait until the server is ready
 :wait
-timeout /t 1 >nul
-curl -s http://localhost:3000 >nul 2>&1
+timeout /t 1 /nobreak >nul
+curl -s http://localhost:%PORT% >nul 2>&1
 if errorlevel 1 goto wait
 
-start "" http://localhost:3000
+REM Open the app
+start "" http://localhost:%PORT%
+
+endlocal
