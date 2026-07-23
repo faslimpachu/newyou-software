@@ -3,7 +3,6 @@
 import { useMemo, useRef, useState, useEffect, useCallback } from 'react'
 import {
   Download,
-  FileText,
   Plus,
   Printer,
   ReceiptText,
@@ -202,11 +201,12 @@ type BillingSummary = {
   totalExpenses: number
   netProfit: number
   outstandingPatientBills: number
+  collectedRevenue: number
 }
 
 const PAGE_SIZE = 20
 const emptyPagination: Pagination = { page: 1, pageSize: PAGE_SIZE, total: 0, totalPages: 0 }
-const emptyBillingSummary: BillingSummary = { totalRevenue: 0, totalExpenses: 0, netProfit: 0, outstandingPatientBills: 0 }
+const emptyBillingSummary: BillingSummary = { totalRevenue: 0, totalExpenses: 0, netProfit: 0, outstandingPatientBills: 0, collectedRevenue: 0 }
 
 const seedInvoices: Invoice[] = [
   {
@@ -314,8 +314,8 @@ function computeTotals(items: Line[], discount: number, tax: number, paid: numbe
 
 function mapDbInvoiceToFrontend(invoice: any): Invoice {
   return {
-    id: invoice.invoiceNumber,
-    center: invoice.center as Center,
+    id: invoice.invoiceNumber || 'UNKNOWN',
+    center: invoice.center || 'nutrition',
     billType: invoice.billType,
     patient: {
       name: invoice.patientName,
@@ -328,15 +328,15 @@ function mapDbInvoiceToFrontend(invoice: any): Invoice {
       contact: invoice.patientContact || '',
     },
     date: invoice.invoiceDate,
-    items: invoice.items.map((item: any) => ({
+    items: (invoice.items ?? []).map((item: any) => ({
       id: item.id,
       name: item.name,
       quantity: item.quantity,
       rate: item.rate,
     })),
-    discount: invoice.discount,
-    tax: invoice.tax,
-    paid: invoice.paid,
+    discount: invoice.discount ?? 0,
+    tax: invoice.tax ?? 0,
+    paid: invoice.paid ?? 0,
     paymentMethod: invoice.paymentMethod || 'Cash',
   }
 }
@@ -430,7 +430,7 @@ export function BillingWorkspace() {
   /* ---------------- dashboard summary ---------------- */
 
   const openCount = useMemo(
-    () => invoices.filter((inv) => computeTotals(inv.items, inv.discount, inv.tax, inv.paid).balance > 0).length,
+    () => invoices.filter((inv) => computeTotals(inv.items ?? [], inv.discount, inv.tax, inv.paid).balance > 0).length,
     [invoices],
   )
 
@@ -487,6 +487,7 @@ export function BillingWorkspace() {
         totalExpenses: data.totalExpenses ?? 0,
         netProfit: data.netProfit ?? 0,
         outstandingPatientBills: data.outstandingPatientBills ?? 0,
+        collectedRevenue: data.collectedRevenue ?? 0,
       })
     } catch (err: any) {
       if (signal?.aborted || requestId !== summaryRequestId.current) return
@@ -546,10 +547,10 @@ export function BillingWorkspace() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          center: invoice.center,
+          center: invoice.center || 'nutrition',
           billType: invoice.billType,
           patient: invoice.patient,
-          items: invoice.items.map((item) => ({ name: item.name, quantity: item.quantity, rate: item.rate })),
+          items: (invoice.items ?? []).map((item) => ({ name: item.name, quantity: item.quantity, rate: item.rate })),
           discount: invoice.discount,
           tax: invoice.tax,
           paid: invoice.paid,
@@ -583,15 +584,15 @@ export function BillingWorkspace() {
     try {
       const rows = type === 'billing'
         ? invoices.map((inv) => {
-            const totals = computeTotals(inv.items, inv.discount, inv.tax, inv.paid)
+            const totals = computeTotals(inv.items ?? [], inv.discount, inv.tax, inv.paid)
             return {
               Invoice: inv.id,
               Center: getCenterName(inv.center),
-              Patient: inv.patient.name,
-              MR: inv.patient.mrNumber,
+              Patient: inv.patient?.name || '-',
+              MR: inv.patient?.mrNumber || '-',
               'Bill type': inv.billType,
               Date: inv.date,
-              Items: inv.items.map((item) => item.name).join('; '),
+              Items: (inv.items ?? []).map((item) => item.name).join('; '),
               Subtotal: totals.subtotal,
               Discount: inv.discount,
               Tax: inv.tax,
@@ -705,11 +706,12 @@ export function BillingWorkspace() {
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <Metric label="Total Revenue" value={money(billingSummary.totalRevenue)} icon={<TrendingUp className="size-4" />} />
         <Metric label="Total Expenses" value={money(billingSummary.totalExpenses)} icon={<TrendingDown className="size-4" />} />
         <Metric label="Net Profit" value={money(billingSummary.netProfit)} icon={<Wallet className="size-4" />} tone={billingSummary.netProfit >= 0 ? 'positive' : 'negative'} />
         <Metric label="Outstanding Patient Bills" value={money(billingSummary.outstandingPatientBills)} tone={billingSummary.outstandingPatientBills > 0 ? 'negative' : undefined} />
+        <Metric label="Cash Collected" value={money(billingSummary.collectedRevenue)} icon={<ReceiptText className="size-4" />} tone="positive" />
       </div>
 
       {errorInvoices && <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">{errorInvoices}</div>}
@@ -761,19 +763,20 @@ export function BillingWorkspace() {
                     <th className="px-5 py-3">Bill type</th>
                     <th className="px-5 py-3">Date</th>
                     <th className="px-5 py-3 text-right">Total</th>
+                    <th className="px-5 py-3 text-right">Paid</th>
                     <th className="px-5 py-3 text-right">Balance</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {loadingInvoices ? (
-                    <tr><td colSpan={7} className="p-8 text-center text-sm text-muted-foreground">Loading invoices...</td></tr>
-                  ) : errorInvoices ? (
-                    <tr><td colSpan={7} className="p-8 text-center text-sm text-destructive">{errorInvoices}</td></tr>
-                  ) : invoices.length === 0 ? (
-                    <tr><td colSpan={7} className="p-8 text-center text-sm text-muted-foreground">No invoices found.</td></tr>
+                    {loadingInvoices ? (
+                      <tr><td colSpan={8} className="p-8 text-center text-sm text-muted-foreground">Loading invoices...</td></tr>
+                    ) : errorInvoices ? (
+                      <tr><td colSpan={8} className="p-8 text-center text-sm text-destructive">{errorInvoices}</td></tr>
+                    ) : invoices.length === 0 ? (
+                      <tr><td colSpan={8} className="p-8 text-center text-sm text-muted-foreground">No invoices found.</td></tr>
                   ) : (
                     invoices.map((invoice) => {
-                      const totals = computeTotals(invoice.items, invoice.discount, invoice.tax, invoice.paid)
+                      const totals = computeTotals(invoice.items ?? [], invoice.discount, invoice.tax, invoice.paid)
                       return (
                         <tr
                           key={invoice.id}
@@ -783,12 +786,13 @@ export function BillingWorkspace() {
                           <td className="px-5 py-4 font-medium text-primary">{invoice.id}</td>
                           <td className="px-5 py-4 text-muted-foreground">{getCenterName(invoice.center)}</td>
                           <td className="px-5 py-4">
-                            <p className="font-medium">{invoice.patient.name}</p>
-                            <p className="text-xs text-muted-foreground">{invoice.patient.mrNumber}</p>
+                            <p className="font-medium">{invoice.patient?.name || '-'}</p>
+                            <p className="text-xs text-muted-foreground">{invoice.patient?.mrNumber || '-'}</p>
                           </td>
                           <td className="px-5 py-4 text-muted-foreground">{invoice.billType}</td>
                           <td className="px-5 py-4 text-muted-foreground">{invoice.date}</td>
                           <td className="px-5 py-4 text-right">{money(totals.total)}</td>
+                          <td className="px-5 py-4 text-right">{money(invoice.paid)}</td>
                           <td className="px-5 py-4 text-right">
                             <span className={totals.balance ? 'text-destructive' : 'text-primary'}>{money(totals.balance)}</span>
                           </td>
@@ -1222,23 +1226,10 @@ function FormField({ label, children, required }: { label: string; children: Rea
 
 function InvoiceModal({ invoice, onClose }: { invoice: Invoice; onClose: () => void }) {
   const printRef = useRef<HTMLDivElement>(null)
-  const [exporting, setExporting] = useState(false)
-  const totals = computeTotals(invoice.items, invoice.discount, invoice.tax, invoice.paid)
-  const letterhead = CENTERS[invoice.center]
+  const totals = computeTotals(invoice.items ?? [], invoice.discount, invoice.tax, invoice.paid)
+  const letterhead = CENTERS[invoice.center] ?? CENTERS.nutrition
 
   const handlePrint = () => window.print()
-
-  const handleExportPdf = async () => {
-    if (!printRef.current) return
-    setExporting(true)
-    try {
-      await exportNodeToPdf(printRef.current, `${invoice.id}-${invoice.patient.name.replace(/\s+/g, '_')}.pdf`)
-    } catch (err) {
-      console.error('PDF export failed. Ensure "jspdf" and "html2canvas" are installed (npm install jspdf html2canvas).', err)
-    } finally {
-      setExporting(false)
-    }
-  }
 
   return (
     <ModalShell onClose={onClose} wide>
@@ -1266,10 +1257,6 @@ function InvoiceModal({ invoice, onClose }: { invoice: Invoice; onClose: () => v
           <Button variant="outline" size="sm" onClick={handlePrint}>
             <Printer className="mr-2 size-4" />
             Print
-          </Button>
-          <Button size="sm" onClick={handleExportPdf} disabled={exporting}>
-            <FileText className="mr-2 size-4" />
-            {exporting ? 'Exporting…' : 'Export as PDF'}
           </Button>
           <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="Close">
             <X className="size-4" />
@@ -1304,14 +1291,14 @@ function InvoiceModal({ invoice, onClose }: { invoice: Invoice; onClose: () => v
 
           {/* Patient details */}
           <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-1 rounded border border-neutral-300 p-4 text-sm">
-            <p><span className="text-neutral-500">Patient Name: </span>{invoice.patient.name || '-'}</p>
-            <p><span className="text-neutral-500">MR Number: </span>{invoice.patient.mrNumber || '-'}</p>
-            <p><span className="text-neutral-500">Age: </span>{invoice.patient.age || '-'}</p>
-            <p><span className="text-neutral-500">Date of Birth: </span>{formatDob(invoice.patient.dob)}</p>
-            <p><span className="text-neutral-500">Gender: </span>{invoice.patient.gender || '-'}</p>
-            <p><span className="text-neutral-500">Blood Group: </span>{invoice.patient.bloodGroup || '-'}</p>
-            <p className="col-span-2"><span className="text-neutral-500">Address: </span>{invoice.patient.address || '-'}</p>
-            <p className="col-span-2"><span className="text-neutral-500">Contact: </span>{invoice.patient.contact || '-'}</p>
+            <p><span className="text-neutral-500">Patient Name: </span>{invoice.patient?.name || '-'}</p>
+            <p><span className="text-neutral-500">MR Number: </span>{invoice.patient?.mrNumber || '-'}</p>
+            <p><span className="text-neutral-500">Age: </span>{invoice.patient?.age || '-'}</p>
+            <p><span className="text-neutral-500">Date of Birth: </span>{formatDob(invoice.patient?.dob)}</p>
+            <p><span className="text-neutral-500">Gender: </span>{invoice.patient?.gender || '-'}</p>
+            <p><span className="text-neutral-500">Blood Group: </span>{invoice.patient?.bloodGroup || '-'}</p>
+            <p className="col-span-2"><span className="text-neutral-500">Address: </span>{invoice.patient?.address || '-'}</p>
+            <p className="col-span-2"><span className="text-neutral-500">Contact: </span>{invoice.patient?.contact || '-'}</p>
           </div>
 
           {/* Items table */}
@@ -1326,7 +1313,7 @@ function InvoiceModal({ invoice, onClose }: { invoice: Invoice; onClose: () => v
               </tr>
             </thead>
             <tbody>
-              {invoice.items.map((item, index) => (
+              {(invoice.items ?? []).map((item, index) => (
                 <tr key={item.id} className="border-b border-neutral-300">
                   <td className="py-2">{index + 1}</td>
                   <td className="py-2">{item.name}</td>
@@ -1345,7 +1332,7 @@ function InvoiceModal({ invoice, onClose }: { invoice: Invoice; onClose: () => v
               {invoice.discount > 0 && <div className="flex justify-between text-neutral-600"><span>Discount ({invoice.discount}%)</span><span>- {money(totals.discountValue)}</span></div>}
               {invoice.tax > 0 && <div className="flex justify-between text-neutral-600"><span>Tax ({invoice.tax}%)</span><span>{money(totals.taxValue)}</span></div>}
               <div className="flex justify-between border-t-2 border-black pt-1.5 text-base font-bold"><span>Grand Total</span><span>{money(totals.total)}</span></div>
-              <div className="flex justify-between"><span>Amount Paid</span><span>{money(invoice.paid)}</span></div>
+              <div className="flex justify-between"><span>Amount Paid</span><span>{money(invoice.paid ?? 0)}</span></div>
               <div className="flex justify-between font-semibold"><span>Balance Due</span><span>{money(totals.balance)}</span></div>
               <p className="pt-1 text-xs text-neutral-500">Payment method: {invoice.paymentMethod}</p>
             </div>
@@ -1497,14 +1484,14 @@ function ExpensesPanel({
             <tbody>
               {expenses.map((exp) => (
                 <tr key={exp.id} className="border-b last:border-0 hover:bg-muted/30">
-                  <td className="px-4 py-3 font-medium text-primary">{exp.expenseNumber}</td>
+                  <td className="px-4 py-3 font-medium text-primary">{exp.expenseNumber || '-'}</td>
                   <td className="px-4 py-3 text-muted-foreground">{formatDateDisplay(exp.date)}</td>
-                  <td className="px-4 py-3"><span className="rounded-full bg-muted px-2 py-0.5 text-xs">{exp.category}</span></td>
-                  <td className="px-4 py-3 max-w-[220px] truncate" title={exp.description}>{exp.description}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{exp.paidTo}</td>
-                  <td className="px-4 py-3 text-right font-medium">{money(exp.amount)}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{exp.paymentMethod}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{exp.addedBy}</td>
+                  <td className="px-4 py-3"><span className="rounded-full bg-muted px-2 py-0.5 text-xs">{exp.category || '-'}</span></td>
+                  <td className="px-4 py-3 max-w-[220px] truncate" title={exp.description}>{exp.description || ''}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{exp.paidTo || '-'}</td>
+                  <td className="px-4 py-3 text-right font-medium">{money(exp.amount ?? 0)}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{exp.paymentMethod || '-'}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{exp.addedBy || '-'}</td>
                   <td className="px-4 py-3">
                     <div className="flex justify-end gap-1">
                       <Button variant="ghost" size="icon-sm" aria-label="View" onClick={() => onView(exp)}>

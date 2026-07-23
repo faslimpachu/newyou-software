@@ -345,7 +345,7 @@ describe('BillingWorkspace', () => {
     window.print = originalPrint
   })
 
-  it('exports PDF when clicking Export as PDF', async () => {
+  it('does not show Export as PDF button in invoice preview', async () => {
     mockFetchInvoicesAndExpenses()
     render(<BillingWorkspace />)
 
@@ -360,11 +360,7 @@ describe('BillingWorkspace', () => {
       expect(screen.getByText('Invoice preview')).toBeDefined()
     })
 
-    fireEvent.click(screen.getByText('Export as PDF'))
-
-    await waitFor(() => {
-      expect(screen.getByText('Export as PDF')).toBeDefined()
-    })
+    expect(screen.queryByText('Export as PDF')).toBeNull()
   })
 
   it('displays center names in invoice table', async () => {
@@ -444,5 +440,96 @@ describe('BillingWorkspace', () => {
     fireEvent.click(screen.getByText('New invoice'))
     fireEvent.change(screen.getByPlaceholderText('e.g. MR000003'), { target: { value: 'UNKNOWN' } })
     expect(await screen.findByText('No matching patients found.')).toBeDefined()
+  })
+
+  it('renders invoices with missing patient fields without crashing', async () => {
+    const partialInvoices = [
+      {
+        invoiceNumber: 'INV-PARTIAL',
+        center: 'ayurcare',
+        billType: 'Consultation Bill',
+        patientName: '',
+        patientMrNumber: '',
+        patientAge: null,
+        patientDob: null,
+        patientGender: '',
+        patientBloodGroup: '',
+        patientAddress: '',
+        patientContact: '',
+        invoiceDate: '01 Jun 2026',
+        discount: 0,
+        tax: 0,
+        paid: 0,
+        paymentMethod: '',
+        items: null,
+      },
+    ]
+    mockFetchInvoicesAndExpenses(partialInvoices, [])
+    render(<BillingWorkspace />)
+
+    await waitFor(() => {
+      expect(screen.getByText('INV-PARTIAL')).toBeDefined()
+    })
+    expect(screen.getByText('Ayurcare Center')).toBeDefined()
+  })
+
+  it('opens invoice preview with missing fields and falls back to nutrition letterhead', async () => {
+    const partialInvoices = [
+      {
+        invoiceNumber: 'INV-PREVIEW',
+        center: 'unknown-center',
+        billType: 'Lab Test Bill',
+        patientName: 'Partial Patient',
+        patientMrNumber: 'MR000099',
+        patientAge: '25',
+        patientDob: '2001-05-01',
+        patientGender: 'Female',
+        patientBloodGroup: 'A-',
+        patientAddress: 'Kannur',
+        patientContact: '9847000000',
+        invoiceDate: '05 Jun 2026',
+        discount: 0,
+        tax: 0,
+        paid: 0,
+        paymentMethod: 'Cash',
+        items: [],
+      },
+    ]
+    mockFetchInvoicesAndExpenses(partialInvoices, [])
+    render(<BillingWorkspace />)
+
+    await waitFor(() => expect(screen.getByText('INV-PREVIEW')).toBeDefined())
+    const row = screen.getByText('INV-PREVIEW').closest('tr')
+    if (row) fireEvent.click(row)
+
+    await waitFor(() => expect(screen.getByText('Invoice preview')).toBeDefined())
+    expect(screen.getByText('New You')).toBeDefined()
+  })
+
+  it('renders partial expenses with missing fields without crashing', async () => {
+    const partialExpenses = [
+      {
+        id: 'exp-partial',
+        expenseNumber: '',
+        date: '',
+        category: '',
+        description: '',
+        amount: null,
+        paymentMethod: null,
+        paidTo: null,
+        remarks: null,
+        addedBy: '',
+        createdDate: '',
+      },
+    ]
+    mockFetchInvoicesAndExpenses([], partialExpenses)
+    render(<BillingWorkspace />)
+
+    await waitFor(() => expect(screen.getByText('Expenses')).toBeDefined())
+    fireEvent.click(screen.getByText('Expenses'))
+
+    await waitFor(() => {
+      expect(screen.getByText('Expense ID')).toBeDefined()
+    })
   })
 })

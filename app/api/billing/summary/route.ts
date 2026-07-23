@@ -22,12 +22,14 @@ export async function GET() {
 
     const totalRevenue = invoiceTotals._sum.grandTotal ?? 0
     const totalExpenses = expenseTotals._sum.amount ?? 0
+    const outstandingPatientBills = invoiceTotals._sum.balance ?? 0
 
     return NextResponse.json({
       totalRevenue,
       totalExpenses,
       netProfit: totalRevenue - totalExpenses,
-      outstandingPatientBills: invoiceTotals._sum.balance ?? 0,
+      outstandingPatientBills,
+      collectedRevenue: totalRevenue - outstandingPatientBills,
     })
   } catch (error) {
     console.error('Billing summary GET error', error)
