@@ -5,9 +5,10 @@ import { Card } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import { useDashboardData } from './use-dashboard-data'
 
-const fmt = (n: number) => {
-  if (n >= 1000) return `${(n / 1000).toFixed(1)}K`
-  return n.toLocaleString('en-IN')
+const fmt = (n: number | undefined | null) => {
+  const value = n ?? 0
+  if (value >= 1000) return `${(value / 1000).toFixed(1)}K`
+  return value.toLocaleString('en-IN')
 }
 
 export function StatCards() {
