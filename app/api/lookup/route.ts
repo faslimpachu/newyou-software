@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 
 export async function GET() {
   try {
-    const staff = await prisma.staff.findMany({
+    const staff = await prisma.user.findMany({
       where: { active: true },
       select: { id: true, name: true, role: true, centerType: true },
       orderBy: { name: 'asc' },

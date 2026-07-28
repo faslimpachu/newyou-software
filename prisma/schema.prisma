@@ -236,17 +236,18 @@ model Document {
   @@map("documents")
 }
 
-model Staff {
-  id         String   @id @default(uuid())
-  name       String
-  role       String
-  email      String?
-  phone      String?
-  centerType String?
-  active     Boolean  @default(true)
-  createdAt  DateTime @default(now())
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  username     String   @unique
+  passwordHash String
+  role         String
+  phone        String?
+  centerType   String?
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
 
-  @@map("staff")
+  @@map("users")
 }
 
 model MRSequence {

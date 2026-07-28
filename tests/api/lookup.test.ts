@@ -7,10 +7,10 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-  await prisma.staff.deleteMany();
-  await prisma.patient.deleteMany();
-  await prisma.mRSequence.deleteMany();
-});
+  await prisma.user.deleteMany()
+  await prisma.patient.deleteMany()
+  await prisma.mRSequence.deleteMany()
+})
 
 afterAll(async () => {
   await prisma.$disconnect();
@@ -22,11 +22,11 @@ function makeId() {
 
 describe('Lookup API', () => {
   it('GET returns staff, centers, and statuses', async () => {
-    await prisma.staff.createMany({
+    await prisma.user.createMany({
       data: [
-        { name: 'Dr. Smith', role: 'doctor', email: `smith-${makeId()}@test.com`, centerType: 'both', active: true },
-        { name: 'Dietitian Doe', role: 'dietitian', email: `diet-${makeId()}@test.com`, centerType: 'nutrition', active: true },
-        { name: 'Inactive Staff', role: 'doctor', email: `inactive-${makeId()}@test.com`, centerType: 'ayurcare', active: false },
+        { name: 'Dr. Smith', role: 'doctor', username: `smith-${makeId()}`, centerType: 'both', active: true, passwordHash: 'hash' },
+        { name: 'Dietitian Doe', role: 'dietitian', username: `diet-${makeId()}`, centerType: 'nutrition', active: true, passwordHash: 'hash' },
+        { name: 'Inactive Staff', role: 'doctor', username: `inactive-${makeId()}`, centerType: 'ayurcare', active: false, passwordHash: 'hash' },
       ],
     });
 
@@ -41,10 +41,10 @@ describe('Lookup API', () => {
   });
 
   it('GET returns empty staff array when no active staff', async () => {
-    await prisma.staff.createMany({
+    await prisma.user.createMany({
       data: [
-        { name: 'Inactive 1', role: 'doctor', email: `ia1-${makeId()}@test.com`, centerType: 'both', active: false },
-        { name: 'Inactive 2', role: 'dietitian', email: `ia2-${makeId()}@test.com`, centerType: 'nutrition', active: false },
+        { name: 'Inactive 1', role: 'doctor', username: `ia1-${makeId()}`, centerType: 'both', active: false, passwordHash: 'hash' },
+        { name: 'Inactive 2', role: 'dietitian', username: `ia2-${makeId()}`, centerType: 'nutrition', active: false, passwordHash: 'hash' },
       ],
     });
 
@@ -58,11 +58,11 @@ describe('Lookup API', () => {
   });
 
   it('GET returns staff ordered by name', async () => {
-    await prisma.staff.createMany({
+    await prisma.user.createMany({
       data: [
-        { name: 'Zoe', role: 'doctor', email: `z-${makeId()}@test.com`, centerType: 'both', active: true },
-        { name: 'Alice', role: 'dietitian', email: `a-${makeId()}@test.com`, centerType: 'nutrition', active: true },
-        { name: 'Bob', role: 'doctor', email: `b-${makeId()}@test.com`, centerType: 'ayurcare', active: true },
+        { name: 'Zoe', role: 'doctor', username: `z-${makeId()}`, centerType: 'both', active: true, passwordHash: 'hash' },
+        { name: 'Alice', role: 'dietitian', username: `a-${makeId()}`, centerType: 'nutrition', active: true, passwordHash: 'hash' },
+        { name: 'Bob', role: 'doctor', username: `b-${makeId()}`, centerType: 'ayurcare', active: true, passwordHash: 'hash' },
       ],
     });
 
