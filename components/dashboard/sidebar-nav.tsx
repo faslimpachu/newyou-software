@@ -2,21 +2,60 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { HeartPulse } from 'lucide-react'
+import {
+  Activity,
+  CalendarClock,
+  HeartPulse,
+  LayoutDashboard,
+  Receipt,
+  UserPlus,
+  Users,
+  type LucideIcon,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { navGroups } from './nav-items'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+
+interface NavItem {
+  label: string
+  icon: LucideIcon
+  href: string
+  badge?: string
+}
 
 interface SidebarNavProps {
   collapsed?: boolean
   onNavigate?: () => void
 }
 
+const navGroups: { heading: string; items: NavItem[] }[] = [
+  {
+    heading: 'Overview',
+    items: [
+      { label: 'Dashboard', icon: LayoutDashboard, href: '/' },
+      { label: 'Registrations', icon: UserPlus, href: '/register' },
+      { label: 'Billing', icon: Receipt, href: '/billing' },
+    ],
+  },
+  {
+    heading: 'Clinical',
+    items: [
+      { label: 'Patients', icon: Users, href: '/patients' },
+      { label: 'Visits', icon: Activity, href: '/visits' },
+    ],
+  },
+  {
+    heading: 'Operations',
+    items: [
+      { label: 'Follow-ups', icon: CalendarClock, href: '/follow-ups' },
+    ],
+  },
+]
+
 export function SidebarNav({ collapsed = false, onNavigate }: SidebarNavProps) {
   const pathname = usePathname()
 
   return (
-    <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
+    <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground" suppressHydrationWarning>
       {/* Brand */}
       <div
         className={cn(
