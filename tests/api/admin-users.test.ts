@@ -105,6 +105,7 @@ describe('Admin Users API', () => {
         name: 'New User',
         username: 'newuser',
         password: 'newpass123',
+        confirmPassword: 'newpass123',
         role: 'receptionist',
         phone: '9999999999',
         centerType: 'both',
@@ -156,6 +157,7 @@ describe('Admin Users API', () => {
         name: 'Dup',
         username: 'existing',
         password: 'newpass123',
+        confirmPassword: 'newpass123',
         role: 'receptionist',
         phone: '',
         centerType: 'both',
@@ -203,6 +205,110 @@ describe('Admin Users API', () => {
     })
 
     const res = await POST(req)
+    expect(res.status).toBe(400)
+    const data = await res.json()
+    expect(data.error).toBe('Passwords do not match')
+  })
+
+  it('POST rejects missing confirmPassword', async () => {
+    const passwordHash = await hashPassword('password123')
+    const user = await prisma.user.create({
+      data: {
+        username: 'superadmin',
+        name: 'Super Admin',
+        passwordHash,
+        role: 'superadmin',
+        active: true,
+      },
+    })
+
+    const cookie = makeCookie({
+      userId: user.id,
+      role: 'superadmin',
+      expiresAt: Date.now() + 86400000,
+    })
+    const req = new Request('http://localhost/api/admin/users', {
+      method: 'POST',
+      headers: {
+        Cookie: cookie,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        name: 'New User',
+        username: 'newuser',
+        password: 'newpass123',
+        role: 'receptionist',
+        phone: '9999999999',
+        centerType: 'both',
+        active: true,
+      }),
+    })
+
+    const res = await POST(req)
+    expect(res.status).toBe(400)
+    const data = await res.json()
+    expect(data.error).toBe('Passwords do not match')
+  })
+
+  it('PATCH accepts matching passwords', async () => {
+    const passwordHash = await hashPassword('password123')
+    const user = await prisma.user.create({
+      data: {
+        username: 'superadmin',
+        name: 'Super Admin',
+        passwordHash,
+        role: 'superadmin',
+        active: true,
+      },
+    })
+
+    const cookie = makeCookie({
+      userId: user.id,
+      role: 'superadmin',
+      expiresAt: Date.now() + 86400000,
+    })
+    const req = new Request(`http://localhost/api/admin/users/${user.id}`, {
+      method: 'PATCH',
+      headers: {
+        Cookie: cookie,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ password: 'newpass123', confirmPassword: 'newpass123' }),
+    })
+
+    const res = await PATCH(req, { params: Promise.resolve({ id: user.id }) })
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.user.name).toBe('Super Admin')
+  })
+
+  it('PATCH rejects missing confirmPassword when password is provided', async () => {
+    const passwordHash = await hashPassword('password123')
+    const user = await prisma.user.create({
+      data: {
+        username: 'superadmin',
+        name: 'Super Admin',
+        passwordHash,
+        role: 'superadmin',
+        active: true,
+      },
+    })
+
+    const cookie = makeCookie({
+      userId: user.id,
+      role: 'superadmin',
+      expiresAt: Date.now() + 86400000,
+    })
+    const req = new Request(`http://localhost/api/admin/users/${user.id}`, {
+      method: 'PATCH',
+      headers: {
+        Cookie: cookie,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ password: 'newpass123' }),
+    })
+
+    const res = await PATCH(req, { params: Promise.resolve({ id: user.id }) })
     expect(res.status).toBe(400)
     const data = await res.json()
     expect(data.error).toBe('Passwords do not match')

@@ -20,7 +20,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
-    if (confirmPassword !== undefined && confirmPassword !== password) {
+    if (password && confirmPassword !== password) {
       return NextResponse.json({ error: 'Passwords do not match' }, { status: 400 })
     }
 

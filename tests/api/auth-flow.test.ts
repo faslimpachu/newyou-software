@@ -436,7 +436,7 @@ describe('Authentication flow', () => {
       expect(data.error).toBe('Passwords do not match')
     })
 
-    it('allows add user when confirmPassword is omitted', async () => {
+    it('allows add user when passwords match', async () => {
       const passwordHash = await hashPassword('password123')
       const admin = await prisma.user.create({
         data: {
@@ -464,6 +464,7 @@ describe('Authentication flow', () => {
           name: 'New User',
           username: 'newuser2',
           password: 'newpass123',
+          confirmPassword: 'newpass123',
           role: 'receptionist',
         }),
       })

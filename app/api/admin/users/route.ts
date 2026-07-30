@@ -41,7 +41,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    if (confirmPassword !== undefined && confirmPassword !== password) {
+    if (confirmPassword !== password) {
       return NextResponse.json({ error: 'Passwords do not match' }, { status: 400 })
     }
 
