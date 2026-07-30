@@ -88,15 +88,23 @@ export default function UsersPage() {
         body: JSON.stringify(body),
       })
 
-      if (!res.ok) {
-        const data = await res.json()
-        setError(data.error || 'Failed to save user')
-        return
-      }
+    if (!res.ok) {
+      const data = await res.json()
+      setError(data.error || 'Failed to save user')
+      return
+    }
 
-      setForm(emptyUser)
-      setEditingId(null)
-      await loadUsers()
+    const saved = (await res.json()).user
+
+    if (editingId) {
+      setUsers((prev) => prev.map((u) => (u.id === editingId ? saved : u)))
+    } else {
+      setUsers((prev) => [...prev, saved])
+    }
+
+    setForm(emptyUser)
+    setEditingId(null)
+    await loadUsers()
     } catch {
       setError('Something went wrong')
     } finally {
