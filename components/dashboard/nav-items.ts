@@ -26,20 +26,20 @@ export const navGroups: NavGroup[] = [
     items: [
       { label: 'Dashboard', icon: LayoutDashboard, href: '/' },
       { label: 'Registrations', icon: UserPlus, href: '/register' },
-      { label: 'Visits', icon: Activity, href: '/visits' },
+      { label: 'Billing', icon: Receipt, href: '/billing' },
     ],
   },
   {
     heading: 'Clinical',
     items: [
       { label: 'Patients', icon: Users, href: '/patients' },
+      { label: 'Visits', icon: Activity, href: '/visits' },
     ],
   },
   {
     heading: 'Operations',
     items: [
       { label: 'Follow-ups', icon: CalendarClock, href: '/follow-ups' },
-      { label: 'Billing', icon: Receipt, href: '/billing' },
     ],
   },
 ]
