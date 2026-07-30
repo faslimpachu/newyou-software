@@ -19,7 +19,7 @@ function refreshSessionCookie(response: NextResponse, session: SessionData): voi
     path: '/',
     maxAge,
     sameSite: 'strict',
-    secure: process.env.NODE_ENV === 'production',
+    secure: false,
   })
 }
 
