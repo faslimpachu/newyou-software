@@ -38,6 +38,7 @@ const emptyUser = {
   name: '',
   username: '',
   password: '',
+  confirmPassword: '',
   role: 'receptionist',
   phone: '',
   centerType: 'both',
@@ -77,7 +78,9 @@ export default function UsersPage() {
     try {
       const url = editingId ? `/api/admin/users/${editingId}` : '/api/admin/users'
       const method = editingId ? 'PATCH' : 'POST'
-      const body = editingId ? { ...form, password: '' } : form
+      const body = editingId
+        ? { ...form, password: form.password || undefined, confirmPassword: form.confirmPassword || undefined }
+        : form
 
       const res = await fetch(url, {
         method,
@@ -107,6 +110,7 @@ export default function UsersPage() {
       name: user.name,
       username: user.username,
       password: '',
+      confirmPassword: '',
       role: user.role,
       phone: user.phone ?? '',
       centerType: user.centerType ?? 'both',
@@ -178,6 +182,18 @@ export default function UsersPage() {
                   type="password"
                   value={form.password}
                   onChange={(e) => setForm({ ...form, password: e.target.value })}
+                  required={!editingId}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword">
+                  Confirm Password {editingId && <span className="text-muted-foreground">(leave blank to keep)</span>}
+                </Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  value={form.confirmPassword}
+                  onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
                   required={!editingId}
                 />
               </div>

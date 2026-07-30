@@ -167,6 +167,47 @@ describe('Admin Users API', () => {
     expect(res.status).toBe(409)
   })
 
+  it('POST rejects mismatched passwords', async () => {
+    const passwordHash = await hashPassword('password123')
+    const user = await prisma.user.create({
+      data: {
+        username: 'superadmin',
+        name: 'Super Admin',
+        passwordHash,
+        role: 'superadmin',
+        active: true,
+      },
+    })
+
+    const cookie = makeCookie({
+      userId: user.id,
+      role: 'superadmin',
+      expiresAt: Date.now() + 86400000,
+    })
+    const req = new Request('http://localhost/api/admin/users', {
+      method: 'POST',
+      headers: {
+        Cookie: cookie,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        name: 'New User',
+        username: 'newuser',
+        password: 'newpass123',
+        confirmPassword: 'differentpass',
+        role: 'receptionist',
+        phone: '9999999999',
+        centerType: 'both',
+        active: true,
+      }),
+    })
+
+    const res = await POST(req)
+    expect(res.status).toBe(400)
+    const data = await res.json()
+    expect(data.error).toBe('Passwords do not match')
+  })
+
   it('PATCH updates a user', async () => {
     const passwordHash = await hashPassword('password123')
     const user = await prisma.user.create({
@@ -198,6 +239,38 @@ describe('Admin Users API', () => {
     const data = await res.json()
     expect(data.user.name).toBe('Updated Name')
     expect(data.user.phone).toBe('8888888888')
+  })
+
+  it('PATCH rejects mismatched passwords', async () => {
+    const passwordHash = await hashPassword('password123')
+    const user = await prisma.user.create({
+      data: {
+        username: 'superadmin',
+        name: 'Super Admin',
+        passwordHash,
+        role: 'superadmin',
+        active: true,
+      },
+    })
+
+    const cookie = makeCookie({
+      userId: user.id,
+      role: 'superadmin',
+      expiresAt: Date.now() + 86400000,
+    })
+    const req = new Request(`http://localhost/api/admin/users/${user.id}`, {
+      method: 'PATCH',
+      headers: {
+        Cookie: cookie,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ password: 'newpass123', confirmPassword: 'differentpass' }),
+    })
+
+    const res = await PATCH(req, { params: Promise.resolve({ id: user.id }) })
+    expect(res.status).toBe(400)
+    const data = await res.json()
+    expect(data.error).toBe('Passwords do not match')
   })
 
   it('DELETE deactivates a user', async () => {

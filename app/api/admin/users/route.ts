@@ -35,10 +35,14 @@ export async function POST(request: Request) {
   try {
     await requireRole(request, ['superadmin'])
     const body = await request.json()
-    const { name, username, password, role, phone, centerType, active } = body
+    const { name, username, password, confirmPassword, role, phone, centerType, active } = body
 
     if (!name || !username || !password || !role) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+    }
+
+    if (confirmPassword !== undefined && confirmPassword !== password) {
+      return NextResponse.json({ error: 'Passwords do not match' }, { status: 400 })
     }
 
     const existing = await prisma.user.findUnique({
