@@ -6,6 +6,13 @@ import { prisma } from '@/lib/prisma'
 const SECRET = process.env.SESSION_SECRET || 'dev-secret-change-me'
 const TTL_MS = 24 * 60 * 60 * 1000
 
+const toBase64Url = (value: string) => value.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+const fromBase64Url = (value: string) => {
+  const base64 = value.replace(/-/g, '+').replace(/_/g, '/')
+  const padded = base64 + '='.repeat((4 - (base64.length % 4 || 4)) % 4)
+  return padded
+}
+
 export interface SessionData {
   userId: string
   role: string
@@ -13,12 +20,13 @@ export interface SessionData {
 }
 
 export function encryptSession(data: SessionData): string {
-  return crypto.AES.encrypt(JSON.stringify(data), SECRET).toString()
+  return toBase64Url(crypto.AES.encrypt(JSON.stringify(data), SECRET).toString())
 }
 
 export function decryptSession(token: string): SessionData | null {
   try {
-    const bytes = crypto.AES.decrypt(token, SECRET)
+    const base64 = fromBase64Url(token)
+    const bytes = crypto.AES.decrypt(base64, SECRET)
     const json = bytes.toString(crypto.enc.Utf8)
     if (!json) return null
     const data = JSON.parse(json) as SessionData
@@ -41,6 +49,7 @@ export async function getCurrentUser(request?: Request) {
   }
 
   if (!token) return null
+
   const session = decryptSession(token)
   if (!session) return null
 
@@ -58,7 +67,9 @@ export async function getCurrentUser(request?: Request) {
     },
   })
 
-  if (!user || !user.active) return null
+  if (!user) return null
+
+  if (!user.active) return null
   return user
 }
 

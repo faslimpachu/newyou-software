@@ -39,7 +39,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
   }, [])
 
   return (
-    <div className="min-h-svh bg-background">
+    <div className="min-h-svh bg-background" suppressHydrationWarning>
       {/* Fixed desktop sidebar */}
       <aside
         className={cn(
