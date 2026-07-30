@@ -1,9 +1,27 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { decryptSession } from '@/lib/session'
+import { decryptSession, encryptSession, SessionData } from '@/lib/session'
 
 const publicPaths = ['/login', '/_next', '/favicon.ico', '/sw.js']
 const apiPublicPaths = ['/api/auth/login', '/api/auth/logout']
+const TTL_MS = 24 * 60 * 60 * 1000
+
+function refreshSessionCookie(response: NextResponse, session: SessionData): void {
+  const refreshed: SessionData = {
+    userId: session.userId,
+    role: session.role,
+    expiresAt: Date.now() + TTL_MS,
+  }
+  const token = encryptSession(refreshed)
+  const maxAge = Math.floor(TTL_MS / 1000)
+  response.cookies.set('session', token, {
+    httpOnly: true,
+    path: '/',
+    maxAge,
+    sameSite: 'strict',
+    secure: process.env.NODE_ENV === 'production',
+  })
+}
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
@@ -39,7 +57,9 @@ export function middleware(request: NextRequest) {
     return response
   }
 
-  return NextResponse.next()
+  const response = NextResponse.next()
+  refreshSessionCookie(response, session)
+  return response
 }
 
 export const config = {

@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { NextRequest } from 'next/server'
 import { middleware } from '@/middleware'
-import { encryptSession } from '@/lib/session'
+import { encryptSession, decryptSession } from '@/lib/session'
 
 function publicUrl(path: string): string {
   return `http://localhost${path}`
@@ -64,6 +64,32 @@ describe('Middleware auth', () => {
     })
     const res = await middleware(req)
     expect(res.status).toBe(200)
+  })
+
+  it('refreshes session cookie on valid request', async () => {
+    const req = new NextRequest(publicUrl('/api/patients'), {
+      headers: { Cookie: authCookie('user-1', 'receptionist') },
+    })
+    const res = await middleware(req)
+    expect(res.status).toBe(200)
+
+    const setCookie = res.headers.get('set-cookie')
+    expect(setCookie).toBeTruthy()
+    expect(setCookie).toContain('session=')
+
+    const cookieValue = setCookie!.split('; ')[0].slice(8)
+    const session = decryptSession(decodeURIComponent(cookieValue))
+    expect(session).not.toBeNull()
+    expect(session!.userId).toBe('user-1')
+    expect(session!.role).toBe('receptionist')
+    expect(session!.expiresAt).toBeGreaterThan(Date.now())
+  })
+
+  it('does not set cookie on public API requests', async () => {
+    const req = new NextRequest(publicUrl('/api/auth/login'))
+    const res = await middleware(req)
+    expect(res.status).toBe(200)
+    expect(res.headers.get('set-cookie')).toBeNull()
   })
 
   it('allows non-API public pages without session', async () => {
