@@ -33,13 +33,14 @@ export function BillingTable() {
           <TableHeader>
             <TableRow className="hover:bg-transparent">
               <TableHead className="pl-6">Invoice</TableHead>
+              <TableHead>Center</TableHead>
               <TableHead>Patient</TableHead>
-              <TableHead>Center / Bill Type</TableHead>
+              <TableHead>Bill Type</TableHead>
               <TableHead>Date</TableHead>
               <TableHead>Total</TableHead>
               <TableHead>Paid</TableHead>
               <TableHead>Balance</TableHead>
-              <TableHead>Method</TableHead>
+              
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -49,16 +50,17 @@ export function BillingTable() {
                   <p className="text-sm font-medium text-foreground">{bill.invoiceNumber}</p>
                   <p className="text-xs text-muted-foreground">#{bill.id}</p>
                 </TableCell>
+                <TableCell className="text-sm text-muted-foreground">{bill.center}</TableCell>
                 <TableCell>
                   <p className="text-sm font-medium text-foreground">{bill.patientName}</p>
                   <p className="font-mono text-xs text-muted-foreground">{bill.patientMrNumber}</p>
                 </TableCell>
-                <TableCell className="text-sm text-muted-foreground">{bill.center} / {bill.billType}</TableCell>
+                <TableCell className="text-sm text-muted-foreground">{bill.billType}</TableCell>
                 <TableCell className="text-sm text-muted-foreground">{bill.invoiceDate}</TableCell>
                 <TableCell className="text-sm font-semibold text-foreground">{money(bill.grandTotal)}</TableCell>
                 <TableCell className="text-sm text-muted-foreground">{money(bill.paid)}</TableCell>
                 <TableCell className="text-sm text-muted-foreground">{money(bill.balance)}</TableCell>
-                <TableCell className="text-sm text-muted-foreground">{bill.paymentMethod || 'Not recorded'}</TableCell>
+                
               </TableRow>
             ))}
             {!loading && rows.length === 0 && (
