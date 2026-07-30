@@ -44,7 +44,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${interTight.variable} bg-background`}>
+    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${interTight.variable} bg-background`}>
       <body className="font-sans antialiased">
         <ToastProvider>
           {children}

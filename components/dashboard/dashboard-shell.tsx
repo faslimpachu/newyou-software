@@ -1,14 +1,42 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { SidebarNav } from './sidebar-nav'
 import { Topbar } from './topbar'
 
-export function DashboardShell({ children }: { children: React.ReactNode }) {
+interface DashboardShellProps {
+  children: React.ReactNode
+}
+
+export function DashboardShell({ children }: DashboardShellProps) {
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [user, setUser] = useState<{ name: string; role: string } | null>(null)
+
+  useEffect(() => {
+    let mounted = true
+
+    const loadUser = async () => {
+      try {
+        const res = await fetch('/api/auth/me')
+        if (!res.ok) return
+        const data = await res.json()
+        if (mounted && data.user) {
+          setUser({ name: data.user.name, role: data.user.role })
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    loadUser()
+
+    return () => {
+      mounted = false
+    }
+  }, [])
 
   return (
     <div className="min-h-svh bg-background">
@@ -40,6 +68,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         <Topbar
           onToggleCollapse={() => setCollapsed((v) => !v)}
           onOpenMobile={() => setMobileOpen(true)}
+          user={user || undefined}
         />
         <main className="flex-1 p-4 md:p-6">{children}</main>
       </div>

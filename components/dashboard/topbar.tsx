@@ -7,9 +7,17 @@ import { Button } from '@/components/ui/button'
 interface TopbarProps {
   onToggleCollapse: () => void
   onOpenMobile: () => void
+  user?: {
+    name: string
+    role: string
+  }
 }
 
-export function Topbar({ onToggleCollapse, onOpenMobile }: TopbarProps) {
+export function Topbar({ onToggleCollapse, onOpenMobile, user }: TopbarProps) {
+  const displayName = user?.name || 'User'
+  const displayRole = user?.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : 'User'
+  const initials = displayName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase() || 'U'
+
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border bg-card/80 px-4 backdrop-blur-md md:px-6">
       <Button
@@ -36,12 +44,12 @@ export function Topbar({ onToggleCollapse, onOpenMobile }: TopbarProps) {
         <div className="flex items-center gap-2 rounded-lg px-1.5 sm:px-2">
           <Avatar className="size-7">
             <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">
-              KR
+              {initials}
             </AvatarFallback>
           </Avatar>
           <div className="hidden text-left leading-tight sm:block">
-            <p className="text-sm font-medium text-foreground">Dr. Kavya</p>
-            <p className="text-xs text-muted-foreground">Administrator</p>
+            <p className="text-sm font-medium text-foreground">{displayName}</p>
+            <p className="text-xs text-muted-foreground">{displayRole}</p>
           </div>
         </div>
       </div>
