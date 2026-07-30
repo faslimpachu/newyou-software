@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   Activity,
+  BarChart3,
   CalendarClock,
   HeartPulse,
   LayoutDashboard,
@@ -47,6 +48,12 @@ const navGroups: { heading: string; items: NavItem[] }[] = [
     heading: 'Operations',
     items: [
       { label: 'Follow-ups', icon: CalendarClock, href: '/follow-ups' },
+    ],
+  },
+  {
+    heading: 'Reports',
+    items: [
+      { label: 'Consultations', icon: BarChart3, href: '/reports/consultation' },
     ],
   },
 ]
