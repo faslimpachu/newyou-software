@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { Topbar } from '@/components/dashboard/topbar'
 
@@ -35,5 +35,27 @@ describe('Topbar', () => {
     expect(screen.getByText('AJ')).toBeDefined()
     expect(screen.getByText('Alice Johnson')).toBeDefined()
     expect(screen.getByText('Admin')).toBeDefined()
+  })
+
+  it('calls logout API and redirects to login on logout click', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({}),
+    } as Response)
+
+    render(
+      <Topbar
+        onToggleCollapse={() => {}}
+        onOpenMobile={() => {}}
+        user={{ name: 'Super Admin', role: 'superadmin' }}
+      />
+    )
+
+    const logoutButton = screen.getByLabelText('Logout')
+    await logoutButton.click()
+
+    expect(fetchSpy).toHaveBeenCalledWith('/api/auth/logout', { method: 'POST' })
+
+    fetchSpy.mockRestore()
   })
 })
