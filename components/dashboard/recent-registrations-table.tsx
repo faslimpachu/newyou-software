@@ -12,6 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import Link from 'next/link'
 import { useDashboardData } from './use-dashboard-data'
 
 function initials(name: string) {
@@ -63,12 +64,18 @@ export function RecentRegistrationsTable() {
                       </AvatarFallback>
                     </Avatar>
                     <div className="leading-tight">
-                      <p className="text-sm font-medium text-foreground">{reg.patientName}</p>
+                      <Link href={`/patients/${reg.mr}`} className="text-sm font-medium text-primary hover:underline">
+                        {reg.patientName}
+                      </Link>
                       <p className="text-xs text-muted-foreground">{reg.age || '-'}y / {reg.gender || '-'}</p>
                     </div>
                   </div>
                 </TableCell>
-                <TableCell className="font-mono text-xs">{reg.mr}</TableCell>
+                <TableCell className="font-mono text-xs">
+                  <Link href={`/patients/${reg.mr}`} className="text-primary hover:underline">
+                    {reg.mr}
+                  </Link>
+                </TableCell>
                 <TableCell><Badge variant="secondary">{reg.consultationType}</Badge></TableCell>
                 <TableCell className="text-sm text-muted-foreground">{reg.mobileNumber || 'Not recorded'}</TableCell>
                 <TableCell className="text-sm text-muted-foreground">{[reg.district, reg.state].filter(Boolean).join(', ') || 'Not recorded'}</TableCell>
