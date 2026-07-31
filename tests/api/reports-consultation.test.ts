@@ -41,6 +41,30 @@ describe('Reports consultation API', () => {
     expect(data.doctorReport).toHaveLength(0)
   })
 
+  it('allows receptionist to access consultation report', async () => {
+    const passwordHash = await hashPassword('password123')
+    const receptionist = await prisma.user.create({
+      data: {
+        username: 'receptionistreport',
+        name: 'Receptionist',
+        passwordHash,
+        role: 'receptionist',
+        active: true,
+      },
+    })
+
+    const req = new Request('http://localhost/api/reports/consultation', {
+      headers: { Cookie: makeCookie({ userId: receptionist.id, role: 'receptionist', expiresAt: Date.now() + 86400000 }) },
+    })
+    const res = await GET(req)
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data).toHaveProperty('visits')
+    expect(data).toHaveProperty('doctorReport')
+    expect(data).toHaveProperty('statusBreakdown')
+    expect(data.doctorReport).toHaveLength(0)
+  })
+
   it('returns 401 without auth', async () => {
     const req = new Request('http://localhost/api/reports/consultation')
     const res = await GET(req)

@@ -2,12 +2,6 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open('newyou-v1').then((cache) => {
       return cache.addAll([
-        '/',
-        '/register',
-        '/patients',
-        '/visits',
-        '/billing',
-        '/follow-ups',
         '/icon.svg',
         '/apple-icon.png',
         '/placeholder-logo.png',
@@ -28,18 +22,21 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+  const isNavigation = event.request.mode === 'navigate';
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      const fetchPromise = fetch(event.request).then((response) => {
-        if (response && response.status === 200) {
-          const clone = response.clone();
-          caches.open('newyou-v1').then((cache) => {
-            cache.put(event.request, clone);
-          });
-        }
-        return response;
-      }).catch(() => cached);
-      return cached || fetchPromise;
+    fetch(event.request).then((response) => {
+      if (response && response.status === 200) {
+        const clone = response.clone();
+        caches.open('newyou-v1').then((cache) => {
+          cache.put(event.request, clone);
+        });
+      }
+      return response;
+    }).catch(() => {
+      if (isNavigation) {
+        return new Response('Offline', { status: 503 });
+      }
+      return caches.match(event.request);
     })
   );
 });
