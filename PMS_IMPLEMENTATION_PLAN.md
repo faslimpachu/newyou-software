@@ -7,7 +7,7 @@ Add a **minimal, safe Purchase Management module** to the existing clinic dashbo
 **Rules:**
 - Only NEW tables are added
 - Zero changes to existing models (`Patient`, `Invoice`, `Prescription`, etc.)
-- Stock is tracked simply as a number on the `Product` model
+- Stock tracked on `Product.currentStock` + `InventoryTransaction` for audit trail
 - No complex business logic (GRN, batches, returns, stock movements)
 - Follows existing code patterns exactly
 
@@ -15,35 +15,51 @@ Add a **minimal, safe Purchase Management module** to the existing clinic dashbo
 
 ## What We Are Building
 
-A basic purchase system with 3 pages:
+A practical purchase system with 4 pages:
 
 ```
 Suppliers → Products → Purchase Invoices → Stock increases automatically
+                                       → Payment history tracked
+                                       → Supplier ledger visible
 ```
 
-That's it. No GRN, no PO, no returns, no batches, no stock movement logs.
+No GRN, no PO, no batches, no returns. Just: **Buy products → stock increases → payments tracked.**
 
 ---
 
 ## Prisma Schema Changes
 
-Add these 5 models to `prisma/schema.prisma`:
+Add these models to `prisma/schema.prisma`:
 
 ```prisma
+// --- Product Category ---
+model ProductCategory {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  products    Product[]
+
+  @@map("product_categories")
+}
+
 // --- Supplier ---
 model Supplier {
-  id             String   @id @default(uuid())
-  supplierName   String
-  contactPerson  String?
-  phone          String?
-  email          String?
-  address        String?
-  gstNumber      String?
-  openingBalance Float    @default(0)
-  status         String   @default("active")
-  createdAt      DateTime @default(now())
+  id              String   @id @default(uuid())
+  supplierName    String
+  contactPerson   String?
+  phone           String?
+  email           String?
+  address         String?
+  gstNumber       String?
+  openingBalance  Float    @default(0)
+  status          String   @default("active")
+  createdAt       DateTime @default(now())
 
-  purchaseInvoices PurchaseInvoice[]
+  purchaseInvoices  PurchaseInvoice[]
+  payments          SupplierPayment[]
 
   @@map("suppliers")
 }
@@ -53,17 +69,20 @@ model Product {
   id            String   @id @default(uuid())
   name          String
   sku           String?  @unique
-  category      String?
+  categoryId    String?
   unit          String   @default("pcs")
   purchasePrice Float
   sellingPrice  Float
   gstPercent    Float    @default(0)
   reorderLevel  Int      @default(10)
   currentStock  Float    @default(0)
+  imageUrl      String?
   active        Boolean  @default(true)
   createdAt     DateTime @default(now())
 
-  invoiceItems PurchaseInvoiceItem[]
+  category        ProductCategory?       @relation(fields: [categoryId], references: [id])
+  invoiceItems    PurchaseInvoiceItem[]
+  transactions    InventoryTransaction[]
 
   @@map("products")
 }
@@ -84,8 +103,10 @@ model PurchaseInvoice {
   balance       Float
   createdAt     DateTime @default(now())
 
-  supplier   Supplier           @relation(fields: [supplierId], references: [id])
-  items      PurchaseInvoiceItem[]
+  supplier       Supplier           @relation(fields: [supplierId], references: [id])
+  items          PurchaseInvoiceItem[]
+  payments       SupplierPayment[]
+  transactions   InventoryTransaction[]
 
   @@map("purchase_invoices")
 }
@@ -102,6 +123,41 @@ model PurchaseInvoiceItem {
   product Product        @relation(fields: [productId], references: [id])
 
   @@map("purchase_invoice_items")
+}
+
+// --- Supplier Payment ---
+model SupplierPayment {
+  id            String   @id @default(uuid())
+  paymentNumber String   @unique
+  supplierId    String
+  invoiceId     String?
+  amount        Float
+  paymentDate   String
+  paymentMode   String?
+  reference     String?
+  notes         String?
+  createdAt     DateTime @default(now())
+
+  supplier   Supplier        @relation(fields: [supplierId], references: [id])
+  invoice    PurchaseInvoice? @relation(fields: [invoiceId], references: [id])
+
+  @@map("supplier_payments")
+}
+
+// --- Inventory Transaction (Stock Audit Trail) ---
+model InventoryTransaction {
+  id           String   @id @default(uuid())
+  productId    String
+  type         String   // purchase | sale | adjustment_in | adjustment_out | expired | damaged | lost | return_out
+  quantity     Float
+  referenceId  String?  // ID of related record
+  notes        String?
+  createdAt    DateTime @default(now())
+
+  product Product        @relation(fields: [productId], references: [id])
+  invoice PurchaseInvoice? @relation(fields: [referenceId], references: [id])
+
+  @@map("inventory_transactions")
 }
 
 // --- Auto-number Sequence ---
@@ -132,7 +188,7 @@ npx prisma studio
 
 ## Seed Data
 
-Add to `prisma/seed.ts`:
+### Seed: PurchaseSequence
 
 ```ts
 await prisma.purchaseSequence.upsert({
@@ -142,6 +198,27 @@ await prisma.purchaseSequence.upsert({
 })
 ```
 
+### Seed: ProductCategories (Optional but Recommended)
+
+```ts
+const categories = [
+  'Medicines',
+  'Supplements',
+  'Herbal Products',
+  'Equipment',
+  'Consumables',
+  'Other',
+]
+
+for (const name of categories) {
+  await prisma.productCategory.upsert({
+    where: { name },
+    update: {},
+    create: { name, description: name },
+  })
+}
+```
+
 ---
 
 ## Numbering Format
@@ -149,6 +226,7 @@ await prisma.purchaseSequence.upsert({
 | Document | Format |
 |----------|--------|
 | Purchase Invoice | `PINV-YYYYMMDD-001` |
+| Supplier Payment | `PPAY-YYYYMMDD-001` |
 
 Example: `PINV-20260802-0001`
 
@@ -156,40 +234,64 @@ Example: `PINV-20260802-0001`
 
 ## API Routes
 
-### 1. Suppliers
+### 1. Product Categories
+
+**File:** `app/api/product-categories/route.ts`
+
+```
+GET    /api/product-categories          - list all categories
+POST   /api/product-categories          - create category (admin only)
+PATCH  /api/product-categories/[id]     - update category
+DELETE /api/product-categories/[id]     - deactivate category
+```
+
+---
+
+### 2. Suppliers
 
 **File:** `app/api/suppliers/route.ts`
 
 ```
-GET    /api/suppliers          - list all suppliers
-POST   /api/suppliers          - create supplier
-GET    /api/suppliers/[id]     - get one supplier
-PATCH  /api/suppliers/[id]     - update supplier
-DELETE /api/suppliers/[id]     - deactivate supplier
+GET    /api/suppliers                   - list all suppliers (search, filter)
+POST   /api/suppliers                   - create supplier
+GET    /api/suppliers/[id]              - get one supplier + ledger
+PATCH  /api/suppliers/[id]              - update supplier
+DELETE /api/suppliers/[id]              - deactivate supplier
+GET    /api/suppliers/[id]/payments     - payment history
+GET    /api/suppliers/[id]/purchases    - purchase history
 ```
 
-**Fields:** supplierName, contactPerson, phone, email, address, gstNumber, openingBalance, status
+**Supplier Ledger fields (in GET /api/suppliers/[id]):**
+```json
+{
+  "supplier": { ... },
+  "totalPurchases": 324000,
+  "totalPayments": 279000,
+  "outstandingBalance": 45000,
+  "lastPurchaseDate": "2026-07-12",
+  "recentPurchases": [...],
+  "recentPayments": [...]
+}
+```
 
 ---
 
-### 2. Products
+### 3. Products
 
 **File:** `app/api/products/route.ts`
 
 ```
-GET    /api/products           - list all products (search, filter)
-POST   /api/products           - create product
-GET    /api/products/[id]      - get one product
-PATCH  /api/products/[id]      - update product
-DELETE /api/products/[id]      - deactivate product
-GET    /api/products/low-stock - products below reorderLevel
+GET    /api/products                    - list all products (search, filter by category)
+POST   /api/products                    - create product
+GET    /api/products/[id]               - get one product
+PATCH  /api/products/[id]               - update product
+DELETE /api/products/[id]               - deactivate product
+GET    /api/products/low-stock          - products below reorderLevel
 ```
-
-**Fields:** name, sku, category, unit, purchasePrice, sellingPrice, gstPercent, reorderLevel, currentStock, active
 
 ---
 
-### 3. Purchase Invoices
+### 4. Purchase Invoices
 
 **File:** `app/api/purchase-invoices/route.ts`
 
@@ -204,15 +306,41 @@ GET    /api/purchase-invoices/[id]      - get one purchase invoice
 2. Create `PurchaseInvoice` record
 3. Create `PurchaseInvoiceItem` records
 4. **Update `Product.currentStock` for each item** (add quantity)
-5. Return the created invoice
-
-**Header fields:** invoiceNumber, invoiceDate, supplierId, paymentMode, dueDate, notes, subtotal, tax, grandTotal, paid, balance
-
-**Items:** productId, quantity, purchaseRate, amount
+5. **Create `InventoryTransaction` record** for each item (type: "purchase")
+6. Return the created invoice with items
 
 ---
 
-### 4. Dashboard (Extend existing)
+### 5. Supplier Payments
+
+**File:** `app/api/supplier-payments/route.ts`
+
+```
+GET    /api/supplier-payments           - list all payments
+POST   /api/supplier-payments           - record payment
+GET    /api/supplier-payments/[id]      - get one payment
+```
+
+**Logic on creation:**
+1. Auto-generate payment number from `PurchaseSequence`
+2. Create `SupplierPayment` record
+3. Update `PurchaseInvoice.paid` and `PurchaseInvoice.balance`
+4. Create `InventoryTransaction` record (type: "payment")
+
+---
+
+### 6. Inventory Transactions
+
+**File:** `app/api/inventory-transactions/route.ts`
+
+```
+GET    /api/inventory-transactions      - list transactions (filter by product, type, date)
+GET    /api/inventory-transactions/[id] - get one transaction
+```
+
+---
+
+### 7. Dashboard (Extend existing)
 
 **File:** `app/api/dashboard/route.ts`
 
@@ -221,7 +349,10 @@ Add to the response:
 {
   "purchase": {
     "totalSuppliers": 38,
-    "lowStockItems": 14
+    "lowStockItems": 14,
+    "todayPurchase": 25450,
+    "monthlyPurchase": 675000,
+    "pendingPayments": 120000
   }
 }
 ```
@@ -237,6 +368,13 @@ Add to the response:
 **Features:**
 - Table: Supplier Name, Contact Person, Phone, Email, GST Number, Opening Balance, Status
 - Create/Edit dialog with all fields
+- Click supplier to view **Supplier Ledger**:
+  - Total Purchases
+  - Total Payments
+  - Outstanding Balance
+  - Last Purchase Date
+  - Recent Purchase History
+  - Recent Payment History
 - Delete = deactivate (soft delete)
 - Active/Inactive badge
 
@@ -253,13 +391,28 @@ Add to the response:
 - Stock status badges: 🟢 Healthy, 🟡 Low Stock, 🔴 Out of Stock
 - Create/Edit dialog with all fields
 - Search by name/SKU
+- Filter by category
 - Low stock alert section
+- Image preview if imageUrl exists
 
 **Pattern:** Same as suppliers page
 
 ---
 
-### Page 3: Purchase Invoices
+### Page 3: Product Categories
+
+**File:** `app/product-categories/page.tsx`
+
+**Features:**
+- Simple list of categories
+- Create/Edit/Deactivate
+- Used as dropdown in Products page
+
+**Pattern:** Simple table with CRUD
+
+---
+
+### Page 4: Purchase Invoices
 
 **File:** `app/purchase-invoices/page.tsx`
 
@@ -269,19 +422,51 @@ Add to the response:
   - **Header:** Invoice Number (auto), Date, Supplier (dropdown), Payment Mode, Due Date, Notes
   - **Items table:** Product (dropdown), Quantity, Purchase Rate, Amount (auto-calculated)
   - **Summary:** Subtotal, Tax, Grand Total
-- On save: stock auto-updates
+- On save: stock auto-updates, transactions logged
+- View invoice details with items
+- Record payment button (opens payment dialog)
 
 **Pattern:** Similar to existing billing page but simpler
 
 ---
 
-### Page 4: Dashboard Update
+### Page 5: Supplier Payments
+
+**File:** `app/supplier-payments/page.tsx`
+
+**Features:**
+- List of all payments
+- Record payment dialog:
+  - Select Supplier
+  - Select Invoice (shows outstanding balance)
+  - Amount, Payment Date, Payment Mode, Reference, Notes
+- Auto-updates invoice balance
+
+**Pattern:** Simple form with table
+
+---
+
+### Page 6: Inventory Transactions
+
+**File:** `app/inventory-transactions/page.tsx`
+
+**Features:**
+- List of all stock transactions
+- Filter by product, type, date range
+- Shows: Product, Type, Quantity, Date, Reference, Notes
+
+**Pattern:** Read-only table with filters
+
+---
+
+### Page 7: Dashboard Update
 
 **File:** `app/page.tsx`
 
-Add 2 stat cards:
+Add 3 stat cards:
 - Total Suppliers
 - Low Stock Items
+- Pending Payments (sum of all invoice balances)
 
 ---
 
@@ -297,7 +482,10 @@ Add new nav group:
   items: [
     { label: 'Suppliers', icon: Truck, href: '/suppliers' },
     { label: 'Products', icon: Package, href: '/products' },
+    { label: 'Categories', icon: FolderOpen, href: '/product-categories' },
     { label: 'Purchase Invoices', icon: ReceiptText, href: '/purchase-invoices' },
+    { label: 'Supplier Payments', icon: Wallet, href: '/supplier-payments' },
+    { label: 'Stock History', icon: History, href: '/inventory-transactions' },
   ],
 }
 ```
@@ -307,32 +495,42 @@ Add new nav group:
 ## Implementation Order
 
 ### Step 1: Schema (Day 1)
-1. Add 5 new models to `prisma/schema.prisma`
+1. Add 8 new models to `prisma/schema.prisma`
 2. Run migration: `npx prisma migrate dev --name add-purchase-management`
-3. Update `prisma/seed.ts` to include `PurchaseSequence`
+3. Update `prisma/seed.ts` to include `PurchaseSequence` + `ProductCategory` seeds
 4. Run seed: `npm run db:seed`
 
 ### Step 2: API Routes (Day 1-2)
-5. Create `app/api/suppliers/route.ts`
-6. Create `app/api/suppliers/[id]/route.ts`
-7. Create `app/api/products/route.ts`
-8. Create `app/api/products/[id]/route.ts`
-9. Create `app/api/purchase-invoices/route.ts`
-10. Extend `app/api/dashboard/route.ts` with purchase stats
+5. Create `app/api/product-categories/route.ts`
+6. Create `app/api/suppliers/route.ts`
+7. Create `app/api/suppliers/[id]/route.ts`
+8. Create `app/api/products/route.ts`
+9. Create `app/api/products/[id]/route.ts`
+10. Create `app/api/purchase-invoices/route.ts`
+11. Create `app/api/purchase-invoices/[id]/route.ts`
+12. Create `app/api/supplier-payments/route.ts`
+13. Create `app/api/inventory-transactions/route.ts`
+14. Extend `app/api/dashboard/route.ts` with purchase stats
 
 ### Step 3: UI Pages (Day 2-3)
-11. Create `app/suppliers/page.tsx`
-12. Create `app/products/page.tsx`
-13. Create `app/purchase-invoices/page.tsx`
-14. Update `components/dashboard/sidebar-nav.tsx`
-15. Update `app/page.tsx` with new stat cards
+15. Create `app/product-categories/page.tsx`
+16. Create `app/suppliers/page.tsx`
+17. Create `app/products/page.tsx`
+18. Create `app/purchase-invoices/page.tsx`
+19. Create `app/supplier-payments/page.tsx`
+20. Create `app/inventory-transactions/page.tsx`
+21. Update `components/dashboard/sidebar-nav.tsx`
+22. Update `app/page.tsx` with new stat cards
 
 ### Step 4: Testing (Day 3)
-16. Test supplier CRUD
-17. Test product CRUD
-18. Test purchase invoice creation + stock update
-19. Test dashboard widgets
-20. Verify existing features still work
+23. Test category CRUD
+24. Test supplier CRUD + ledger
+25. Test product CRUD + low stock
+26. Test purchase invoice creation + stock update
+27. Test supplier payment + balance update
+28. Test inventory transactions
+29. Test dashboard widgets
+30. Verify existing features still work
 
 ---
 
@@ -340,22 +538,43 @@ Add new nav group:
 
 | File | Action |
 |------|--------|
-| `prisma/schema.prisma` | Add 5 models |
-| `prisma/seed.ts` | Add PurchaseSequence seed |
+| `prisma/schema.prisma` | Add 8 models |
+| `prisma/seed.ts` | Add PurchaseSequence + ProductCategory seeds |
+| `app/api/product-categories/route.ts` | New |
 | `app/api/suppliers/route.ts` | New |
 | `app/api/suppliers/[id]/route.ts` | New |
 | `app/api/products/route.ts` | New |
 | `app/api/products/[id]/route.ts` | New |
 | `app/api/purchase-invoices/route.ts` | New |
 | `app/api/purchase-invoices/[id]/route.ts` | New |
+| `app/api/supplier-payments/route.ts` | New |
+| `app/api/inventory-transactions/route.ts` | New |
+| `app/product-categories/page.tsx` | New |
 | `app/suppliers/page.tsx` | New |
 | `app/products/page.tsx` | New |
 | `app/purchase-invoices/page.tsx` | New |
+| `app/supplier-payments/page.tsx` | New |
+| `app/inventory-transactions/page.tsx` | New |
 | `components/dashboard/sidebar-nav.tsx` | Update |
 | `app/page.tsx` | Update |
 | `app/api/dashboard/route.ts` | Update |
 
-**Total: 7 new files, 3 updated files**
+**Total: 10 new files, 3 updated files**
+
+---
+
+## Key Improvements from Feedback
+
+| Feature | Implementation |
+|---------|----------------|
+| **Product Category** | Separate `ProductCategory` model with seed data |
+| **Supplier Ledger** | Computed in `GET /api/suppliers/[id]` — total purchases, payments, outstanding |
+| **Supplier Payments** | Separate `SupplierPayment` model — tracks multiple payments per invoice |
+| **Inventory Transactions** | `InventoryTransaction` model — audit trail for all stock changes |
+| **Unit Options** | Free text field with common defaults (pcs, bottle, kg, litre, packet, strip, box, tablet, capsule) |
+| **Product Image** | Optional `imageUrl` field on Product |
+| **Supplier History** | Shown in supplier detail view (purchases, payments, last purchase date) |
+| **Purchase Print** | Print button on purchase invoice detail page (uses existing print pattern) |
 
 ---
 
@@ -367,7 +586,8 @@ Add new nav group:
 | Data migration risk | Only new tables are added; existing data untouched |
 | Complex business logic | Stock update is a simple `UPDATE products SET currentStock = currentStock + ?` |
 | Integration bugs | No integration with existing Invoice/Prescription yet |
-| Rollback | Drop the 5 new tables if needed; everything else stays intact |
+| Rollback | Drop the 8 new tables if needed; everything else stays intact |
+| Payment tracking | Separate `SupplierPayment` table — no overwriting of invoice data |
 
 ---
 
@@ -378,17 +598,21 @@ Add new nav group:
 | Purchase Orders | When you need approval workflow before buying |
 | Goods Received (GRN) | When you need to track partial deliveries |
 | Batch & Expiry tracking | When you start storing medicines with expiry dates |
-| Stock Movements log | When you need full audit trail |
 | Purchase Returns | When returns become frequent |
 | Integration with existing billing | Phase 2, after PMS is stable |
+| Barcode scanning | When you have barcode printers |
 
 ---
 
 ## Success Criteria
 
+- [ ] Product categories can be managed
 - [ ] Suppliers can be created, edited, deactivated
+- [ ] Supplier ledger shows purchases, payments, outstanding balance
 - [ ] Products can be created, edited, deactivated
-- [ ] Purchase invoice creates stock entries
+- [ ] Purchase invoice creates stock entries + inventory transactions
 - [ ] `Product.currentStock` increases correctly
-- [ ] Dashboard shows supplier count and low stock count
+- [ ] Supplier payments can be recorded
+- [ ] Invoice balance updates after payment
+- [ ] Dashboard shows supplier count, low stock count, pending payments
 - [ ] All existing features (patients, visits, billing) work exactly as before
