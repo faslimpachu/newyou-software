@@ -466,4 +466,234 @@ describe('Purchase Invoices API', () => {
     expect(firstItem.purchaseRate).toBe(12)
     expect(secondItem.purchaseRate).toBe(18)
   })
+
+  it('POST calculates mixed GST rates per line', async () => {
+    const supplier = await prisma.supplier.create({
+      data: { supplierName: 'Test Supplier', status: 'ACTIVE' },
+    })
+    const category = await prisma.productCategory.create({
+      data: { name: 'Medicines', active: true },
+    })
+    const productA = await prisma.product.create({
+      data: { name: 'Product A', code: 'PRD-A', categoryId: category.id, unit: 'pcs', purchasePrice: 10, sellingPrice: 15, currentStock: 0, minimumStock: 10, maximumStock: 200, gstPercent: 5 },
+    })
+    const productB = await prisma.product.create({
+      data: { name: 'Product B', code: 'PRD-B', categoryId: category.id, unit: 'pcs', purchasePrice: 10, sellingPrice: 15, currentStock: 0, minimumStock: 10, maximumStock: 200, gstPercent: 12 },
+    })
+    const productC = await prisma.product.create({
+      data: { name: 'Product C', code: 'PRD-C', categoryId: category.id, unit: 'pcs', purchasePrice: 10, sellingPrice: 15, currentStock: 0, minimumStock: 10, maximumStock: 200, gstPercent: 18 },
+    })
+
+    const req = new Request('http://localhost/api/purchase-invoices', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        invoiceDate: '2026-08-02',
+        supplierId: supplier.id,
+        items: [
+          { productId: productA.id, quantity: 10, purchaseRate: 10 },
+          { productId: productB.id, quantity: 5, purchaseRate: 20 },
+          { productId: productC.id, quantity: 2, purchaseRate: 100 },
+        ],
+      }),
+    })
+    const res = await POST(req)
+    expect(res.status).toBe(201)
+    const data = await res.json()
+    expect(data.invoice.subtotal).toBeCloseTo(10 * 10 + 5 * 20 + 2 * 100)
+    expect(data.invoice.tax).toBeCloseTo(10 * 10 * 0.05 + 5 * 20 * 0.12 + 2 * 100 * 0.18)
+    expect(data.invoice.grandTotal).toBeCloseTo(data.invoice.subtotal + data.invoice.tax)
+  })
+
+  it('POST applies zero GST correctly', async () => {
+    const supplier = await prisma.supplier.create({
+      data: { supplierName: 'Test Supplier', status: 'ACTIVE' },
+    })
+    const category = await prisma.productCategory.create({
+      data: { name: 'Medicines', active: true },
+    })
+    const product = await prisma.product.create({
+      data: { name: 'Zero GST Product', code: 'PRD-ZERO', categoryId: category.id, unit: 'pcs', purchasePrice: 10, sellingPrice: 15, currentStock: 0, minimumStock: 10, maximumStock: 200, gstPercent: 0 },
+    })
+
+    const req = new Request('http://localhost/api/purchase-invoices', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        invoiceDate: '2026-08-02',
+        supplierId: supplier.id,
+        items: [{ productId: product.id, quantity: 10, purchaseRate: 10 }],
+      }),
+    })
+    const res = await POST(req)
+    expect(res.status).toBe(201)
+    const data = await res.json()
+    expect(data.invoice.tax).toBe(0)
+    expect(data.invoice.grandTotal).toBe(data.invoice.subtotal)
+  })
+
+  it('POST does not modify product gstPercent after invoice creation', async () => {
+    const supplier = await prisma.supplier.create({
+      data: { supplierName: 'Test Supplier', status: 'ACTIVE' },
+    })
+    const category = await prisma.productCategory.create({
+      data: { name: 'Medicines', active: true },
+    })
+    const product = await prisma.product.create({
+      data: { name: 'Product', code: 'PRD-GST', categoryId: category.id, unit: 'pcs', purchasePrice: 10, sellingPrice: 15, currentStock: 0, minimumStock: 10, maximumStock: 200, gstPercent: 12 },
+    })
+
+    const req = new Request('http://localhost/api/purchase-invoices', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        invoiceDate: '2026-08-02',
+        supplierId: supplier.id,
+        items: [{ productId: product.id, quantity: 5, purchaseRate: 10 }],
+      }),
+    })
+    const res = await POST(req)
+    expect(res.status).toBe(201)
+
+    const updatedProduct = await prisma.product.findUnique({ where: { id: product.id } })
+    expect(Number(updatedProduct?.gstPercent)).toBe(12)
+  })
+
+  it('POST treats default gstPercent 0 as no tax', async () => {
+    const supplier = await prisma.supplier.create({
+      data: { supplierName: 'Test Supplier', status: 'ACTIVE' },
+    })
+    const category = await prisma.productCategory.create({
+      data: { name: 'Medicines', active: true },
+    })
+    const product = await prisma.product.create({
+      data: { name: 'Default GST Product', code: 'PRD-DEFAULT', categoryId: category.id, unit: 'pcs', purchasePrice: 10, sellingPrice: 15, currentStock: 0, minimumStock: 10, maximumStock: 200 },
+    })
+
+    const req = new Request('http://localhost/api/purchase-invoices', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        invoiceDate: '2026-08-02',
+        supplierId: supplier.id,
+        items: [{ productId: product.id, quantity: 10, purchaseRate: 10 }],
+      }),
+    })
+    const res = await POST(req)
+    expect(res.status).toBe(201)
+    const data = await res.json()
+    expect(data.invoice.tax).toBe(0)
+  })
+
+  it('POST calculates 5% GST correctly for all items', async () => {
+    const supplier = await prisma.supplier.create({
+      data: { supplierName: 'Test Supplier', status: 'ACTIVE' },
+    })
+    const category = await prisma.productCategory.create({
+      data: { name: 'Medicines', active: true },
+    })
+    const productA = await prisma.product.create({
+      data: { name: 'Product A', code: 'PRD-A5', categoryId: category.id, unit: 'pcs', purchasePrice: 10, sellingPrice: 15, currentStock: 0, minimumStock: 10, maximumStock: 200, gstPercent: 5 },
+    })
+    const productB = await prisma.product.create({
+      data: { name: 'Product B', code: 'PRD-B5', categoryId: category.id, unit: 'pcs', purchasePrice: 10, sellingPrice: 15, currentStock: 0, minimumStock: 10, maximumStock: 200, gstPercent: 5 },
+    })
+
+    const req = new Request('http://localhost/api/purchase-invoices', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        invoiceDate: '2026-08-02',
+        supplierId: supplier.id,
+        items: [
+          { productId: productA.id, quantity: 10, purchaseRate: 10 },
+          { productId: productB.id, quantity: 5, purchaseRate: 20 },
+        ],
+      }),
+    })
+    const res = await POST(req)
+    expect(res.status).toBe(201)
+    const data = await res.json()
+    expect(data.invoice.tax).toBeCloseTo(data.invoice.subtotal * 0.05)
+  })
+
+  it('POST calculates 18% GST correctly for all items', async () => {
+    const supplier = await prisma.supplier.create({
+      data: { supplierName: 'Test Supplier', status: 'ACTIVE' },
+    })
+    const category = await prisma.productCategory.create({
+      data: { name: 'Medicines', active: true },
+    })
+    const productA = await prisma.product.create({
+      data: { name: 'Product A', code: 'PRD-A18', categoryId: category.id, unit: 'pcs', purchasePrice: 10, sellingPrice: 15, currentStock: 0, minimumStock: 10, maximumStock: 200, gstPercent: 18 },
+    })
+    const productB = await prisma.product.create({
+      data: { name: 'Product B', code: 'PRD-B18', categoryId: category.id, unit: 'pcs', purchasePrice: 10, sellingPrice: 15, currentStock: 0, minimumStock: 10, maximumStock: 200, gstPercent: 18 },
+    })
+
+    const req = new Request('http://localhost/api/purchase-invoices', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        invoiceDate: '2026-08-02',
+        supplierId: supplier.id,
+        items: [
+          { productId: productA.id, quantity: 2, purchaseRate: 100 },
+          { productId: productB.id, quantity: 1, purchaseRate: 500 },
+        ],
+      }),
+    })
+    const res = await POST(req)
+    expect(res.status).toBe(201)
+    const data = await res.json()
+    expect(data.invoice.tax).toBeCloseTo(data.invoice.subtotal * 0.18)
+  })
+
+  it('POST calculates fractional GST rate correctly', async () => {
+    const supplier = await prisma.supplier.create({
+      data: { supplierName: 'Test Supplier', status: 'ACTIVE' },
+    })
+    const category = await prisma.productCategory.create({
+      data: { name: 'Medicines', active: true },
+    })
+    const product = await prisma.product.create({
+      data: { name: 'Fractional GST Product', code: 'PRD-FRAC', categoryId: category.id, unit: 'pcs', purchasePrice: 10, sellingPrice: 15, currentStock: 0, minimumStock: 10, maximumStock: 200, gstPercent: 12.5 },
+    })
+
+    const req = new Request('http://localhost/api/purchase-invoices', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        invoiceDate: '2026-08-02',
+        supplierId: supplier.id,
+        items: [{ productId: product.id, quantity: 10, purchaseRate: 10 }],
+      }),
+    })
+    const res = await POST(req)
+    expect(res.status).toBe(201)
+    const data = await res.json()
+    expect(data.invoice.subtotal).toBeCloseTo(100)
+    expect(data.invoice.tax).toBeCloseTo(12.5)
+    expect(data.invoice.grandTotal).toBeCloseTo(112.5)
+  })
+
+  it('POST rejects empty items array', async () => {
+    const supplier = await prisma.supplier.create({
+      data: { supplierName: 'Test Supplier', status: 'ACTIVE' },
+    })
+
+    const req = new Request('http://localhost/api/purchase-invoices', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        invoiceDate: '2026-08-02',
+        supplierId: supplier.id,
+        items: [],
+      }),
+    })
+    const res = await POST(req)
+    expect(res.status).toBe(400)
+    const data = await res.json()
+    expect(data.error).toBe('Purchase invoice must contain at least one item')
+  })
 })

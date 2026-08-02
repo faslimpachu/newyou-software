@@ -85,7 +85,7 @@ export async function POST(request: Request) {
     } = body;
 
     if (!invoiceDate || !supplierId || !items || !Array.isArray(items) || items.length === 0) {
-      return NextResponse.json({ error: 'invoiceDate, supplierId, and at least one item are required' }, { status: 400 });
+      return NextResponse.json({ error: 'Purchase invoice must contain at least one item' }, { status: 400 })
     }
 
     const supplier = await prisma.supplier.findUnique({
@@ -99,12 +99,24 @@ export async function POST(request: Request) {
     const productIds = items.map((item: { productId: string }) => item.productId)
     const products = await prisma.product.findMany({
       where: { id: { in: productIds } },
+      select: { id: true, gstPercent: true },
     })
 
     const foundIds = new Set(products.map((p) => p.id))
     const missingIds = productIds.filter((id: string) => !foundIds.has(id))
     if (missingIds.length > 0) {
       throw new ValidationError(`Products not found: ${missingIds.join(', ')}`)
+    }
+
+    const productMap = new Map<string, Prisma.Decimal>(
+      products.map((product) => [product.id, product.gstPercent ?? new Prisma.Decimal(0)]),
+    )
+
+    for (const product of products) {
+      const gstPercent = product.gstPercent ?? new Prisma.Decimal(0)
+      if (gstPercent.lessThan(0) || gstPercent.greaterThan(100)) {
+        throw new ValidationError(`Invalid GST percent for product: ${gstPercent}`)
+      }
     }
 
     const enforceUniqueProducts = process.env.ENFORCE_UNIQUE_PURCHASE_PRODUCTS === 'true'
@@ -115,10 +127,22 @@ export async function POST(request: Request) {
       }
     }
 
-    const subtotal = items.reduce((sum: Prisma.Decimal, item: { quantity: number; purchaseRate: number }) => sum.plus(new Prisma.Decimal(item.quantity).times(item.purchaseRate)), new Prisma.Decimal(0))
-    const tax = new Prisma.Decimal(subtotal).times(0.12)
-    const grandTotal = new Prisma.Decimal(subtotal).plus(tax)
-    const balance = new Prisma.Decimal(grandTotal)
+    const totals = items.reduce(
+      (acc: { subtotal: Prisma.Decimal; tax: Prisma.Decimal }, item: { productId: string; quantity: number; purchaseRate: number }) => {
+        const lineAmount = new Prisma.Decimal(item.quantity).times(item.purchaseRate)
+        const gst = productMap.get(item.productId) ?? new Prisma.Decimal(0)
+        return {
+          subtotal: acc.subtotal.plus(lineAmount),
+          tax: acc.tax.plus(lineAmount.times(gst).div(100)),
+        }
+      },
+      { subtotal: new Prisma.Decimal(0), tax: new Prisma.Decimal(0) },
+    )
+
+    const subtotal = totals.subtotal
+    const tax = totals.tax
+    const grandTotal = subtotal.plus(tax)
+    const balance = grandTotal
 
     const invoiceNumber = await generatePurchaseNumber('PURCHASE_INVOICE')
 
