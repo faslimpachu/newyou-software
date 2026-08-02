@@ -193,7 +193,7 @@ export default function SupplierPaymentsPage() {
               <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 <div className="space-y-2">
                   <Label htmlFor="supplierId">Supplier</Label>
-                  <Select value={form.supplierId} onValueChange={(value) => setForm({ ...form, supplierId: value, invoiceId: '' })}>
+                  <Select value={form.supplierId || ''} onValueChange={(value) => setForm({ ...form, supplierId: value || '', invoiceId: '' })}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select supplier" />
                     </SelectTrigger>
@@ -208,7 +208,7 @@ export default function SupplierPaymentsPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="invoiceId">Invoice (Optional)</Label>
-                  <Select value={form.invoiceId} onValueChange={(value) => setForm({ ...form, invoiceId: value })}>
+                  <Select value={form.invoiceId || ''} onValueChange={(value) => setForm({ ...form, invoiceId: value || '' })}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select invoice" />
                     </SelectTrigger>
@@ -250,7 +250,7 @@ export default function SupplierPaymentsPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="paymentMode">Payment Mode</Label>
-                  <Select value={form.paymentMode} onValueChange={(value) => setForm({ ...form, paymentMode: value })}>
+                  <Select value={form.paymentMode || ''} onValueChange={(value) => setForm({ ...form, paymentMode: value || '' })}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -311,6 +311,7 @@ export default function SupplierPaymentsPage() {
                     <TableHead className="text-right">Amount</TableHead>
                     <TableHead>Mode</TableHead>
                     <TableHead>Reference</TableHead>
+                    <TableHead>Notes</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -325,11 +326,12 @@ export default function SupplierPaymentsPage() {
                         <Badge variant="outline">{payment.paymentMode || '-'}</Badge>
                       </TableCell>
                       <TableCell>{payment.reference || '-'}</TableCell>
+                      <TableCell className="max-w-[200px] truncate">{payment.notes || '-'}</TableCell>
                     </TableRow>
                   ))}
                   {payments.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center text-muted-foreground">
+                      <TableCell colSpan={8} className="text-center text-muted-foreground">
                         No payments found
                       </TableCell>
                     </TableRow>

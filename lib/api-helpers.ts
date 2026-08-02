@@ -60,23 +60,52 @@ export function parseJson<T>(body: unknown): T {
   return body as T;
 }
 
-export async function generatePurchaseNumber(sequenceName: 'PURCHASE_INVOICE' | 'SUPPLIER_PAYMENT' | 'SALE_INVOICE'): Promise<string> {
+export class ValidationError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'ValidationError'
+  }
+}
+
+export async function generatePurchaseNumber(sequenceName: 'PURCHASE_INVOICE' | 'SUPPLIER_PAYMENT' | 'SALE_INVOICE' | 'PRODUCT'): Promise<string> {
   const prefixMap: Record<string, string> = {
     PURCHASE_INVOICE: 'PINV',
     SUPPLIER_PAYMENT: 'PPAY',
     SALE_INVOICE: 'SINV',
+    PRODUCT: 'PRD',
+  }
+
+  const nameMap: Record<string, string> = {
+    PURCHASE_INVOICE: 'Purchase Invoice',
+    SUPPLIER_PAYMENT: 'Supplier Payment',
+    SALE_INVOICE: 'Sale Invoice',
+    PRODUCT: 'Product',
   }
 
   const prefix = prefixMap[sequenceName] || 'DOC'
+  const name = nameMap[sequenceName] || 'Document'
 
   return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-    const seq = await tx.sequence.update({
+    let seq = await tx.sequence.findUnique({
+      where: { id: sequenceName },
+    })
+
+    if (!seq) {
+      seq = await tx.sequence.create({
+        data: { id: sequenceName, name, lastNumber: 1 },
+      })
+      const date = new Date().toISOString().slice(0, 10).replace(/-/g, '')
+      const num = String(seq.lastNumber).padStart(4, '0')
+      return `${prefix}-${date}-${num}`
+    }
+
+    const updated = await tx.sequence.update({
       where: { id: sequenceName },
       data: { lastNumber: { increment: 1 } },
     })
 
     const date = new Date().toISOString().slice(0, 10).replace(/-/g, '')
-    const num = String(seq.lastNumber).padStart(4, '0')
+    const num = String(updated.lastNumber).padStart(4, '0')
 
     return `${prefix}-${date}-${num}`
   })

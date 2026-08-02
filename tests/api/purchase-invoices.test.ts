@@ -15,6 +15,7 @@ beforeEach(async () => {
   await prisma.supplier.deleteMany()
   await prisma.product.deleteMany()
   await prisma.productCategory.deleteMany()
+  await prisma.sequence.deleteMany()
 })
 
 afterAll(async () => {
@@ -40,11 +41,14 @@ describe('Purchase Invoices API', () => {
     const product = await prisma.product.create({
       data: {
         name: 'Test Product',
+        code: 'PRD-20260802-0001',
         categoryId: category.id,
         unit: 'pcs',
         purchasePrice: 10,
         sellingPrice: 15,
         currentStock: 0,
+        minimumStock: 10,
+        maximumStock: 200,
       },
     })
 
@@ -124,5 +128,342 @@ describe('Purchase Invoices API', () => {
     const data = await res.json()
     expect(data.invoice.invoiceNumber).toBe('PINV-TEST-002')
     expect(data.invoice.supplier.supplierName).toBe('Test Supplier')
+  })
+
+  it('POST rejects quantity <= 0', async () => {
+    const supplier = await prisma.supplier.create({
+      data: { supplierName: 'Test Supplier', status: 'ACTIVE' },
+    })
+    const category = await prisma.productCategory.create({
+      data: { name: 'Medicines', active: true },
+    })
+    const product = await prisma.product.create({
+      data: {
+        name: 'Test Product',
+        code: 'PRD-20260802-0001',
+        categoryId: category.id,
+        unit: 'pcs',
+        purchasePrice: 10,
+        sellingPrice: 15,
+        currentStock: 0,
+        minimumStock: 10,
+        maximumStock: 200,
+      },
+    })
+
+    const req = new Request('http://localhost/api/purchase-invoices', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        invoiceDate: '2026-08-02',
+        supplierId: supplier.id,
+        items: [{ productId: product.id, quantity: 0, purchaseRate: 10 }],
+      }),
+    })
+    const res = await POST(req)
+    expect(res.status).toBe(400)
+    const data = await res.json()
+    expect(data.error).toBe('Quantity must be greater than zero')
+  })
+
+  it('POST rejects purchaseRate <= 0', async () => {
+    const supplier = await prisma.supplier.create({
+      data: { supplierName: 'Test Supplier', status: 'ACTIVE' },
+    })
+    const category = await prisma.productCategory.create({
+      data: { name: 'Medicines', active: true },
+    })
+    const product = await prisma.product.create({
+      data: {
+        name: 'Test Product',
+        code: 'PRD-20260802-0001',
+        categoryId: category.id,
+        unit: 'pcs',
+        purchasePrice: 10,
+        sellingPrice: 15,
+        currentStock: 0,
+        minimumStock: 10,
+        maximumStock: 200,
+      },
+    })
+
+    const req = new Request('http://localhost/api/purchase-invoices', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        invoiceDate: '2026-08-02',
+        supplierId: supplier.id,
+        items: [{ productId: product.id, quantity: 10, purchaseRate: 0 }],
+      }),
+    })
+    const res = await POST(req)
+    expect(res.status).toBe(400)
+    const data = await res.json()
+    expect(data.error).toBe('Purchase rate must be greater than zero')
+  })
+
+  it('POST rejects missing supplier', async () => {
+    const req = new Request('http://localhost/api/purchase-invoices', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        invoiceDate: '2026-08-02',
+        supplierId: 'non-existent-supplier-id',
+        items: [{ productId: 'non-existent-product-id', quantity: 10, purchaseRate: 10 }],
+      }),
+    })
+    const res = await POST(req)
+    expect(res.status).toBe(400)
+    const data = await res.json()
+    expect(data.error).toBe('Supplier not found')
+  })
+
+  it('POST rejects missing products', async () => {
+    const supplier = await prisma.supplier.create({
+      data: { supplierName: 'Test Supplier', status: 'ACTIVE' },
+    })
+
+    const req = new Request('http://localhost/api/purchase-invoices', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        invoiceDate: '2026-08-02',
+        supplierId: supplier.id,
+        items: [{ productId: 'non-existent-product-id', quantity: 10, purchaseRate: 10 }],
+      }),
+    })
+    const res = await POST(req)
+    expect(res.status).toBe(400)
+    const data = await res.json()
+    expect(data.error).toContain('Products not found')
+  })
+
+  it('POST rejects duplicate products when enforced', async () => {
+    const originalEnv = process.env.ENFORCE_UNIQUE_PURCHASE_PRODUCTS
+    process.env.ENFORCE_UNIQUE_PURCHASE_PRODUCTS = 'true'
+
+    try {
+      const supplier = await prisma.supplier.create({
+        data: { supplierName: 'Test Supplier', status: 'ACTIVE' },
+      })
+      const category = await prisma.productCategory.create({
+        data: { name: 'Medicines', active: true },
+      })
+      const product = await prisma.product.create({
+        data: {
+          name: 'Test Product',
+          code: 'PRD-20260802-0001',
+          categoryId: category.id,
+          unit: 'pcs',
+          purchasePrice: 10,
+          sellingPrice: 15,
+          currentStock: 0,
+          minimumStock: 10,
+          maximumStock: 200,
+        },
+      })
+
+      const req = new Request('http://localhost/api/purchase-invoices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          invoiceDate: '2026-08-02',
+          supplierId: supplier.id,
+          items: [
+            { productId: product.id, quantity: 10, purchaseRate: 10 },
+            { productId: product.id, quantity: 5, purchaseRate: 10 },
+          ],
+        }),
+      })
+      const res = await POST(req)
+      expect(res.status).toBe(400)
+      const data = await res.json()
+      expect(data.error).toBe('Duplicate products are not allowed in the same invoice')
+    } finally {
+      process.env.ENFORCE_UNIQUE_PURCHASE_PRODUCTS = originalEnv
+    }
+  })
+
+  it('POST allows duplicate products when not enforced', async () => {
+    const originalEnv = process.env.ENFORCE_UNIQUE_PURCHASE_PRODUCTS
+    process.env.ENFORCE_UNIQUE_PURCHASE_PRODUCTS = 'false'
+
+    try {
+      const supplier = await prisma.supplier.create({
+        data: { supplierName: 'Test Supplier', status: 'ACTIVE' },
+      })
+      const category = await prisma.productCategory.create({
+        data: { name: 'Medicines', active: true },
+      })
+      const product = await prisma.product.create({
+        data: {
+          name: 'Test Product',
+          code: 'PRD-20260802-0001',
+          categoryId: category.id,
+          unit: 'pcs',
+          purchasePrice: 10,
+          sellingPrice: 15,
+          currentStock: 0,
+          minimumStock: 10,
+          maximumStock: 200,
+        },
+      })
+
+      const req = new Request('http://localhost/api/purchase-invoices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          invoiceDate: '2026-08-02',
+          supplierId: supplier.id,
+          items: [
+            { productId: product.id, quantity: 10, purchaseRate: 10 },
+            { productId: product.id, quantity: 5, purchaseRate: 10 },
+          ],
+        }),
+      })
+      const res = await POST(req)
+      expect(res.status).toBe(201)
+      const data = await res.json()
+      expect(data.invoice.items).toHaveLength(2)
+    } finally {
+      process.env.ENFORCE_UNIQUE_PURCHASE_PRODUCTS = originalEnv
+    }
+  })
+
+  it('POST auto-updates product.purchasePrice from invoice purchaseRate', async () => {
+    const supplier = await prisma.supplier.create({
+      data: { supplierName: 'Test Supplier', status: 'ACTIVE' },
+    })
+    const category = await prisma.productCategory.create({
+      data: { name: 'Medicines', active: true },
+    })
+    const product = await prisma.product.create({
+      data: {
+        name: 'Test Product',
+        code: 'PRD-20260802-0001',
+        categoryId: category.id,
+        unit: 'pcs',
+        purchasePrice: 10,
+        sellingPrice: 15,
+        currentStock: 0,
+        minimumStock: 10,
+        maximumStock: 200,
+      },
+    })
+
+    const req = new Request('http://localhost/api/purchase-invoices', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        invoiceDate: '2026-08-02',
+        supplierId: supplier.id,
+        items: [{ productId: product.id, quantity: 50, purchaseRate: 18 }],
+      }),
+    })
+    const res = await POST(req)
+    expect(res.status).toBe(201)
+
+    const updatedProduct = await prisma.product.findUnique({ where: { id: product.id } })
+    expect(Number(updatedProduct?.purchasePrice)).toBe(18)
+    expect(Number(updatedProduct?.sellingPrice)).toBe(15)
+  })
+
+  it('POST updates product.purchasePrice to latest purchaseRate on subsequent purchases', async () => {
+    const supplier = await prisma.supplier.create({
+      data: { supplierName: 'Test Supplier', status: 'ACTIVE' },
+    })
+    const category = await prisma.productCategory.create({
+      data: { name: 'Medicines', active: true },
+    })
+    const product = await prisma.product.create({
+      data: {
+        name: 'Test Product',
+        code: 'PRD-20260802-0001',
+        categoryId: category.id,
+        unit: 'pcs',
+        purchasePrice: 10,
+        sellingPrice: 15,
+        currentStock: 0,
+        minimumStock: 10,
+        maximumStock: 200,
+      },
+    })
+
+    const firstReq = new Request('http://localhost/api/purchase-invoices', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        invoiceDate: '2026-08-02',
+        supplierId: supplier.id,
+        items: [{ productId: product.id, quantity: 50, purchaseRate: 12 }],
+      }),
+    })
+    await POST(firstReq)
+
+    const secondReq = new Request('http://localhost/api/purchase-invoices', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        invoiceDate: '2026-08-03',
+        supplierId: supplier.id,
+        items: [{ productId: product.id, quantity: 30, purchaseRate: 18 }],
+      }),
+    })
+    await POST(secondReq)
+
+    const updatedProduct = await prisma.product.findUnique({ where: { id: product.id } })
+    expect(Number(updatedProduct?.purchasePrice)).toBe(18)
+    expect(Number(updatedProduct?.currentStock)).toBe(80)
+  })
+
+  it('POST preserves historical purchaseRate on invoice items', async () => {
+    const supplier = await prisma.supplier.create({
+      data: { supplierName: 'Test Supplier', status: 'ACTIVE' },
+    })
+    const category = await prisma.productCategory.create({
+      data: { name: 'Medicines', active: true },
+    })
+    const product = await prisma.product.create({
+      data: {
+        name: 'Test Product',
+        code: 'PRD-20260802-0001',
+        categoryId: category.id,
+        unit: 'pcs',
+        purchasePrice: 10,
+        sellingPrice: 15,
+        currentStock: 0,
+        minimumStock: 10,
+        maximumStock: 200,
+      },
+    })
+
+    const firstReq = new Request('http://localhost/api/purchase-invoices', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        invoiceDate: '2026-08-02',
+        supplierId: supplier.id,
+        items: [{ productId: product.id, quantity: 50, purchaseRate: 12 }],
+      }),
+    })
+    const firstRes = await POST(firstReq)
+    const firstInvoice = await firstRes.json()
+
+    const secondReq = new Request('http://localhost/api/purchase-invoices', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        invoiceDate: '2026-08-03',
+        supplierId: supplier.id,
+        items: [{ productId: product.id, quantity: 30, purchaseRate: 18 }],
+      }),
+    })
+    const secondRes = await POST(secondReq)
+    const secondInvoice = await secondRes.json()
+
+    const firstItem = firstInvoice.invoice.items[0]
+    const secondItem = secondInvoice.invoice.items[0]
+    expect(firstItem.purchaseRate).toBe(12)
+    expect(secondItem.purchaseRate).toBe(18)
   })
 })

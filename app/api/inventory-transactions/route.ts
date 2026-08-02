@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
 
 function toNumber(value: unknown): number {
   return Number(value || 0)
@@ -42,17 +43,37 @@ export async function GET(request: Request) {
         take: pageSize,
         include: {
           product: { select: { id: true, name: true, sku: true, unit: true } },
-          purchaseInvoice: { select: { id: true, invoiceNumber: true } },
         },
       }),
       prisma.inventoryTransaction.count({ where }),
-    ]);
+    ])
+
+    const purchaseInvoiceIds = transactions
+      .filter((t) => t.referenceType === 'PURCHASE_INVOICE' && t.referenceId)
+      .map((t) => t.referenceId as string)
+
+    const invoices = purchaseInvoiceIds.length
+      ? await prisma.purchaseInvoice.findMany({
+          where: { id: { in: purchaseInvoiceIds } },
+          select: { id: true, invoiceNumber: true },
+        })
+      : []
+
+    const invoiceMap = new Map(invoices.map((inv) => [inv.id, inv.invoiceNumber]))
 
     return NextResponse.json({
-      transactions: transactions.map((t) => ({
-        ...t,
-        quantity: toNumber(t.quantity),
-      })),
+      transactions: transactions.map((t) => {
+        const reference =
+          t.referenceType === 'PURCHASE_INVOICE' && t.referenceId
+            ? invoiceMap.get(t.referenceId) || t.referenceId
+            : t.referenceId || null
+
+        return {
+          ...t,
+          quantity: toNumber(t.quantity),
+          reference,
+        }
+      }),
       page,
       pageSize,
       total,

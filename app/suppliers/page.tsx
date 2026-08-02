@@ -255,7 +255,7 @@ export default function SuppliersPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="status">Status</Label>
-                <Select value={form.status} onValueChange={(value) => setForm({ ...form, status: value })}>
+                <Select value={form.status} onValueChange={(value) => setForm({ ...form, status: value || 'ACTIVE' })}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>

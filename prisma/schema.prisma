@@ -267,6 +267,14 @@ model VisitSequence {
   @@map("visit_sequences")
 }
 
+enum ReferenceType {
+  PURCHASE_INVOICE
+  SALE_INVOICE
+  ADJUSTMENT
+  PRESCRIPTION
+  RETURN
+}
+
 // --- PMS Enums ---
 enum TransactionType {
   PURCHASE
@@ -332,13 +340,15 @@ model Supplier {
 model Product {
   id            String   @id @default(uuid())
   name          String
+  code          String   @unique
   sku           String?  @unique
   categoryId    String?
   unit          String   @default("pcs")
   purchasePrice Decimal
   sellingPrice  Decimal
   gstPercent    Decimal  @default(0)
-  reorderLevel  Int      @default(10)
+  minimumStock  Int      @default(10)
+  maximumStock  Int      @default(200)
   currentStock  Decimal  @default(0)
   imageUrl      String?
   active        Boolean  @default(true)
@@ -370,7 +380,6 @@ model PurchaseInvoice {
   supplier       Supplier           @relation(fields: [supplierId], references: [id])
   items          PurchaseInvoiceItem[]
   payments       SupplierPayment[]
-  transactions   InventoryTransaction[]
 
   @@map("purchase_invoices")
 }
@@ -412,13 +421,12 @@ model InventoryTransaction {
   productId    String
   type         TransactionType
   quantity     Decimal
-  referenceType String?
+  referenceType ReferenceType?
   referenceId  String?
   notes        String?
   createdAt    DateTime          @default(now())
 
-  product        Product        @relation(fields: [productId], references: [id])
-  purchaseInvoice PurchaseInvoice? @relation(fields: [referenceId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
 
   @@map("inventory_transactions")
   @@index([productId, type])

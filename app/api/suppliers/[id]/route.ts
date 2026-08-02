@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
 
 function toNumber(value: unknown): number {
   return Number(value || 0)
@@ -71,7 +72,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
     const totalPurchaseAmount = toNumber(totalPurchases._sum.grandTotal)
     const totalPaymentAmount = toNumber(totalPayments._sum.amount)
-    const outstandingBalance = totalPurchaseAmount - totalPaymentAmount + toNumber(supplier.openingBalance)
+    const outstandingBalance = new Prisma.Decimal(totalPurchaseAmount).plus(toNumber(supplier.openingBalance)).minus(totalPaymentAmount).toNumber()
 
     const lastPurchase = await prisma.purchaseInvoice.findFirst({
       where: { supplierId: id },

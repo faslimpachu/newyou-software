@@ -2,7 +2,7 @@
 
 ## Goal
 
-Add a **minimal, safe Purchase Management module** to the existing clinic dashboard.
+Add a **minimal, safe Purchase Management + Inventory Adjustment module** to the existing clinic dashboard.
 
 **Rules:**
 - Only NEW tables are added
@@ -15,15 +15,23 @@ Add a **minimal, safe Purchase Management module** to the existing clinic dashbo
 
 ## What We Are Building
 
-A practical purchase system with 4 pages:
+A practical purchase system with 7 pages:
 
 ```
 Suppliers → Products → Purchase Invoices → Stock increases automatically
-                                       → Payment history tracked
-                                       → Supplier ledger visible
+                                        → Payment history tracked
+                                        → Supplier ledger visible
+                                        → Inventory Adjustment for manual corrections
+                                        → Inventory History (audit trail)
 ```
 
-No GRN, no PO, no batches, no returns. Just: **Buy products → stock increases → payments tracked.**
+No GRN, no PO, no batches, no returns. Just: **Buy products → stock increases → payments tracked → manual adjustments when needed.**
+
+Features:
+- Product Code auto-generated (`PRD-YYYYMMDD-001`) alongside SKU
+- Min/Max stock levels for better inventory control
+- Stock Value calculated on the fly (`Current Stock × Purchase Price`)
+- Dashboard shows Today's Purchase, Monthly Purchase, Inventory Value, Low Stock, Pending Payments, Products, Suppliers
 
 ---
 
@@ -63,6 +71,14 @@ enum SupplierStatus {
   INACTIVE
 }
 
+enum ReferenceType {
+  PURCHASE_INVOICE
+  SALE_INVOICE
+  ADJUSTMENT
+  PRESCRIPTION
+  RETURN
+}
+
 // --- Product Category ---
 model ProductCategory {
   id          String   @id @default(uuid())
@@ -99,13 +115,15 @@ model Supplier {
 model Product {
   id            String   @id @default(uuid())
   name          String
+  code          String   @unique
   sku           String?  @unique
   categoryId    String?
   unit          String   @default("pcs")
   purchasePrice Decimal
   sellingPrice  Decimal
   gstPercent    Decimal  @default(0)
-  reorderLevel  Int      @default(10)
+  minimumStock  Int      @default(10)
+  maximumStock  Int      @default(200)
   currentStock  Decimal  @default(0)
   imageUrl      String?
   active        Boolean  @default(true)
@@ -138,7 +156,6 @@ model PurchaseInvoice {
   supplier       Supplier           @relation(fields: [supplierId], references: [id])
   items          PurchaseInvoiceItem[]
   payments       SupplierPayment[]
-  transactions   InventoryTransaction[]
 
   @@map("purchase_invoices")
 }
@@ -182,13 +199,12 @@ model InventoryTransaction {
   productId    String
   type         TransactionType
   quantity     Decimal
-  referenceType String?          // PURCHASE_INVOICE | SUPPLIER_PAYMENT | PURCHASE_RETURN | ADJUSTMENT | SALE_INVOICE | PRESCRIPTION
+  referenceType ReferenceType?
   referenceId  String?
   notes        String?
   createdAt    DateTime          @default(now())
 
-  product        Product        @relation(fields: [productId], references: [id])
-  purchaseInvoice PurchaseInvoice? @relation(fields: [referenceId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
 
   @@map("inventory_transactions")
   @@index([productId, type])
@@ -231,6 +247,7 @@ const sequences = [
   { id: 'PURCHASE_INVOICE', name: 'Purchase Invoice' },
   { id: 'SUPPLIER_PAYMENT', name: 'Supplier Payment' },
   { id: 'SALE_INVOICE', name: 'Sale Invoice' },
+  { id: 'PRODUCT', name: 'Product' },
 ]
 
 for (const seq of sequences) {
@@ -272,8 +289,11 @@ for (const name of categories) {
 | Purchase Invoice | `PURCHASE_INVOICE` | `PINV-YYYYMMDD-001` |
 | Supplier Payment | `SUPPLIER_PAYMENT` | `PPAY-YYYYMMDD-001` |
 | Sale Invoice | `SALE_INVOICE` | `SINV-YYYYMMDD-001` |
+| Product | `PRODUCT` | `PRD-YYYYMMDD-001` |
 
 Example: `PINV-20260802-0001`
+
+Product Code Example: `PRD-20260802-0001`
 
 ---
 
@@ -346,12 +366,16 @@ GET    /api/suppliers/[id]/purchases    - purchase history
 
 ```
 GET    /api/products                    - list all products (search, filter by category)
-POST   /api/products                    - create product
+POST   /api/products                    - create product (auto-generates code)
 GET    /api/products/[id]               - get one product
 PATCH  /api/products/[id]               - update product
 DELETE /api/products/[id]               - deactivate product
-GET    /api/products/low-stock          - products below reorderLevel
+GET    /api/products/low-stock          - products below minimumStock
 ```
+
+**Logic on creation (POST):**
+1. Auto-generate product code from `Sequence` (key: `PRODUCT`) → `PRD-YYYYMMDD-001`
+2. Create `Product` record with generated code
 
 ---
 
@@ -367,14 +391,17 @@ GET    /api/purchase-invoices/[id]      - get one purchase invoice
 
 **Logic on creation:**
 1. Auto-generate invoice number from `Sequence` (key: `PURCHASE_INVOICE`)
-2. Create `PurchaseInvoice` record
-3. Create `PurchaseInvoiceItem` records
-4. **Update `Product.currentStock` for each item** (add quantity)
-5. **Create `InventoryTransaction` record** for each item:
-   - `type`: `PURCHASE`
-   - `referenceType`: `PURCHASE_INVOICE`
-   - `referenceId`: the new invoice ID
-6. Return the created invoice with items
+2. Wrap the following in `prisma.$transaction(async (tx) => { ... })`:
+   - Create `PurchaseInvoice` record
+   - Create `PurchaseInvoiceItem` records
+   - **Update `Product.currentStock` for each item** (add quantity)
+   - **Create `InventoryTransaction` record** for each item:
+     - `type`: `PURCHASE`
+     - `referenceType`: `PURCHASE_INVOICE`
+     - `referenceId`: the new invoice ID
+3. Return the created invoice with items
+
+**Transaction Safety:** All steps must succeed together. If any step fails, the entire transaction rolls back, preventing partial updates like an invoice without stock changes.
 
 ---
 
@@ -390,20 +417,49 @@ GET    /api/supplier-payments/[id]      - get one payment
 
 **Logic on creation:**
 1. Auto-generate payment number from `Sequence` (key: `SUPPLIER_PAYMENT`)
-2. Create `SupplierPayment` record
-3. Update `PurchaseInvoice.paid` (add amount) and `PurchaseInvoice.balance` (subtract amount)
-4. Update `PurchaseInvoice.status` based on new balance:
-   - If `balance <= 0` → `PAID`
-   - If `paid > 0 && balance > 0` → `PARTIAL`
-   - Else → `PENDING`
-5. **Create `InventoryTransaction` record**:
-   - `type`: `PURCHASE` (or add new type like `PAYMENT` if needed)
-   - `referenceType`: `SUPPLIER_PAYMENT`
-   - `referenceId`: the new payment ID
+2. Wrap the following in `prisma.$transaction(async (tx) => { ... })`:
+   - Create `SupplierPayment` record
+   - Update `PurchaseInvoice.paid` (add amount) and `PurchaseInvoice.balance` (subtract amount)
+   - Update `PurchaseInvoice.status` based on new balance:
+     - If `balance <= 0` → `PAID`
+     - If `paid > 0 && balance > 0` → `PARTIAL`
+     - Else → `PENDING`
+3. Return the created payment
+
+**Transaction Safety:** Ensures the payment record and invoice balance/status stay in sync.
 
 ---
 
-### 7. Inventory Transactions
+### 7. Inventory Adjustments
+
+**File:** `app/api/inventory-adjustments/route.ts`
+
+```
+POST   /api/inventory-adjustments      - create adjustment (increase/decrease stock)
+```
+
+**Logic on creation (POST):**
+1. Validate `productId`, `type`, `quantity`
+2. Wrap the following in `prisma.$transaction(async (tx) => { ... })`:
+   - Look up product
+   - If type is increase (`PURCHASE`, `ADJUSTMENT_IN`):
+     - `Product.currentStock += quantity`
+   - If type is decrease (`SALE`, `ADJUSTMENT_OUT`, `EXPIRED`, `DAMAGED`, `LOST`, `RETURN_OUT`):
+     - Check `currentStock >= quantity`
+     - If not, return 400 error "Insufficient stock"
+     - `Product.currentStock -= quantity`
+   - Create `InventoryTransaction` record internally with:
+     - `type`: the adjustment type
+     - `quantity`: positive for increase, negative for decrease
+     - `referenceType`: `ADJUSTMENT`
+     - `notes`: user-provided reason
+3. Return the created transaction with product info
+
+**Transaction Safety:** Ensures stock update and transaction record are always created together.
+
+---
+
+### 8. Inventory Transactions (Read-Only)
 
 **File:** `app/api/inventory-transactions/route.ts`
 
@@ -412,11 +468,7 @@ GET    /api/inventory-transactions      - list transactions (filter by product, 
 GET    /api/inventory-transactions/[id] - get one transaction
 ```
 
-**Filters:**
-- `productId` — filter by product
-- `type` — filter by transaction type
-- `startDate` / `endDate` — filter by date range
-- `referenceType` — filter by reference type
+**Note:** `POST /api/inventory-transactions` is replaced by `POST /api/inventory-adjustments` above. Inventory Transactions are read-only audit records.
 
 ---
 
@@ -428,14 +480,25 @@ Add to the response:
 ```json
 {
   "purchase": {
-    "totalSuppliers": 38,
-    "lowStockItems": 14,
     "todayPurchase": 25450,
     "monthlyPurchase": 675000,
-    "pendingPayments": 120000
+    "inventoryValue": 182430,
+    "lowStockItems": 14,
+    "pendingPayments": 120000,
+    "totalProducts": 156,
+    "totalSuppliers": 38
   }
 }
 ```
+
+**Calculations:**
+- `todayPurchase` = sum of `grandTotal` for purchase invoices where `invoiceDate` is today
+- `monthlyPurchase` = sum of `grandTotal` for purchase invoices in current month
+- `inventoryValue` = sum of (`currentStock` × `purchasePrice`) for all active products
+- `lowStockItems` = count of products where `currentStock` < `minimumStock`
+- `pendingPayments` = sum of `balance` for all purchase invoices where `balance > 0`
+- `totalProducts` = count of active products
+- `totalSuppliers` = count of active suppliers
 
 ---
 
@@ -467,13 +530,14 @@ Add to the response:
 **File:** `app/products/page.tsx`
 
 **Features:**
-- Table: Product Name, SKU, Category, Purchase Price, Selling Price, Current Stock, Reorder Level, Status
-- Stock status badges: 🟢 Healthy, 🟡 Low Stock, 🔴 Out of Stock
+- Table: Product Name, Code, SKU, Category, Purchase Price, Selling Price, Current Stock, Min Stock, Max Stock, Status
+- Stock status badges: 🟢 Healthy, 🟡 Low Stock, 🔵 Overstock, 🔴 Out of Stock
 - Create/Edit dialog with all fields
-- Search by name/SKU
+- Search by name/code/SKU
 - Filter by category
 - Low stock alert section
 - Image preview if imageUrl exists
+- **Adjust Stock button** on each row — opens dialog to increase/decrease stock with reason
 
 **Pattern:** Same as suppliers page
 
@@ -526,7 +590,25 @@ Add to the response:
 
 ---
 
-### Page 6: Inventory Transactions
+### Page 6: Inventory Adjustment
+
+**File:** `app/inventory-adjustments/page.tsx`
+
+**Features:**
+- List of all adjustments
+- Create adjustment dialog:
+  - Select Product
+  - Current Stock (read-only)
+  - Operation: Radio buttons — Increase / Decrease
+  - Reason: Dropdown — Sale, Damage, Expired, Lost, Manual Correction, Opening Stock, Purchase Correction
+  - Quantity: Number input
+  - Notes: Text input
+- On save: stock updates, transaction created
+- Validation: cannot decrease below zero
+
+**Pattern:** Same as other CRUD pages with a form dialog
+
+### Page 7: Inventory Transactions
 
 **File:** `app/inventory-transactions/page.tsx`
 
@@ -539,14 +621,18 @@ Add to the response:
 
 ---
 
-### Page 7: Dashboard Update
+### Page 8: Dashboard Update
 
 **File:** `app/page.tsx`
 
-Add 3 stat cards:
-- Total Suppliers
+Add stat cards:
+- Today's Purchase
+- Monthly Purchase
+- Inventory Value
 - Low Stock Items
-- Pending Payments (sum of all invoice balances)
+- Pending Supplier Payments
+- Total Products
+- Total Suppliers
 
 ---
 
@@ -565,7 +651,8 @@ Add new nav group:
     { label: 'Categories', icon: FolderOpen, href: '/product-categories' },
     { label: 'Purchase Invoices', icon: ReceiptText, href: '/purchase-invoices' },
     { label: 'Supplier Payments', icon: Wallet, href: '/supplier-payments' },
-    { label: 'Stock History', icon: History, href: '/inventory-transactions' },
+    { label: 'Inventory Adjustment', icon: SlidersHorizontal, href: '/inventory-adjustments' },
+    { label: 'Inventory History', icon: History, href: '/inventory-transactions' },
   ],
 }
 ```
@@ -590,8 +677,9 @@ Add new nav group:
 11. Create `app/api/purchase-invoices/route.ts`
 12. Create `app/api/purchase-invoices/[id]/route.ts`
 13. Create `app/api/supplier-payments/route.ts`
-14. Create `app/api/inventory-transactions/route.ts`
-15. Extend `app/api/dashboard/route.ts` with purchase stats
+14. Create `app/api/inventory-adjustments/route.ts`
+15. Create `app/api/inventory-transactions/route.ts`
+16. Extend `app/api/dashboard/route.ts` with purchase stats
 
 ### Step 3: UI Pages (Day 2-3)
 16. Create `app/product-categories/page.tsx`
@@ -599,19 +687,21 @@ Add new nav group:
 18. Create `app/products/page.tsx`
 19. Create `app/purchase-invoices/page.tsx`
 20. Create `app/supplier-payments/page.tsx`
-21. Create `app/inventory-transactions/page.tsx`
-22. Update `components/dashboard/sidebar-nav.tsx`
-23. Update `app/page.tsx` with new stat cards
+21. Create `app/inventory-adjustments/page.tsx`
+22. Create `app/inventory-transactions/page.tsx`
+23. Update `components/dashboard/sidebar-nav.tsx`
+24. Update `app/page.tsx` with new stat cards
 
 ### Step 4: Testing (Day 3)
-24. Test category CRUD
-25. Test supplier CRUD + ledger
-26. Test product CRUD + low stock
-27. Test purchase invoice creation + stock update
-28. Test supplier payment + balance update
-29. Test inventory transactions
-30. Test dashboard widgets
-31. Verify existing features still work
+25. Test category CRUD
+26. Test supplier CRUD + ledger
+27. Test product CRUD + low stock + product code generation + min/max stock
+28. Test purchase invoice creation + stock update
+29. Test supplier payment + balance update
+30. Test inventory adjustment (increase/decrease) via POST /api/inventory-adjustments
+31. Test inventory transactions (read-only)
+32. Test dashboard widgets (today/monthly purchase, inventory value, low stock, pending payments, products, suppliers)
+33. Verify existing features still work
 
 ---
 
@@ -629,18 +719,20 @@ Add new nav group:
 | `app/api/purchase-invoices/route.ts` | New |
 | `app/api/purchase-invoices/[id]/route.ts` | New |
 | `app/api/supplier-payments/route.ts` | New |
+| `app/api/inventory-adjustments/route.ts` | New |
 | `app/api/inventory-transactions/route.ts` | New |
 | `app/product-categories/page.tsx` | New |
 | `app/suppliers/page.tsx` | New |
 | `app/products/page.tsx` | New |
 | `app/purchase-invoices/page.tsx` | New |
 | `app/supplier-payments/page.tsx` | New |
+| `app/inventory-adjustments/page.tsx` | New |
 | `app/inventory-transactions/page.tsx` | New |
 | `components/dashboard/sidebar-nav.tsx` | Update |
 | `app/page.tsx` | Update |
 | `app/api/dashboard/route.ts` | Update |
 
-**Total: 10 new files, 3 updated files**
+**Total: 12 new files, 3 updated files**
 
 ---
 
@@ -652,9 +744,16 @@ Add new nav group:
 | **`DateTime` for dates** | Prisma handles date filtering natively. Easier queries. |
 | **`Decimal` for money** | No floating-point rounding errors. Critical for financial accuracy. |
 | **Enums for types/statuses** | Type safety at DB level. No invalid values like "purchase", "Purchase", "PURCHASE". |
-| **Generic `InventoryTransaction`** | `referenceType` + `referenceId` pattern. Works for purchases, sales, adjustments, returns, prescriptions. Future-proof. |
-| **Separate `SupplierPayment`** | Multiple payments per invoice. No overwriting invoice data. |
+| **Product Code (`PRD-YYYYMMDD-001`)** | Auto-generated unique code for easy lookup and future barcode support. |
+| **`minimumStock` / `maximumStock`** | Better than single reorder level. Enables Healthy/Low/Overstock badges and smarter reorder alerts. |
+| **Calculated Stock Value** | Not stored. Computed as `currentStock × purchasePrice`. Avoids sync issues. |
+| **`POST /api/inventory-adjustments`** | Business-action endpoint. Internally creates `InventoryTransaction`. Cleaner separation. |
+| **Database Transactions** | Purchase Invoice creation, Supplier Payment, and Inventory Adjustment all use `prisma.$transaction` to ensure atomicity. Prevents partial updates. |
+| **Generic `InventoryTransaction`** | `referenceType` + `referenceId` pattern. No Prisma relation — pure audit log. Works for purchases, sales, adjustments, returns, prescriptions. Future-proof. |
+| **Separate `SupplierPayment`** | Multiple payments per invoice. No overwriting invoice data. Payments do NOT create inventory transactions. |
 | **`Product.currentStock`** | Simple number. Fast reads. Transactions provide audit trail. |
+
+**Optimistic Concurrency (Optional):** For a single clinic with few concurrent users, Prisma `$transaction` is sufficient. If concurrent stock adjustments become frequent, consider adding a `version` field to `Product` for optimistic locking later.
 
 ---
 
@@ -690,6 +789,14 @@ enum SupplierStatus {
   ACTIVE
   INACTIVE
 }
+
+enum ReferenceType {
+  PURCHASE_INVOICE
+  SALE_INVOICE
+  ADJUSTMENT
+  PRESCRIPTION
+  RETURN
+}
 ```
 
 ---
@@ -697,15 +804,19 @@ enum SupplierStatus {
 ## InventoryTransaction Reference Types
 
 ```prisma
-referenceType String?  // PURCHASE_INVOICE | SALE_INVOICE | PRESCRIPTION | ADJUSTMENT | RETURN
+referenceType ReferenceType?  // PURCHASE_INVOICE | SALE_INVOICE | PRESCRIPTION | ADJUSTMENT | RETURN
 referenceId  String?   // ID of the related record
 ```
+
+**Important:** `InventoryTransaction` has NO Prisma relation to any other table. It is a pure audit log, just like a financial ledger. `referenceType` uses the `ReferenceType` enum for type safety, while `referenceId` stores the related record ID as a string.
 
 This allows the same table to track:
 - Purchase → `PURCHASE_INVOICE` + purchaseInvoiceId
 - Sale → `SALE_INVOICE` + saleInvoiceId
 - Adjustment → `ADJUSTMENT` + adjustmentId
 - Return → `RETURN` + returnId
+
+**Supplier payments do NOT create inventory transactions.** Payments affect money only, not stock.
 
 ---
 
@@ -741,15 +852,56 @@ This allows the same table to track:
 
 ---
 
+## Inventory Adjustment Module
+
+The Inventory Adjustment module lets staff manually increase or decrease stock with full audit trail.
+
+### Adjustment Types
+
+| Type | Direction | Use Case |
+|------|-----------|----------|
+| `PURCHASE` | Increase | Handled by Purchase Invoice |
+| `SALE` | Decrease | Manual sale record (until billing is integrated) |
+| `ADJUSTMENT_IN` | Increase | Correction, found stock, opening stock |
+| `ADJUSTMENT_OUT` | Decrease | Damage, expired, lost, manual correction |
+| `RETURN_OUT` | Decrease | Return to supplier (future) |
+| `EXPIRED` | Decrease | Expired stock |
+| `DAMAGED` | Decrease | Damaged stock |
+| `LOST` | Decrease | Lost stock |
+
+### UI: Adjust Stock Dialog (on Products page)
+
+- Product name and current stock (read-only)
+- Operation: Increase / Decrease (radio buttons)
+- Reason: Sale, Damage, Expired, Lost, Manual Correction, Opening Stock, Purchase Correction
+- Quantity: number input
+- Notes: text input
+- Save button
+
+### API: POST /api/inventory-adjustments
+
+- Validates product exists
+- For decrease: checks sufficient stock, returns 400 if insufficient
+- Updates `Product.currentStock`
+- Creates `InventoryTransaction` record internally
+- Returns created transaction
+
+---
+
 ## Success Criteria
 
 - [ ] Product categories can be managed
 - [ ] Suppliers can be created, edited, deactivated
 - [ ] Supplier ledger shows purchases, payments, outstanding balance
 - [ ] Products can be created, edited, deactivated
+- [ ] Product code auto-generated on creation
+- [ ] Product min/max stock levels configured
 - [ ] Purchase invoice creates stock entries + inventory transactions
 - [ ] `Product.currentStock` increases correctly
 - [ ] Supplier payments can be recorded
 - [ ] Invoice balance updates after payment
-- [ ] Dashboard shows supplier count, low stock count, pending payments
+- [ ] Inventory adjustment via POST /api/inventory-adjustments increases stock correctly
+- [ ] Inventory adjustment via POST /api/inventory-adjustments decreases stock correctly
+- [ ] Cannot decrease stock below zero
+- [ ] Dashboard shows today's purchase, monthly purchase, inventory value, low stock, pending payments, products, suppliers
 - [ ] All existing features (patients, visits, billing) work exactly as before

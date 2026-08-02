@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { generatePurchaseNumber } from '@/lib/api-helpers';
+import { Prisma } from '@prisma/client';
 
 function toNumber(value: unknown): number {
   return Number(value || 0)
@@ -19,6 +21,7 @@ export async function GET(request: Request) {
     if (search) {
       where.OR = [
         { name: { contains: search } },
+        { code: { contains: search } },
         { sku: { contains: search } },
       ];
     }
@@ -49,6 +52,8 @@ export async function GET(request: Request) {
         sellingPrice: toNumber(p.sellingPrice),
         gstPercent: toNumber(p.gstPercent),
         currentStock: toNumber(p.currentStock),
+        minimumStock: p.minimumStock,
+        maximumStock: p.maximumStock,
       })),
       page,
       pageSize,
@@ -72,7 +77,8 @@ export async function POST(request: Request) {
       purchasePrice,
       sellingPrice,
       gstPercent,
-      reorderLevel,
+      minimumStock,
+      maximumStock,
       currentStock,
       imageUrl,
       active,
@@ -82,16 +88,20 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Product name is required' }, { status: 400 });
     }
 
+    const code = await generatePurchaseNumber('PRODUCT')
+
     const product = await prisma.product.create({
       data: {
         name: name.trim(),
+        code,
         sku: sku?.trim() || null,
         categoryId: categoryId || null,
         unit: unit?.trim() || 'pcs',
         purchasePrice: purchasePrice ?? 0,
         sellingPrice: sellingPrice ?? 0,
         gstPercent: gstPercent ?? 0,
-        reorderLevel: reorderLevel ?? 10,
+        minimumStock: minimumStock ?? 10,
+        maximumStock: maximumStock ?? 200,
         currentStock: currentStock ?? 0,
         imageUrl: imageUrl?.trim() || null,
         active: active ?? true,
@@ -108,12 +118,14 @@ export async function POST(request: Request) {
         sellingPrice: toNumber(product.sellingPrice),
         gstPercent: toNumber(product.gstPercent),
         currentStock: toNumber(product.currentStock),
+        minimumStock: product.minimumStock,
+        maximumStock: product.maximumStock,
       },
     }, { status: 201 });
   } catch (e: unknown) {
     console.error('Products POST error', e);
     if ((e as { code?: string }).code === 'P2002') {
-      return NextResponse.json({ error: 'SKU already exists' }, { status: 409 });
+      return NextResponse.json({ error: 'SKU or Product Code already exists' }, { status: 409 });
     }
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }

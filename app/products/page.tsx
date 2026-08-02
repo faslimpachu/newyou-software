@@ -33,6 +33,7 @@ interface Category {
 interface Product {
   id: string
   name: string
+  code: string
   sku: string | null
   categoryId: string | null
   category: { id: string; name: string } | null
@@ -40,7 +41,8 @@ interface Product {
   purchasePrice: number
   sellingPrice: number
   gstPercent: number
-  reorderLevel: number
+  minimumStock: number
+  maximumStock: number
   currentStock: number
   imageUrl: string | null
   active: boolean
@@ -49,13 +51,15 @@ interface Product {
 
 const emptyProduct = {
   name: '',
+  code: '',
   sku: '',
   categoryId: '',
   unit: 'pcs',
   purchasePrice: 0,
   sellingPrice: 0,
   gstPercent: 0,
-  reorderLevel: 10,
+  minimumStock: 10,
+  maximumStock: 200,
   currentStock: 0,
   imageUrl: '',
   active: true,
@@ -70,7 +74,7 @@ export default function ProductsPage() {
   const [form, setForm] = useState(emptyProduct)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
-  const [filterCategory, setFilterCategory] = useState('')
+  const [filterCategory, setFilterCategory] = useState<string>('')
   const [lowStockCount, setLowStockCount] = useState(0)
 
   const loadProducts = async () => {
@@ -150,14 +154,15 @@ export default function ProductsPage() {
     setEditingId(product.id)
     setForm({
       name: product.name,
+      code: product.code,
       sku: product.sku || '',
       categoryId: product.categoryId || '',
       unit: product.unit,
       purchasePrice: product.purchasePrice,
       sellingPrice: product.sellingPrice,
       gstPercent: product.gstPercent,
-      reorderLevel: product.reorderLevel,
-      currentStock: product.currentStock,
+      minimumStock: product.minimumStock,
+      maximumStock: product.maximumStock,
       imageUrl: product.imageUrl || '',
       active: product.active,
     })
@@ -176,9 +181,10 @@ export default function ProductsPage() {
     setForm(emptyProduct)
   }
 
-  const getStockStatus = (stock: number, reorderLevel: number) => {
+  const getStockStatus = (stock: number, minStock: number, maxStock: number) => {
     if (stock === 0) return { label: 'Out of Stock', variant: 'destructive' as const }
-    if (stock <= reorderLevel) return { label: 'Low Stock', variant: 'secondary' as const }
+    if (stock < minStock) return { label: 'Low Stock', variant: 'secondary' as const }
+    if (stock > maxStock) return { label: 'Overstock', variant: 'outline' as const }
     return { label: 'Healthy', variant: 'default' as const }
   }
 
@@ -201,7 +207,7 @@ export default function ProductsPage() {
             onChange={(e) => setSearch(e.target.value)}
             className="max-w-sm"
           />
-          <Select value={filterCategory} onValueChange={setFilterCategory}>
+          <Select value={filterCategory} onValueChange={(value) => setFilterCategory(value || '')}>
             <SelectTrigger className="w-[200px]">
               <SelectValue placeholder="All Categories" />
             </SelectTrigger>
@@ -237,6 +243,16 @@ export default function ProductsPage() {
                 />
               </div>
               <div className="space-y-2">
+                <Label htmlFor="code">Product Code</Label>
+                <Input
+                  id="code"
+                  value={form.code}
+                  onChange={(e) => setForm({ ...form, code: e.target.value })}
+                  disabled={!!editingId}
+                  placeholder="Auto-generated on create"
+                />
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="sku">SKU</Label>
                 <Input
                   id="sku"
@@ -246,7 +262,7 @@ export default function ProductsPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="categoryId">Category</Label>
-                <Select value={form.categoryId} onValueChange={(value) => setForm({ ...form, categoryId: value })}>
+                <Select value={form.categoryId || ''} onValueChange={(value) => setForm({ ...form, categoryId: value || '' })}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select category" />
                   </SelectTrigger>
@@ -298,24 +314,35 @@ export default function ProductsPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="reorderLevel">Reorder Level</Label>
+                <Label htmlFor="minimumStock">Minimum Stock</Label>
                 <Input
-                  id="reorderLevel"
+                  id="minimumStock"
                   type="number"
-                  value={form.reorderLevel}
-                  onChange={(e) => setForm({ ...form, reorderLevel: parseInt(e.target.value) || 0 })}
+                  value={form.minimumStock}
+                  onChange={(e) => setForm({ ...form, minimumStock: parseInt(e.target.value) || 0 })}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="currentStock">Current Stock</Label>
+                <Label htmlFor="maximumStock">Maximum Stock</Label>
                 <Input
-                  id="currentStock"
+                  id="maximumStock"
                   type="number"
-                  step="0.01"
-                  value={form.currentStock}
-                  onChange={(e) => setForm({ ...form, currentStock: parseFloat(e.target.value) || 0 })}
+                  value={form.maximumStock}
+                  onChange={(e) => setForm({ ...form, maximumStock: parseInt(e.target.value) || 0 })}
                 />
               </div>
+              {!editingId && (
+                <div className="space-y-2">
+                  <Label htmlFor="currentStock">Current Stock</Label>
+                  <Input
+                    id="currentStock"
+                    type="number"
+                    step="0.01"
+                    value={form.currentStock}
+                    onChange={(e) => setForm({ ...form, currentStock: parseFloat(e.target.value) || 0 })}
+                  />
+                </div>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="imageUrl">Image URL</Label>
                 <Input
@@ -363,21 +390,24 @@ export default function ProductsPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Product Name</TableHead>
+                    <TableHead>Code</TableHead>
                     <TableHead>SKU</TableHead>
                     <TableHead>Category</TableHead>
                     <TableHead>Purchase Price</TableHead>
                     <TableHead>Selling Price</TableHead>
                     <TableHead>Stock</TableHead>
+                    <TableHead>Min / Max</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {products.map((product) => {
-                    const stockStatus = getStockStatus(product.currentStock, product.reorderLevel)
+                    const stockStatus = getStockStatus(product.currentStock, product.minimumStock, product.maximumStock)
                     return (
                       <TableRow key={product.id}>
                         <TableCell className="font-medium">{product.name}</TableCell>
+                        <TableCell>{product.code}</TableCell>
                         <TableCell>{product.sku || '-'}</TableCell>
                         <TableCell>{product.category?.name || '-'}</TableCell>
                         <TableCell>₹{product.purchasePrice.toLocaleString('en-IN')}</TableCell>
@@ -385,8 +415,10 @@ export default function ProductsPage() {
                         <TableCell>
                           <div className="flex flex-col">
                             <span className="tabular-nums">{product.currentStock} {product.unit}</span>
-                            <span className="text-xs text-muted-foreground">Min: {product.reorderLevel}</span>
                           </div>
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-xs text-muted-foreground">Min: {product.minimumStock} / Max: {product.maximumStock}</span>
                         </TableCell>
                         <TableCell>
                           <Badge variant={stockStatus.variant}>{stockStatus.label}</Badge>
@@ -408,7 +440,7 @@ export default function ProductsPage() {
                   })}
                   {products.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center text-muted-foreground">
+                      <TableCell colSpan={10} className="text-center text-muted-foreground">
                         No products found
                       </TableCell>
                     </TableRow>

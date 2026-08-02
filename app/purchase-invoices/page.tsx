@@ -270,7 +270,7 @@ export default function PurchaseInvoicesPage() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="supplierId">Supplier</Label>
-                    <Select value={form.supplierId} onValueChange={(value) => setForm({ ...form, supplierId: value })}>
+                    <Select value={form.supplierId || ''} onValueChange={(value) => setForm({ ...form, supplierId: value || '' })}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select supplier" />
                       </SelectTrigger>
@@ -285,7 +285,7 @@ export default function PurchaseInvoicesPage() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="paymentMode">Payment Mode</Label>
-                    <Select value={form.paymentMode} onValueChange={(value) => setForm({ ...form, paymentMode: value })}>
+                    <Select value={form.paymentMode || ''} onValueChange={(value) => setForm({ ...form, paymentMode: value || '' })}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select mode" />
                       </SelectTrigger>
@@ -339,7 +339,7 @@ export default function PurchaseInvoicesPage() {
                       {form.items.map((item, index) => (
                         <TableRow key={index}>
                           <TableCell>
-                            <Select value={item.productId} onValueChange={(value) => handleItemChange(index, 'productId', value)}>
+                            <Select value={item.productId || ''} onValueChange={(value) => handleItemChange(index, 'productId', value || '')}>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select product" />
                               </SelectTrigger>

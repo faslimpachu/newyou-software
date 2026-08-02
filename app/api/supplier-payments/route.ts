@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { generatePurchaseNumber } from '@/lib/api-helpers';
+import { ValidationError } from '@/lib/api-helpers';
+import { Prisma } from '@prisma/client';
 
 function toNumber(value: unknown): number {
   return Number(value || 0)
@@ -70,18 +72,77 @@ export async function POST(request: Request) {
       notes,
     } = body;
 
-    if (!supplierId || !amount || !paymentDate) {
+    if (!supplierId || amount === undefined || amount === null || !paymentDate) {
       return NextResponse.json({ error: 'supplierId, amount, and paymentDate are required' }, { status: 400 });
     }
 
     const paymentNumber = await generatePurchaseNumber('SUPPLIER_PAYMENT')
 
+    const amountDecimal = new Prisma.Decimal(amount)
+    if (amountDecimal.lessThanOrEqualTo(0)) {
+      return NextResponse.json({ error: 'Payment amount must be greater than zero' }, { status: 400 });
+    }
+
     const payment = await prisma.$transaction(async (tx) => {
+      if (invoiceId) {
+        const invoice = await tx.purchaseInvoice.findUnique({
+          where: { id: invoiceId },
+        })
+
+        if (!invoice) {
+          throw new ValidationError('Purchase invoice not found')
+        }
+
+        if (invoice.supplierId !== supplierId) {
+          throw new ValidationError('Payment supplier does not match the invoice supplier')
+        }
+
+        const balance = new Prisma.Decimal(invoice.balance)
+        if (amountDecimal.greaterThan(balance)) {
+          throw new ValidationError(`Payment amount exceeds outstanding balance of ${balance}`)
+        }
+
+        const paid = new Prisma.Decimal(invoice.paid)
+        const newPaid = paid.plus(amountDecimal)
+        const grandTotal = new Prisma.Decimal(invoice.grandTotal)
+        const newBalance = grandTotal.minus(newPaid)
+        let status: 'PENDING' | 'PARTIAL' | 'PAID' | 'OVERDUE' = 'PENDING'
+        if (newBalance.lessThanOrEqualTo(0)) {
+          status = 'PAID'
+        } else if (newPaid.greaterThan(0)) {
+          status = 'PARTIAL'
+        }
+
+        const createdPayment = await tx.supplierPayment.create({
+          data: {
+            paymentNumber,
+            supplierId,
+            invoiceId: invoiceId || null,
+            amount,
+            paymentDate: new Date(paymentDate),
+            paymentMode: paymentMode || null,
+            reference: reference?.trim() || null,
+            notes: notes?.trim() || null,
+          },
+        })
+
+        await tx.purchaseInvoice.update({
+          where: { id: invoiceId },
+          data: {
+            paid: newPaid.toNumber(),
+            balance: newBalance.toNumber(),
+            status,
+          },
+        })
+
+        return createdPayment
+      }
+
       const createdPayment = await tx.supplierPayment.create({
         data: {
           paymentNumber,
           supplierId,
-          invoiceId: invoiceId || null,
+          invoiceId: null,
           amount,
           paymentDate: new Date(paymentDate),
           paymentMode: paymentMode || null,
@@ -89,32 +150,6 @@ export async function POST(request: Request) {
           notes: notes?.trim() || null,
         },
       })
-
-      if (invoiceId) {
-        const invoice = await tx.purchaseInvoice.findUnique({
-          where: { id: invoiceId },
-        })
-
-        if (invoice) {
-          const newPaid = Number(invoice.paid) + Number(amount)
-          const newBalance = Number(invoice.grandTotal) - newPaid
-          let status = 'PENDING'
-          if (newBalance <= 0) {
-            status = 'PAID'
-          } else if (newPaid > 0) {
-            status = 'PARTIAL'
-          }
-
-          await tx.purchaseInvoice.update({
-            where: { id: invoiceId },
-            data: {
-              paid: newPaid,
-              balance: newBalance,
-              status: status as 'PENDING' | 'PARTIAL' | 'PAID' | 'OVERDUE',
-            },
-          })
-        }
-      }
 
       return createdPayment
     })
@@ -134,6 +169,9 @@ export async function POST(request: Request) {
       } : null,
     }, { status: 201 })
   } catch (e: unknown) {
+    if (e instanceof ValidationError) {
+      return NextResponse.json({ error: e.message }, { status: 400 })
+    }
     console.error('SupplierPayments POST error', e)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }

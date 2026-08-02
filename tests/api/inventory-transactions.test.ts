@@ -14,6 +14,7 @@ beforeEach(async () => {
   await prisma.supplier.deleteMany()
   await prisma.product.deleteMany()
   await prisma.productCategory.deleteMany()
+  await prisma.sequence.deleteMany()
 })
 
 afterAll(async () => {
@@ -39,11 +40,14 @@ describe('Inventory Transactions API', () => {
     const product = await prisma.product.create({
       data: {
         name: 'Test Product',
+        code: 'PRD-20260802-0001',
         categoryId: category.id,
         unit: 'pcs',
         purchasePrice: 10,
         sellingPrice: 15,
         currentStock: 50,
+        minimumStock: 10,
+        maximumStock: 200,
       },
     })
     const invoice = await prisma.purchaseInvoice.create({
@@ -77,6 +81,8 @@ describe('Inventory Transactions API', () => {
     expect(data.transactions).toHaveLength(1)
     expect(data.transactions[0].type).toBe('PURCHASE')
     expect(data.transactions[0].product.name).toBe('Test Product')
+    expect(data.transactions[0].reference).toBe('PINV-TEST-001')
+    expect(data.transactions[0].notes).toBe('Purchase invoice PINV-TEST-001')
   })
 
   it('GET filters by productId', async () => {
@@ -89,21 +95,27 @@ describe('Inventory Transactions API', () => {
     const product1 = await prisma.product.create({
       data: {
         name: 'Product 1',
+        code: 'PRD-20260802-0002',
         categoryId: category.id,
         unit: 'pcs',
         purchasePrice: 10,
         sellingPrice: 15,
         currentStock: 50,
+        minimumStock: 10,
+        maximumStock: 200,
       },
     })
     const product2 = await prisma.product.create({
       data: {
         name: 'Product 2',
+        code: 'PRD-20260802-0003',
         categoryId: category.id,
         unit: 'pcs',
         purchasePrice: 20,
         sellingPrice: 30,
         currentStock: 30,
+        minimumStock: 10,
+        maximumStock: 200,
       },
     })
     await prisma.inventoryTransaction.create({

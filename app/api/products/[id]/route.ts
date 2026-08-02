@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
 
 function toNumber(value: unknown): number {
   return Number(value || 0)
@@ -46,11 +47,16 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       purchasePrice,
       sellingPrice,
       gstPercent,
-      reorderLevel,
+      minimumStock,
+      maximumStock,
       currentStock,
       imageUrl,
       active,
     } = body;
+
+    if (currentStock !== undefined) {
+      return NextResponse.json({ error: 'Current stock cannot be updated directly. Use inventory adjustment to correct stock levels.' }, { status: 400 });
+    }
 
     const product = await prisma.product.update({
       where: { id },
@@ -62,8 +68,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         ...(purchasePrice !== undefined && { purchasePrice }),
         ...(sellingPrice !== undefined && { sellingPrice }),
         ...(gstPercent !== undefined && { gstPercent }),
-        ...(reorderLevel !== undefined && { reorderLevel }),
-        ...(currentStock !== undefined && { currentStock }),
+        ...(minimumStock !== undefined && { minimumStock }),
+        ...(maximumStock !== undefined && { maximumStock }),
         ...(imageUrl !== undefined && { imageUrl: imageUrl?.trim() || null }),
         ...(active !== undefined && { active }),
       },
@@ -79,12 +85,14 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         sellingPrice: toNumber(product.sellingPrice),
         gstPercent: toNumber(product.gstPercent),
         currentStock: toNumber(product.currentStock),
+        minimumStock: product.minimumStock,
+        maximumStock: product.maximumStock,
       },
     });
   } catch (e: unknown) {
     console.error('Product PATCH error', e);
     if ((e as { code?: string }).code === 'P2002') {
-      return NextResponse.json({ error: 'SKU already exists' }, { status: 409 });
+      return NextResponse.json({ error: 'SKU or Product Code already exists' }, { status: 409 });
     }
     if ((e as { code?: string }).code === 'P2025') {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 });

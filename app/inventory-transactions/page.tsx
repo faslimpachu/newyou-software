@@ -40,7 +40,6 @@ interface InventoryTransaction {
   notes: string | null
   createdAt: string
   product: { id: string; name: string; sku: string | null }
-  purchaseInvoice: { id: string; invoiceNumber: string } | null
 }
 
 export default function InventoryTransactionsPage() {
@@ -141,7 +140,7 @@ export default function InventoryTransactionsPage() {
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
               <div className="space-y-2">
                 <Label htmlFor="productId">Product</Label>
-                <Select value={filters.productId} onValueChange={(value) => setFilters({ ...filters, productId: value })}>
+                <Select value={filters.productId || ''} onValueChange={(value) => setFilters({ ...filters, productId: value || '' })}>
                   <SelectTrigger>
                     <SelectValue placeholder="All Products" />
                   </SelectTrigger>
@@ -157,7 +156,7 @@ export default function InventoryTransactionsPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="type">Type</Label>
-                <Select value={filters.type} onValueChange={(value) => setFilters({ ...filters, type: value })}>
+                <Select value={filters.type || ''} onValueChange={(value) => setFilters({ ...filters, type: value || '' })}>
                   <SelectTrigger>
                     <SelectValue placeholder="All Types" />
                   </SelectTrigger>
@@ -237,11 +236,9 @@ export default function InventoryTransactionsPage() {
                           {transaction.quantity > 0 ? '+' : ''}{transaction.quantity}
                         </TableCell>
                         <TableCell>
-                          {transaction.purchaseInvoice ? (
-                            <span className="text-sm">{transaction.purchaseInvoice.invoiceNumber}</span>
-                          ) : (
-                            <span className="text-sm text-muted-foreground">-</span>
-                          )}
+                          <span className="text-sm">
+                            {transaction.reference || '-'}
+                          </span>
                         </TableCell>
                         <TableCell className="max-w-[200px] truncate">{transaction.notes || '-'}</TableCell>
                         <TableCell>{new Date(transaction.createdAt).toLocaleString('en-IN')}</TableCell>

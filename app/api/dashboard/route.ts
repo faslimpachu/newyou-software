@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
 
 function startOfDay(date: Date) {
   const d = new Date(date)
@@ -192,14 +193,14 @@ export async function GET() {
           prisma.supplier.count({ where: { status: 'ACTIVE' } }),
           prisma.product.findMany({
             where: { active: true },
-            select: { id: true, currentStock: true, reorderLevel: true },
+            select: { id: true, currentStock: true, minimumStock: true, maximumStock: true },
           }),
           prisma.purchaseInvoice.aggregate({
-            where: { createdAt: { gte: todayStart } },
+            where: { invoiceDate: { gte: todayStart } },
             _sum: { grandTotal: true },
           }),
           prisma.purchaseInvoice.aggregate({
-            where: { createdAt: { gte: monthStart } },
+            where: { invoiceDate: { gte: monthStart } },
             _sum: { grandTotal: true },
           }),
           prisma.purchaseInvoice.aggregate({
@@ -208,7 +209,7 @@ export async function GET() {
           }),
         ])
 
-        const lowStockItems = lowStockProducts.filter((p) => Number(p.currentStock) <= p.reorderLevel).length
+        const lowStockItems = lowStockProducts.filter((p) => new Prisma.Decimal(p.currentStock).lessThan(p.minimumStock)).length
 
         return {
           totalSuppliers,
