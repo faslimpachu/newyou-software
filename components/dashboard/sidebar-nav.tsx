@@ -6,11 +6,17 @@ import {
   Activity,
   BarChart3,
   CalendarClock,
+  FolderOpen,
   HeartPulse,
+  History,
   LayoutDashboard,
+  Package,
   Receipt,
+  ReceiptText,
+  Truck,
   UserPlus,
   Users,
+  Wallet,
   type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -48,6 +54,17 @@ const navGroups: { heading: string; items: NavItem[] }[] = [
     heading: 'Operations',
     items: [
       { label: 'Follow-ups', icon: CalendarClock, href: '/follow-ups' },
+    ],
+  },
+  {
+    heading: 'Purchase & Inventory',
+    items: [
+      { label: 'Suppliers', icon: Truck, href: '/suppliers' },
+      { label: 'Products', icon: Package, href: '/products' },
+      { label: 'Categories', icon: FolderOpen, href: '/product-categories' },
+      { label: 'Purchase Invoices', icon: ReceiptText, href: '/purchase-invoices' },
+      { label: 'Supplier Payments', icon: Wallet, href: '/supplier-payments' },
+      { label: 'Stock History', icon: History, href: '/inventory-transactions' },
     ],
   },
   {

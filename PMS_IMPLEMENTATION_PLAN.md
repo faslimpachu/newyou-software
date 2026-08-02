@@ -32,6 +32,37 @@ No GRN, no PO, no batches, no returns. Just: **Buy products → stock increases 
 Add these models to `prisma/schema.prisma`:
 
 ```prisma
+// --- Enums ---
+enum TransactionType {
+  PURCHASE
+  SALE
+  ADJUSTMENT_IN
+  ADJUSTMENT_OUT
+  RETURN_OUT
+  EXPIRED
+  DAMAGED
+  LOST
+}
+
+enum PaymentMode {
+  CASH
+  BANK
+  UPI
+  CREDIT
+}
+
+enum PaymentStatus {
+  PENDING
+  PARTIAL
+  PAID
+  OVERDUE
+}
+
+enum SupplierStatus {
+  ACTIVE
+  INACTIVE
+}
+
 // --- Product Category ---
 model ProductCategory {
   id          String   @id @default(uuid())
@@ -47,16 +78,16 @@ model ProductCategory {
 
 // --- Supplier ---
 model Supplier {
-  id              String   @id @default(uuid())
+  id              String        @id @default(uuid())
   supplierName    String
   contactPerson   String?
   phone           String?
   email           String?
   address         String?
   gstNumber       String?
-  openingBalance  Float    @default(0)
-  status          String   @default("active")
-  createdAt       DateTime @default(now())
+  openingBalance  Decimal       @default(0)
+  status          SupplierStatus @default(ACTIVE)
+  createdAt       DateTime      @default(now())
 
   purchaseInvoices  PurchaseInvoice[]
   payments          SupplierPayment[]
@@ -71,11 +102,11 @@ model Product {
   sku           String?  @unique
   categoryId    String?
   unit          String   @default("pcs")
-  purchasePrice Float
-  sellingPrice  Float
-  gstPercent    Float    @default(0)
+  purchasePrice Decimal
+  sellingPrice  Decimal
+  gstPercent    Decimal  @default(0)
   reorderLevel  Int      @default(10)
-  currentStock  Float    @default(0)
+  currentStock  Decimal  @default(0)
   imageUrl      String?
   active        Boolean  @default(true)
   createdAt     DateTime @default(now())
@@ -89,19 +120,20 @@ model Product {
 
 // --- Purchase Invoice ---
 model PurchaseInvoice {
-  id            String   @id @default(uuid())
-  invoiceNumber String   @unique
-  invoiceDate   String
+  id            String         @id @default(uuid())
+  invoiceNumber String         @unique
+  invoiceDate   DateTime
   supplierId    String
-  paymentMode   String?
-  dueDate       String?
+  paymentMode   PaymentMode?
+  dueDate       DateTime?
   notes         String?
-  subtotal      Float
-  tax           Float
-  grandTotal    Float
-  paid          Float    @default(0)
-  balance       Float
-  createdAt     DateTime @default(now())
+  subtotal      Decimal
+  tax           Decimal
+  grandTotal    Decimal
+  paid          Decimal        @default(0)
+  balance       Decimal
+  status        PaymentStatus  @default(PENDING)
+  createdAt     DateTime       @default(now())
 
   supplier       Supplier           @relation(fields: [supplierId], references: [id])
   items          PurchaseInvoiceItem[]
@@ -115,9 +147,9 @@ model PurchaseInvoiceItem {
   id           String @id @default(uuid())
   invoiceId    String
   productId    String
-  quantity     Float
-  purchaseRate Float
-  amount       Float
+  quantity     Decimal
+  purchaseRate Decimal
+  amount       Decimal
 
   invoice PurchaseInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   product Product        @relation(fields: [productId], references: [id])
@@ -127,16 +159,16 @@ model PurchaseInvoiceItem {
 
 // --- Supplier Payment ---
 model SupplierPayment {
-  id            String   @id @default(uuid())
-  paymentNumber String   @unique
+  id            String         @id @default(uuid())
+  paymentNumber String         @unique
   supplierId    String
   invoiceId     String?
-  amount        Float
-  paymentDate   String
-  paymentMode   String?
+  amount        Decimal
+  paymentDate   DateTime
+  paymentMode   PaymentMode?
   reference     String?
   notes         String?
-  createdAt     DateTime @default(now())
+  createdAt     DateTime       @default(now())
 
   supplier   Supplier        @relation(fields: [supplierId], references: [id])
   invoice    PurchaseInvoice? @relation(fields: [invoiceId], references: [id])
@@ -146,27 +178,31 @@ model SupplierPayment {
 
 // --- Inventory Transaction (Stock Audit Trail) ---
 model InventoryTransaction {
-  id           String   @id @default(uuid())
+  id           String            @id @default(uuid())
   productId    String
-  type         String   // purchase | sale | adjustment_in | adjustment_out | expired | damaged | lost | return_out
-  quantity     Float
-  referenceId  String?  // ID of related record
+  type         TransactionType
+  quantity     Decimal
+  referenceType String?          // PURCHASE_INVOICE | SUPPLIER_PAYMENT | PURCHASE_RETURN | ADJUSTMENT | SALE_INVOICE | PRESCRIPTION
+  referenceId  String?
   notes        String?
-  createdAt    DateTime @default(now())
+  createdAt    DateTime          @default(now())
 
-  product Product        @relation(fields: [productId], references: [id])
-  invoice PurchaseInvoice? @relation(fields: [referenceId], references: [id])
+  product        Product        @relation(fields: [productId], references: [id])
+  purchaseInvoice PurchaseInvoice? @relation(fields: [referenceId], references: [id])
 
   @@map("inventory_transactions")
+  @@index([productId, type])
+  @@index([referenceType, referenceId])
 }
 
-// --- Auto-number Sequence ---
-model PurchaseSequence {
-  id         String   @id @default("GLOBAL")
+// --- Generic Sequence ---
+model Sequence {
+  id         String   @id
+  name       String   @unique
   lastNumber Int      @default(0)
   updatedAt  DateTime @default(now())
 
-  @@map("purchase_sequences")
+  @@map("sequences")
 }
 ```
 
@@ -188,17 +224,25 @@ npx prisma studio
 
 ## Seed Data
 
-### Seed: PurchaseSequence
+### Seed: Sequences
 
 ```ts
-await prisma.purchaseSequence.upsert({
-  where: { id: 'GLOBAL' },
-  update: {},
-  create: { id: 'GLOBAL', lastNumber: 0 },
-})
+const sequences = [
+  { id: 'PURCHASE_INVOICE', name: 'Purchase Invoice' },
+  { id: 'SUPPLIER_PAYMENT', name: 'Supplier Payment' },
+  { id: 'SALE_INVOICE', name: 'Sale Invoice' },
+]
+
+for (const seq of sequences) {
+  await prisma.sequence.upsert({
+    where: { id: seq.id },
+    update: {},
+    create: { id: seq.id, name: seq.name, lastNumber: 0 },
+  })
+}
 ```
 
-### Seed: ProductCategories (Optional but Recommended)
+### Seed: Product Categories
 
 ```ts
 const categories = [
@@ -223,10 +267,11 @@ for (const name of categories) {
 
 ## Numbering Format
 
-| Document | Format |
-|----------|--------|
-| Purchase Invoice | `PINV-YYYYMMDD-001` |
-| Supplier Payment | `PPAY-YYYYMMDD-001` |
+| Document | Sequence Key | Format |
+|----------|--------------|--------|
+| Purchase Invoice | `PURCHASE_INVOICE` | `PINV-YYYYMMDD-001` |
+| Supplier Payment | `SUPPLIER_PAYMENT` | `PPAY-YYYYMMDD-001` |
+| Sale Invoice | `SALE_INVOICE` | `SINV-YYYYMMDD-001` |
 
 Example: `PINV-20260802-0001`
 
@@ -234,20 +279,39 @@ Example: `PINV-20260802-0001`
 
 ## API Routes
 
-### 1. Product Categories
+### 1. Sequences (Internal Helper)
+
+**File:** `app/api/internal/sequences/route.ts` (or use a lib helper)
+
+Helper function to generate next number:
+```ts
+async function getNextSequence(name: string): Promise<string> {
+  const seq = await prisma.sequence.update({
+    where: { id: name },
+    data: { lastNumber: { increment: 1 } },
+  })
+  const date = new Date().toISOString().slice(0, 10).replace(/-/g, '')
+  const num = String(seq.lastNumber).padStart(4, '0')
+  return `${name.slice(0, 4).toUpperCase()}-${date}-${num}`
+}
+```
+
+---
+
+### 2. Product Categories
 
 **File:** `app/api/product-categories/route.ts`
 
 ```
 GET    /api/product-categories          - list all categories
-POST   /api/product-categories          - create category (admin only)
+POST   /api/product-categories          - create category
 PATCH  /api/product-categories/[id]     - update category
 DELETE /api/product-categories/[id]     - deactivate category
 ```
 
 ---
 
-### 2. Suppliers
+### 3. Suppliers
 
 **File:** `app/api/suppliers/route.ts`
 
@@ -268,7 +332,7 @@ GET    /api/suppliers/[id]/purchases    - purchase history
   "totalPurchases": 324000,
   "totalPayments": 279000,
   "outstandingBalance": 45000,
-  "lastPurchaseDate": "2026-07-12",
+  "lastPurchaseDate": "2026-07-12T00:00:00.000Z",
   "recentPurchases": [...],
   "recentPayments": [...]
 }
@@ -276,7 +340,7 @@ GET    /api/suppliers/[id]/purchases    - purchase history
 
 ---
 
-### 3. Products
+### 4. Products
 
 **File:** `app/api/products/route.ts`
 
@@ -291,7 +355,7 @@ GET    /api/products/low-stock          - products below reorderLevel
 
 ---
 
-### 4. Purchase Invoices
+### 5. Purchase Invoices
 
 **File:** `app/api/purchase-invoices/route.ts`
 
@@ -302,16 +366,19 @@ GET    /api/purchase-invoices/[id]      - get one purchase invoice
 ```
 
 **Logic on creation:**
-1. Auto-generate invoice number from `PurchaseSequence`
+1. Auto-generate invoice number from `Sequence` (key: `PURCHASE_INVOICE`)
 2. Create `PurchaseInvoice` record
 3. Create `PurchaseInvoiceItem` records
 4. **Update `Product.currentStock` for each item** (add quantity)
-5. **Create `InventoryTransaction` record** for each item (type: "purchase")
+5. **Create `InventoryTransaction` record** for each item:
+   - `type`: `PURCHASE`
+   - `referenceType`: `PURCHASE_INVOICE`
+   - `referenceId`: the new invoice ID
 6. Return the created invoice with items
 
 ---
 
-### 5. Supplier Payments
+### 6. Supplier Payments
 
 **File:** `app/api/supplier-payments/route.ts`
 
@@ -322,25 +389,38 @@ GET    /api/supplier-payments/[id]      - get one payment
 ```
 
 **Logic on creation:**
-1. Auto-generate payment number from `PurchaseSequence`
+1. Auto-generate payment number from `Sequence` (key: `SUPPLIER_PAYMENT`)
 2. Create `SupplierPayment` record
-3. Update `PurchaseInvoice.paid` and `PurchaseInvoice.balance`
-4. Create `InventoryTransaction` record (type: "payment")
+3. Update `PurchaseInvoice.paid` (add amount) and `PurchaseInvoice.balance` (subtract amount)
+4. Update `PurchaseInvoice.status` based on new balance:
+   - If `balance <= 0` → `PAID`
+   - If `paid > 0 && balance > 0` → `PARTIAL`
+   - Else → `PENDING`
+5. **Create `InventoryTransaction` record**:
+   - `type`: `PURCHASE` (or add new type like `PAYMENT` if needed)
+   - `referenceType`: `SUPPLIER_PAYMENT`
+   - `referenceId`: the new payment ID
 
 ---
 
-### 6. Inventory Transactions
+### 7. Inventory Transactions
 
 **File:** `app/api/inventory-transactions/route.ts`
 
 ```
-GET    /api/inventory-transactions      - list transactions (filter by product, type, date)
+GET    /api/inventory-transactions      - list transactions (filter by product, type, date range)
 GET    /api/inventory-transactions/[id] - get one transaction
 ```
 
+**Filters:**
+- `productId` — filter by product
+- `type` — filter by transaction type
+- `startDate` / `endDate` — filter by date range
+- `referenceType` — filter by reference type
+
 ---
 
-### 7. Dashboard (Extend existing)
+### 8. Dashboard (Extend existing)
 
 **File:** `app/api/dashboard/route.ts`
 
@@ -495,42 +575,43 @@ Add new nav group:
 ## Implementation Order
 
 ### Step 1: Schema (Day 1)
-1. Add 8 new models to `prisma/schema.prisma`
+1. Add 9 new models to `prisma/schema.prisma`
 2. Run migration: `npx prisma migrate dev --name add-purchase-management`
-3. Update `prisma/seed.ts` to include `PurchaseSequence` + `ProductCategory` seeds
+3. Update `prisma/seed.ts` to include `Sequence` + `ProductCategory` seeds
 4. Run seed: `npm run db:seed`
 
 ### Step 2: API Routes (Day 1-2)
-5. Create `app/api/product-categories/route.ts`
-6. Create `app/api/suppliers/route.ts`
-7. Create `app/api/suppliers/[id]/route.ts`
-8. Create `app/api/products/route.ts`
-9. Create `app/api/products/[id]/route.ts`
-10. Create `app/api/purchase-invoices/route.ts`
-11. Create `app/api/purchase-invoices/[id]/route.ts`
-12. Create `app/api/supplier-payments/route.ts`
-13. Create `app/api/inventory-transactions/route.ts`
-14. Extend `app/api/dashboard/route.ts` with purchase stats
+5. Create sequence helper
+6. Create `app/api/product-categories/route.ts`
+7. Create `app/api/suppliers/route.ts`
+8. Create `app/api/suppliers/[id]/route.ts`
+9. Create `app/api/products/route.ts`
+10. Create `app/api/products/[id]/route.ts`
+11. Create `app/api/purchase-invoices/route.ts`
+12. Create `app/api/purchase-invoices/[id]/route.ts`
+13. Create `app/api/supplier-payments/route.ts`
+14. Create `app/api/inventory-transactions/route.ts`
+15. Extend `app/api/dashboard/route.ts` with purchase stats
 
 ### Step 3: UI Pages (Day 2-3)
-15. Create `app/product-categories/page.tsx`
-16. Create `app/suppliers/page.tsx`
-17. Create `app/products/page.tsx`
-18. Create `app/purchase-invoices/page.tsx`
-19. Create `app/supplier-payments/page.tsx`
-20. Create `app/inventory-transactions/page.tsx`
-21. Update `components/dashboard/sidebar-nav.tsx`
-22. Update `app/page.tsx` with new stat cards
+16. Create `app/product-categories/page.tsx`
+17. Create `app/suppliers/page.tsx`
+18. Create `app/products/page.tsx`
+19. Create `app/purchase-invoices/page.tsx`
+20. Create `app/supplier-payments/page.tsx`
+21. Create `app/inventory-transactions/page.tsx`
+22. Update `components/dashboard/sidebar-nav.tsx`
+23. Update `app/page.tsx` with new stat cards
 
 ### Step 4: Testing (Day 3)
-23. Test category CRUD
-24. Test supplier CRUD + ledger
-25. Test product CRUD + low stock
-26. Test purchase invoice creation + stock update
-27. Test supplier payment + balance update
-28. Test inventory transactions
-29. Test dashboard widgets
-30. Verify existing features still work
+24. Test category CRUD
+25. Test supplier CRUD + ledger
+26. Test product CRUD + low stock
+27. Test purchase invoice creation + stock update
+28. Test supplier payment + balance update
+29. Test inventory transactions
+30. Test dashboard widgets
+31. Verify existing features still work
 
 ---
 
@@ -538,8 +619,8 @@ Add new nav group:
 
 | File | Action |
 |------|--------|
-| `prisma/schema.prisma` | Add 8 models |
-| `prisma/seed.ts` | Add PurchaseSequence + ProductCategory seeds |
+| `prisma/schema.prisma` | Add 9 models + 5 enums |
+| `prisma/seed.ts` | Add Sequence + ProductCategory seeds |
 | `app/api/product-categories/route.ts` | New |
 | `app/api/suppliers/route.ts` | New |
 | `app/api/suppliers/[id]/route.ts` | New |
@@ -563,18 +644,68 @@ Add new nav group:
 
 ---
 
-## Key Improvements from Feedback
+## Key Design Decisions
 
-| Feature | Implementation |
-|---------|----------------|
-| **Product Category** | Separate `ProductCategory` model with seed data |
-| **Supplier Ledger** | Computed in `GET /api/suppliers/[id]` — total purchases, payments, outstanding |
-| **Supplier Payments** | Separate `SupplierPayment` model — tracks multiple payments per invoice |
-| **Inventory Transactions** | `InventoryTransaction` model — audit trail for all stock changes |
-| **Unit Options** | Free text field with common defaults (pcs, bottle, kg, litre, packet, strip, box, tablet, capsule) |
-| **Product Image** | Optional `imageUrl` field on Product |
-| **Supplier History** | Shown in supplier detail view (purchases, payments, last purchase date) |
-| **Purchase Print** | Print button on purchase invoice detail page (uses existing print pattern) |
+| Decision | Rationale |
+|----------|-----------|
+| **Generic `Sequence` table** | One table for all numbering needs. Add new sequence types without schema changes. |
+| **`DateTime` for dates** | Prisma handles date filtering natively. Easier queries. |
+| **`Decimal` for money** | No floating-point rounding errors. Critical for financial accuracy. |
+| **Enums for types/statuses** | Type safety at DB level. No invalid values like "purchase", "Purchase", "PURCHASE". |
+| **Generic `InventoryTransaction`** | `referenceType` + `referenceId` pattern. Works for purchases, sales, adjustments, returns, prescriptions. Future-proof. |
+| **Separate `SupplierPayment`** | Multiple payments per invoice. No overwriting invoice data. |
+| **`Product.currentStock`** | Simple number. Fast reads. Transactions provide audit trail. |
+
+---
+
+## Enum Definitions
+
+```prisma
+enum TransactionType {
+  PURCHASE           // Stock added from purchase
+  SALE               // Stock reduced from sale
+  ADJUSTMENT_IN      // Manual stock increase
+  ADJUSTMENT_OUT     // Manual stock decrease
+  RETURN_OUT         // Stock returned to supplier
+  EXPIRED            // Stock expired
+  DAMAGED            // Stock damaged
+  LOST               // Stock lost
+}
+
+enum PaymentMode {
+  CASH
+  BANK
+  UPI
+  CREDIT
+}
+
+enum PaymentStatus {
+  PENDING    // No payment made
+  PARTIAL    // Some payment made
+  PAID       // Fully paid
+  OVERDUE    // Past due date with balance
+}
+
+enum SupplierStatus {
+  ACTIVE
+  INACTIVE
+}
+```
+
+---
+
+## InventoryTransaction Reference Types
+
+```prisma
+referenceType String?  // PURCHASE_INVOICE | SALE_INVOICE | PRESCRIPTION | ADJUSTMENT | RETURN
+referenceId  String?   // ID of the related record
+```
+
+This allows the same table to track:
+- Purchase → `PURCHASE_INVOICE` + purchaseInvoiceId
+- Sale → `SALE_INVOICE` + saleInvoiceId
+- Adjustment → `ADJUSTMENT` + adjustmentId
+- Return → `RETURN` + returnId
 
 ---
 
@@ -586,8 +717,11 @@ Add new nav group:
 | Data migration risk | Only new tables are added; existing data untouched |
 | Complex business logic | Stock update is a simple `UPDATE products SET currentStock = currentStock + ?` |
 | Integration bugs | No integration with existing Invoice/Prescription yet |
-| Rollback | Drop the 8 new tables if needed; everything else stays intact |
+| Rollback | Drop the 9 new tables if needed; everything else stays intact |
 | Payment tracking | Separate `SupplierPayment` table — no overwriting of invoice data |
+| Date handling | `DateTime` uses native DB date types — no parsing issues |
+| Financial accuracy | `Decimal` prevents rounding errors in money calculations |
+| Type safety | Enums prevent invalid values in DB |
 
 ---
 
@@ -601,6 +735,9 @@ Add new nav group:
 | Purchase Returns | When returns become frequent |
 | Integration with existing billing | Phase 2, after PMS is stable |
 | Barcode scanning | When you have barcode printers |
+| Multi-warehouse | When you have multiple storage locations |
+| GST Reports | When you need tax filing |
+| Full accounting | When you need double-entry bookkeeping |
 
 ---
 

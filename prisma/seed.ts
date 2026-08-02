@@ -36,6 +36,37 @@ async function main() {
     create: { id: 'AYURCARE', centerType: 'AYURCARE', lastNumber: 0 },
   })
 
+  const sequences = [
+    { id: 'PURCHASE_INVOICE', name: 'Purchase Invoice' },
+    { id: 'SUPPLIER_PAYMENT', name: 'Supplier Payment' },
+    { id: 'SALE_INVOICE', name: 'Sale Invoice' },
+  ]
+
+  for (const seq of sequences) {
+    await prisma.sequence.upsert({
+      where: { id: seq.id },
+      update: {},
+      create: { id: seq.id, name: seq.name, lastNumber: 0 },
+    })
+  }
+
+  const categories = [
+    'Medicines',
+    'Supplements',
+    'Herbal Products',
+    'Equipment',
+    'Consumables',
+    'Other',
+  ]
+
+  for (const name of categories) {
+    await prisma.productCategory.upsert({
+      where: { name },
+      update: {},
+      create: { name, description: name },
+    })
+  }
+
   console.log('Seed completed')
 }
 

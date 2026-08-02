@@ -13,6 +13,14 @@ export interface DashboardStats {
   followupToday: number
 }
 
+export interface DashboardPurchaseStats {
+  totalSuppliers: number
+  lowStockItems: number
+  todayPurchase: number
+  monthlyPurchase: number
+  pendingPayments: number
+}
+
 export interface DashboardChartData {
   monthlyRegistrations: { month: string; registrations: number }[]
   consultationTypes: { type: string; value: number; fill: string }[]
@@ -68,6 +76,7 @@ export interface DashboardBill {
 
 export interface DashboardData {
   stats: DashboardStats
+  purchase: DashboardPurchaseStats
   monthlyRegistrations: { month: string; registrations: number }[]
   consultationTypes: { type: string; value: number; fill: string }[]
   monthlyRevenue: { month: string; revenue: number; expenses: number }[]

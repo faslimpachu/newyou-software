@@ -129,7 +129,7 @@ export async function GET() {
 
     const todayRevenue = monthlyRevenue[11]?.revenue || 0
 
-    const [recentRegistrations, upcomingFollowUps, recentBilling] = await Promise.all([
+    const [recentRegistrations, upcomingFollowUps, recentBilling, purchaseStats] = await Promise.all([
       prisma.patient.findMany({
         orderBy: { createdAt: 'desc' },
         take: 10,
@@ -178,6 +178,46 @@ export async function GET() {
           createdAt: true,
         },
       }),
+      (async () => {
+        const todayStart = startOfDay(now)
+        const monthStart = startOfMonth(now)
+
+        const [
+          totalSuppliers,
+          lowStockProducts,
+          todayPurchase,
+          monthPurchase,
+          pendingPayments,
+        ] = await Promise.all([
+          prisma.supplier.count({ where: { status: 'ACTIVE' } }),
+          prisma.product.findMany({
+            where: { active: true },
+            select: { id: true, currentStock: true, reorderLevel: true },
+          }),
+          prisma.purchaseInvoice.aggregate({
+            where: { createdAt: { gte: todayStart } },
+            _sum: { grandTotal: true },
+          }),
+          prisma.purchaseInvoice.aggregate({
+            where: { createdAt: { gte: monthStart } },
+            _sum: { grandTotal: true },
+          }),
+          prisma.purchaseInvoice.aggregate({
+            where: { status: { in: ['PENDING', 'PARTIAL'] } },
+            _sum: { balance: true },
+          }),
+        ])
+
+        const lowStockItems = lowStockProducts.filter((p) => Number(p.currentStock) <= p.reorderLevel).length
+
+        return {
+          totalSuppliers,
+          lowStockItems,
+          todayPurchase: todayPurchase._sum.grandTotal || 0,
+          monthlyPurchase: monthPurchase._sum.grandTotal || 0,
+          pendingPayments: pendingPayments._sum.balance || 0,
+        }
+      })(),
     ])
 
     return NextResponse.json({
@@ -191,6 +231,7 @@ export async function GET() {
         collectedRevenue,
         followupToday: todayFollowUps,
       },
+      purchase: purchaseStats,
       monthlyRegistrations,
       consultationTypes,
       monthlyRevenue,

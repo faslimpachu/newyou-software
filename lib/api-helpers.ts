@@ -59,3 +59,25 @@ export function error(message: string, status = 400) {
 export function parseJson<T>(body: unknown): T {
   return body as T;
 }
+
+export async function generatePurchaseNumber(sequenceName: 'PURCHASE_INVOICE' | 'SUPPLIER_PAYMENT' | 'SALE_INVOICE'): Promise<string> {
+  const prefixMap: Record<string, string> = {
+    PURCHASE_INVOICE: 'PINV',
+    SUPPLIER_PAYMENT: 'PPAY',
+    SALE_INVOICE: 'SINV',
+  }
+
+  const prefix = prefixMap[sequenceName] || 'DOC'
+
+  return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    const seq = await tx.sequence.update({
+      where: { id: sequenceName },
+      data: { lastNumber: { increment: 1 } },
+    })
+
+    const date = new Date().toISOString().slice(0, 10).replace(/-/g, '')
+    const num = String(seq.lastNumber).padStart(4, '0')
+
+    return `${prefix}-${date}-${num}`
+  })
+}

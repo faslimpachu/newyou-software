@@ -165,3 +165,74 @@ npx prisma migrate dev --name describe_change
 * ✅ Commit the `prisma/migrations/` folder to Git.
 * ✅ Use `prisma migrate deploy` when deploying to production.
 * ❌ Avoid mixing `prisma db push` and `prisma migrate dev` in the same project.
+
+---
+
+## Modules
+
+### Patient Management
+- Patient Registration
+- Visits
+- OP Sheets
+- Prescriptions
+- Nutrition Assessment
+- Ayurcare Treatment
+- Follow-ups
+- Documents
+
+### Purchase & Inventory
+- Product Categories
+- Suppliers
+- Products
+- Purchase Invoices
+- Supplier Payments
+- Stock History / Inventory Transactions
+
+### Billing
+- Invoices
+- Invoice Items
+
+### Administration
+- User Management
+- Expense Tracking
+
+### Reports
+- Consultation Reports
+- Dashboard Analytics
+
+---
+
+## Database Schema
+
+The project uses the following main models:
+
+| Model | Description |
+|-------|-------------|
+| `Patient` | Patient registration and demographics |
+| `Visit` | Patient visits/appointments |
+| `OPSheet` | Outpatient sheets |
+| `Prescription` | Doctor prescriptions |
+| `Invoice` / `InvoiceItem` | Billing records |
+| `Expense` | Clinic expenses |
+| `User` | System users with roles |
+| `ProductCategory` | Product categories for inventory |
+| `Supplier` | Supplier information |
+| `Product` | Product master with stock tracking |
+| `PurchaseInvoice` / `PurchaseInvoiceItem` | Purchase records |
+| `SupplierPayment` | Supplier payment records |
+| `InventoryTransaction` | Stock movement audit trail |
+| `Sequence` | Auto-numbering for documents |
+
+---
+
+## Tech Stack
+
+- **Framework:** Next.js 16 (App Router)
+- **ORM:** Prisma 5
+- **Database:** MySQL
+- **UI:** shadcn/ui + Tailwind CSS
+- **Charts:** Recharts
+- **Icons:** Lucide React
+- **Testing:** Vitest
+
+npx prisma migrate dev --name add-purchase-management

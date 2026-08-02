@@ -266,3 +266,170 @@ model VisitSequence {
 
   @@map("visit_sequences")
 }
+
+// --- PMS Enums ---
+enum TransactionType {
+  PURCHASE
+  SALE
+  ADJUSTMENT_IN
+  ADJUSTMENT_OUT
+  RETURN_OUT
+  EXPIRED
+  DAMAGED
+  LOST
+}
+
+enum PaymentMode {
+  CASH
+  BANK
+  UPI
+  CREDIT
+}
+
+enum PaymentStatus {
+  PENDING
+  PARTIAL
+  PAID
+  OVERDUE
+}
+
+enum SupplierStatus {
+  ACTIVE
+  INACTIVE
+}
+
+// --- PMS Models ---
+model ProductCategory {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  products    Product[]
+
+  @@map("product_categories")
+}
+
+model Supplier {
+  id              String        @id @default(uuid())
+  supplierName    String
+  contactPerson   String?
+  phone           String?
+  email           String?
+  address         String?
+  gstNumber       String?
+  openingBalance  Decimal       @default(0)
+  status          SupplierStatus @default(ACTIVE)
+  createdAt       DateTime      @default(now())
+
+  purchaseInvoices  PurchaseInvoice[]
+  payments          SupplierPayment[]
+
+  @@map("suppliers")
+}
+
+model Product {
+  id            String   @id @default(uuid())
+  name          String
+  sku           String?  @unique
+  categoryId    String?
+  unit          String   @default("pcs")
+  purchasePrice Decimal
+  sellingPrice  Decimal
+  gstPercent    Decimal  @default(0)
+  reorderLevel  Int      @default(10)
+  currentStock  Decimal  @default(0)
+  imageUrl      String?
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  category        ProductCategory?       @relation(fields: [categoryId], references: [id])
+  invoiceItems    PurchaseInvoiceItem[]
+  transactions    InventoryTransaction[]
+
+  @@map("products")
+}
+
+model PurchaseInvoice {
+  id            String         @id @default(uuid())
+  invoiceNumber String         @unique
+  invoiceDate   DateTime
+  supplierId    String
+  paymentMode   PaymentMode?
+  dueDate       DateTime?
+  notes         String?
+  subtotal      Decimal
+  tax           Decimal
+  grandTotal    Decimal
+  paid          Decimal        @default(0)
+  balance       Decimal
+  status        PaymentStatus  @default(PENDING)
+  createdAt     DateTime       @default(now())
+
+  supplier       Supplier           @relation(fields: [supplierId], references: [id])
+  items          PurchaseInvoiceItem[]
+  payments       SupplierPayment[]
+  transactions   InventoryTransaction[]
+
+  @@map("purchase_invoices")
+}
+
+model PurchaseInvoiceItem {
+  id           String @id @default(uuid())
+  invoiceId    String
+  productId    String
+  quantity     Decimal
+  purchaseRate Decimal
+  amount       Decimal
+
+  invoice PurchaseInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  product Product        @relation(fields: [productId], references: [id])
+
+  @@map("purchase_invoice_items")
+}
+
+model SupplierPayment {
+  id            String         @id @default(uuid())
+  paymentNumber String         @unique
+  supplierId    String
+  invoiceId     String?
+  amount        Decimal
+  paymentDate   DateTime
+  paymentMode   PaymentMode?
+  reference     String?
+  notes         String?
+  createdAt     DateTime       @default(now())
+
+  supplier   Supplier        @relation(fields: [supplierId], references: [id])
+  invoice    PurchaseInvoice? @relation(fields: [invoiceId], references: [id])
+
+  @@map("supplier_payments")
+}
+
+model InventoryTransaction {
+  id           String            @id @default(uuid())
+  productId    String
+  type         TransactionType
+  quantity     Decimal
+  referenceType String?
+  referenceId  String?
+  notes        String?
+  createdAt    DateTime          @default(now())
+
+  product        Product        @relation(fields: [productId], references: [id])
+  purchaseInvoice PurchaseInvoice? @relation(fields: [referenceId], references: [id])
+
+  @@map("inventory_transactions")
+  @@index([productId, type])
+  @@index([referenceType, referenceId])
+}
+
+model Sequence {
+  id         String   @id
+  name       String   @unique
+  lastNumber Int      @default(0)
+  updatedAt  DateTime @default(now())
+
+  @@map("sequences")
+}

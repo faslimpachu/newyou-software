@@ -1,9 +1,10 @@
 'use client'
 
-import { ArrowDownRight, ArrowUpRight, CalendarClock, CalendarDays, Activity, Users, Leaf, Stethoscope, IndianRupee, Receipt } from 'lucide-react'
+import { ArrowDownRight, ArrowUpRight, CalendarClock, CalendarDays, Activity, Users, Leaf, Stethoscope, IndianRupee, Receipt, Package, Truck, Wallet } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import { useDashboardData } from './use-dashboard-data'
+import { DashboardPurchaseStats } from './use-dashboard-data'
 
 const fmt = (n: number | undefined | null) => {
   const value = n ?? 0
@@ -17,7 +18,7 @@ export function StatCards() {
   if (loading || !data) {
     return (
       <section aria-label="Key metrics" className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {Array.from({ length: 8 }).map((_, i) => (
+        {Array.from({ length: 11 }).map((_, i) => (
           <Card key={i} className="flex flex-col gap-3 rounded-2xl border-border/70 p-5 shadow-sm">
             <div className="h-10 w-10 animate-pulse rounded-xl bg-muted" />
             <div className="space-y-2">
@@ -31,15 +32,26 @@ export function StatCards() {
     )
   }
 
+  const purchase: DashboardPurchaseStats = data.purchase || {
+    totalSuppliers: 0,
+    lowStockItems: 0,
+    todayPurchase: 0,
+    monthlyPurchase: 0,
+    pendingPayments: 0,
+  }
+
   const stats = [
-    { key: 'registrations', label: "Today's Registrations", value: fmt(data.stats.registrations), delta: '', trend: 'up' as const, icon: CalendarDays, hint: 'vs. yesterday' },
-    { key: 'visits', label: "Today's Visits", value: fmt(data.stats.visits), delta: '', trend: 'up' as const, icon: Activity, hint: 'vs. yesterday' },
-    { key: 'total-patients', label: 'Total Patients', value: fmt(data.stats.totalPatients), delta: '', trend: 'up' as const, icon: Users, hint: 'all time' },
-    { key: 'nutrition', label: 'Nutrition Patients', value: fmt(data.stats.nutritionPatients), delta: '', trend: 'up' as const, icon: Leaf, hint: 'active plans' },
-    { key: 'ayurcare', label: 'Ayurcare Patients', value: fmt(data.stats.ayurcarePatients), delta: '', trend: 'down' as const, icon: Stethoscope, hint: 'active plans' },
-    { key: 'revenue', label: 'Revenue Today', value: `₹${fmt(data.stats.revenueToday)}`, delta: '', trend: 'up' as const, icon: IndianRupee, hint: 'vs. yesterday' },
-    { key: 'pending-bills', label: 'Cash Collected', value: fmt(data.stats.collectedRevenue), delta: '', trend: 'up' as const, icon: Receipt, hint: 'total collected' },
-    { key: 'followup', label: 'Follow-up Today', value: fmt(data.stats.followupToday), delta: '', trend: 'up' as const, icon: CalendarClock, hint: 'scheduled' },
+    { key: 'registrations', label: "Today's Registrations", value: fmt(data.stats.registrations), trend: 'up' as const, icon: CalendarDays, hint: 'vs. yesterday' },
+    { key: 'visits', label: "Today's Visits", value: fmt(data.stats.visits), trend: 'up' as const, icon: Activity, hint: 'vs. yesterday' },
+    { key: 'total-patients', label: 'Total Patients', value: fmt(data.stats.totalPatients), trend: 'up' as const, icon: Users, hint: 'all time' },
+    { key: 'nutrition', label: 'Nutrition Patients', value: fmt(data.stats.nutritionPatients), trend: 'up' as const, icon: Leaf, hint: 'active plans' },
+    { key: 'ayurcare', label: 'Ayurcare Patients', value: fmt(data.stats.ayurcarePatients), trend: 'down' as const, icon: Stethoscope, hint: 'active plans' },
+    { key: 'revenue', label: 'Revenue Today', value: `₹${fmt(data.stats.revenueToday)}`, trend: 'up' as const, icon: IndianRupee, hint: 'vs. yesterday' },
+    { key: 'pending-bills', label: 'Cash Collected', value: fmt(data.stats.collectedRevenue), trend: 'up' as const, icon: Receipt, hint: 'total collected' },
+    { key: 'followup', label: 'Follow-up Today', value: fmt(data.stats.followupToday), trend: 'up' as const, icon: CalendarClock, hint: 'scheduled' },
+    { key: 'suppliers', label: 'Total Suppliers', value: fmt(purchase.totalSuppliers), trend: 'up' as const, icon: Truck, hint: 'active' },
+    { key: 'low-stock', label: 'Low Stock Items', value: fmt(purchase.lowStockItems), trend: 'down' as const, icon: Package, hint: 'needs reorder' },
+    { key: 'pending-payments', label: 'Pending Payments', value: `₹${fmt(purchase.pendingPayments)}`, trend: 'down' as const, icon: Wallet, hint: 'outstanding' },
   ]
 
   return (
@@ -61,6 +73,9 @@ export function StatCards() {
                 {stat.icon === IndianRupee && <IndianRupee className="size-5" />}
                 {stat.icon === Receipt && <Receipt className="size-5" />}
                 {stat.icon === CalendarClock && <CalendarClock className="size-5" />}
+                {stat.icon === Truck && <Truck className="size-5" />}
+                {stat.icon === Package && <Package className="size-5" />}
+                {stat.icon === Wallet && <Wallet className="size-5" />}
               </div>
               <span
                 className={cn(
