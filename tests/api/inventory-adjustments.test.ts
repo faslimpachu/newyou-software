@@ -305,4 +305,65 @@ describe('Inventory Adjustments API', () => {
     expect(data.adjustments).toHaveLength(1)
     expect(data.adjustments[0].product.name).toBe('Test Product')
   })
+
+  it('POST rejects manual SALE when ALLOW_MANUAL_SALE_ADJUSTMENT is false', async () => {
+    const originalEnv = process.env.ALLOW_MANUAL_SALE_ADJUSTMENT
+    process.env.ALLOW_MANUAL_SALE_ADJUSTMENT = 'false'
+
+    try {
+      const category = await prisma.productCategory.create({
+        data: { name: 'Medicines', active: true },
+      })
+      const product = await prisma.product.create({
+        data: {
+          name: 'Test Product',
+          code: 'PRD-20260802-SALE',
+          categoryId: category.id,
+          unit: 'pcs',
+          purchasePrice: 10,
+          sellingPrice: 15,
+          currentStock: 100,
+          minimumStock: 10,
+          maximumStock: 200,
+        },
+      })
+
+      const batch = await prisma.productBatch.create({
+        data: {
+          productId: product.id,
+          batchNumber: 'BATCH-SALE',
+          expiryDate: null,
+          quantity: 100,
+        },
+      })
+
+      await prisma.batchReceipt.create({
+        data: {
+          batchId: batch.id,
+          supplierId: (await prisma.supplier.findFirst())!.id,
+          sourceType: 'OPENING',
+          quantity: 100,
+          remainingQuantity: 100,
+          purchaseRate: 10,
+        },
+      })
+
+      const req = new Request('http://localhost/api/inventory-adjustments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productId: product.id,
+          type: 'SALE',
+          quantity: 10,
+          batchId: batch.id,
+        }),
+      })
+      const res = await POST(req)
+      expect(res.status).toBe(400)
+      const data = await res.json()
+      expect(data.error).toBe('Manual SALE adjustments are not allowed. Use the billing module for sales.')
+    } finally {
+      process.env.ALLOW_MANUAL_SALE_ADJUSTMENT = originalEnv
+    }
+  })
 })

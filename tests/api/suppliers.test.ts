@@ -63,6 +63,43 @@ describe('Suppliers API', () => {
     expect(data.ledger.outstandingBalance).toBeGreaterThanOrEqual(0)
   })
 
+  it('GET ledger calculates outstandingBalance = openingBalance + purchases - payments', async () => {
+    const supplier = await prisma.supplier.create({
+      data: { supplierName: 'Ledger Supplier', status: 'ACTIVE', openingBalance: 1000 },
+    })
+    const invoice = await prisma.purchaseInvoice.create({
+      data: {
+        invoiceNumber: 'PINV-LEDGER-001',
+        invoiceDate: new Date('2026-08-01'),
+        supplierId: supplier.id,
+        subtotal: 5000,
+        tax: 500,
+        grandTotal: 5500,
+        paid: 0,
+        balance: 5500,
+        status: 'PENDING',
+      },
+    })
+    await prisma.supplierPayment.create({
+      data: {
+        paymentNumber: 'PPAY-LEDGER-001',
+        supplierId: supplier.id,
+        invoiceId: invoice.id,
+        amount: 2000,
+        paymentDate: new Date('2026-08-05'),
+        paymentMode: 'CASH',
+      },
+    })
+
+    const req = new Request(`http://localhost/api/suppliers/${supplier.id}`, { method: 'GET' })
+    const res = await GETById(req, { params: { id: supplier.id } })
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.ledger.totalPurchases).toBe(5500)
+    expect(data.ledger.totalPayments).toBe(2000)
+    expect(data.ledger.outstandingBalance).toBe(1000 + 5500 - 2000)
+  })
+
   it('GET returns 404 for non-existent supplier', async () => {
     const req = new Request('http://localhost/api/suppliers/nonexistent', { method: 'GET' })
     const res = await GETById(req, { params: { id: 'nonexistent' } })

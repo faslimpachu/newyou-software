@@ -247,4 +247,42 @@ describe('Supplier Payments API', () => {
     expect(data.payment.amount).toBe(100)
     expect(data.payment.notes).toBe('Advance payment')
   })
+
+  it('POST sets OVERDUE status when dueDate is past and balance > 0', async () => {
+    const supplier = await prisma.supplier.create({
+      data: { supplierName: 'Test Supplier', status: 'ACTIVE' },
+    })
+    const invoice = await prisma.purchaseInvoice.create({
+      data: {
+        invoiceNumber: 'PINV-OVERDUE-001',
+        invoiceDate: new Date('2026-08-01'),
+        supplierId: supplier.id,
+        subtotal: 100,
+        tax: 12,
+        grandTotal: 112,
+        paid: 0,
+        balance: 112,
+        status: 'PENDING',
+        dueDate: new Date('2026-08-10'),
+      },
+    })
+
+    const req = new Request('http://localhost/api/supplier-payments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        supplierId: supplier.id,
+        invoiceId: invoice.id,
+        amount: 50,
+        paymentDate: '2026-08-16',
+        paymentMode: 'CASH',
+      }),
+    })
+    const res = await POST(req)
+    expect(res.status).toBe(201)
+
+    const updatedInvoice = await prisma.purchaseInvoice.findUnique({ where: { id: invoice.id } })
+    expect(updatedInvoice?.status).toBe('OVERDUE')
+    expect(Number(updatedInvoice?.balance)).toBeGreaterThan(0)
+  })
 })

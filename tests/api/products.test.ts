@@ -315,4 +315,77 @@ describe('Products API', () => {
     const data = await res.json()
     expect(data.count).toBe(0)
   })
+
+  it('POST rejects gstPercent > 100', async () => {
+    const category = await prisma.productCategory.create({
+      data: { name: 'Medicines', active: true },
+    })
+
+    const req = new Request('http://localhost/api/products', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Bad GST Product',
+        categoryId: category.id,
+        unit: 'pcs',
+        purchasePrice: 10,
+        sellingPrice: 15,
+        gstPercent: 150,
+      }),
+    })
+    const res = await POST(req)
+    expect(res.status).toBe(400)
+    const data = await res.json()
+    expect(data.error).toBe('GST percent must be between 0 and 100')
+  })
+
+  it('POST rejects negative gstPercent', async () => {
+    const category = await prisma.productCategory.create({
+      data: { name: 'Medicines', active: true },
+    })
+
+    const req = new Request('http://localhost/api/products', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Bad GST Product',
+        categoryId: category.id,
+        unit: 'pcs',
+        purchasePrice: 10,
+        sellingPrice: 15,
+        gstPercent: -5,
+      }),
+    })
+    const res = await POST(req)
+    expect(res.status).toBe(400)
+    const data = await res.json()
+    expect(data.error).toBe('GST percent must be between 0 and 100')
+  })
+
+  it('PATCH rejects gstPercent > 100', async () => {
+    const category = await prisma.productCategory.create({
+      data: { name: 'Medicines', active: true },
+    })
+    const product = await prisma.product.create({
+      data: {
+        name: 'Product',
+        code: 'PRD-GST-PATCH',
+        categoryId: category.id,
+        unit: 'pcs',
+        purchasePrice: 10,
+        sellingPrice: 15,
+        gstPercent: 5,
+      },
+    })
+
+    const req = new Request(`http://localhost/api/products/${product.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ gstPercent: 100.01 }),
+    })
+    const res = await PATCH(req, { params: { id: product.id } })
+    expect(res.status).toBe(400)
+    const data = await res.json()
+    expect(data.error).toBe('GST percent must be between 0 and 100')
+  })
 })
