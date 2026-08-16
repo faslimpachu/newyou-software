@@ -127,15 +127,33 @@ export async function receiveStock(params: ReceiveStockParams, tx?: Prisma.Trans
     })
     batchId = updatedBatch.id
   } else {
-    const newBatch = await client.productBatch.create({
-      data: {
-        productId,
-        batchNumber: batchNumber.trim(),
-        expiryDate: expiryDate || null,
-        quantity: qty.toNumber(),
-      },
-    })
-    batchId = newBatch.id
+    try {
+      const newBatch = await client.productBatch.create({
+        data: {
+          productId,
+          batchNumber: batchNumber.trim(),
+          expiryDate: expiryDate || null,
+          quantity: qty.toNumber(),
+        },
+      })
+      batchId = newBatch.id
+    } catch (e) {
+      const code = (e as { code?: string }).code
+      if (code === 'P2002' || code === 'P2034') {
+        const retryBatch = await client.productBatch.findFirst({
+          where: {
+            productId,
+            batchNumber: batchNumber.trim(),
+          },
+        })
+        if (!retryBatch) {
+          throw e
+        }
+        batchId = retryBatch.id
+      } else {
+        throw e
+      }
+    }
   }
 
   await client.batchReceipt.create({

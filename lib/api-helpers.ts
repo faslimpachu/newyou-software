@@ -4,48 +4,44 @@ import { NextResponse } from 'next/server';
 
 export async function generateMR(): Promise<string> {
   return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-    let seq = await tx.mRSequence.findUnique({
-      where: { id: 'GLOBAL' },
-    });
-
-    if (!seq) {
-      seq = await tx.mRSequence.create({
-        data: { id: 'GLOBAL', lastNumber: 1 },
-      });
-      return `MR${String(seq.lastNumber).padStart(6, '0')}`;
+    try {
+      const updated = await tx.mRSequence.update({
+        where: { id: 'GLOBAL' },
+        data: { lastNumber: { increment: 1 } },
+      })
+      return `MR${String(updated.lastNumber).padStart(6, '0')}`
+    } catch (e) {
+      if ((e as { code?: string }).code === 'P2025') {
+        const created = await tx.mRSequence.create({
+          data: { id: 'GLOBAL', lastNumber: 1 },
+        })
+        return `MR${String(created.lastNumber).padStart(6, '0')}`
+      }
+      throw e
     }
-
-    const updated = await tx.mRSequence.update({
-      where: { id: 'GLOBAL' },
-      data: { lastNumber: { increment: 1 } },
-    });
-
-    return `MR${String(updated.lastNumber).padStart(6, '0')}`;
-  });
+  })
 }
 
 export async function generateVisitId(centerType: 'NUTRITION' | 'AYURCARE'): Promise<string> {
-  const prefix = centerType === 'NUTRITION' ? 'NU' : 'AY';
+  const prefix = centerType === 'NUTRITION' ? 'NU' : 'AY'
 
   return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-    let seq = await tx.visitSequence.findUnique({
-      where: { centerType },
-    });
-
-    if (!seq) {
-      seq = await tx.visitSequence.create({
-        data: { id: centerType, centerType, lastNumber: 1 },
-      });
-      return `${prefix}${String(seq.lastNumber).padStart(6, '0')}`;
+    try {
+      const updated = await tx.visitSequence.update({
+        where: { id: centerType },
+        data: { lastNumber: { increment: 1 } },
+      })
+      return `${prefix}${String(updated.lastNumber).padStart(6, '0')}`
+    } catch (e) {
+      if ((e as { code?: string }).code === 'P2025') {
+        const created = await tx.visitSequence.create({
+          data: { id: centerType, centerType, lastNumber: 1 },
+        })
+        return `${prefix}${String(created.lastNumber).padStart(6, '0')}`
+      }
+      throw e
     }
-
-    const updated = await tx.visitSequence.update({
-      where: { centerType },
-      data: { lastNumber: { increment: 1 } },
-    });
-
-    return `${prefix}${String(updated.lastNumber).padStart(6, '0')}`;
-  });
+  })
 }
 
 export function success<T>(data: T, status = 200) {
@@ -86,27 +82,29 @@ export async function generatePurchaseNumber(sequenceName: 'PURCHASE_INVOICE' | 
   const name = nameMap[sequenceName] || 'Document'
 
   return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-    let seq = await tx.sequence.findUnique({
-      where: { id: sequenceName },
-    })
-
-    if (!seq) {
-      seq = await tx.sequence.create({
-        data: { id: sequenceName, name, lastNumber: 1 },
+    try {
+      const updated = await tx.sequence.update({
+        where: { id: sequenceName },
+        data: { lastNumber: { increment: 1 } },
       })
+
       const date = new Date().toISOString().slice(0, 10).replace(/-/g, '')
-      const num = String(seq.lastNumber).padStart(4, '0')
+      const num = String(updated.lastNumber).padStart(4, '0')
+
       return `${prefix}-${date}-${num}`
+    } catch (e) {
+      if ((e as { code?: string }).code === 'P2025') {
+        const created = await tx.sequence.create({
+          data: { id: sequenceName, name, lastNumber: 1 },
+        })
+
+        const date = new Date().toISOString().slice(0, 10).replace(/-/g, '')
+        const num = String(created.lastNumber).padStart(4, '0')
+
+        return `${prefix}-${date}-${num}`
+      }
+
+      throw e
     }
-
-    const updated = await tx.sequence.update({
-      where: { id: sequenceName },
-      data: { lastNumber: { increment: 1 } },
-    })
-
-    const date = new Date().toISOString().slice(0, 10).replace(/-/g, '')
-    const num = String(updated.lastNumber).padStart(4, '0')
-
-    return `${prefix}-${date}-${num}`
   })
 }

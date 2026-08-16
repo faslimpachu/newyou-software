@@ -11,6 +11,8 @@ beforeEach(async () => {
   await prisma.supplierPayment.deleteMany()
   await prisma.purchaseInvoiceItem.deleteMany()
   await prisma.purchaseInvoice.deleteMany()
+  await prisma.batchReceipt.deleteMany()
+  await prisma.productBatch.deleteMany()
   await prisma.supplier.deleteMany()
   await prisma.product.deleteMany()
   await prisma.productCategory.deleteMany()
