@@ -32,6 +32,14 @@ interface Product {
   unit: string
 }
 
+interface Batch {
+  id: string
+  batchNumber: string
+  expiryDate: string | null
+  quantity: number
+  status: string
+}
+
 interface Adjustment {
   id: string
   productId: string
@@ -47,12 +55,17 @@ const emptyAdjustment = {
   productId: '',
   type: 'ADJUSTMENT_IN',
   quantity: 0,
+  batchId: '',
+  unitCost: 0,
+  supplierId: '',
   notes: '',
 }
 
 export default function InventoryAdjustmentsPage() {
   const [adjustments, setAdjustments] = useState<Adjustment[]>([])
   const [products, setProducts] = useState<Product[]>([])
+  const [batches, setBatches] = useState<Batch[]>([])
+  const [suppliers, setSuppliers] = useState<{ id: string; supplierName: string }[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -84,10 +97,45 @@ export default function InventoryAdjustmentsPage() {
     }
   }
 
+  const loadSuppliers = async () => {
+    try {
+      const res = await fetch('/api/suppliers?active=true')
+      if (res.ok) {
+        const data = await res.json()
+        setSuppliers(data.suppliers)
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  const loadBatches = async (productId: string) => {
+    if (!productId) {
+      setBatches([])
+      return
+    }
+    try {
+      const res = await fetch(`/api/products/${productId}/batches`)
+      if (res.ok) {
+        const data = await res.json()
+        setBatches(data.batches || [])
+      }
+    } catch {
+      // ignore
+    }
+  }
+
   useEffect(() => {
     loadAdjustments()
     loadProducts()
+    loadSuppliers()
   }, [])
+
+  useEffect(() => {
+    if (form.productId) {
+      loadBatches(form.productId)
+    }
+  }, [form.productId])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -95,11 +143,18 @@ export default function InventoryAdjustmentsPage() {
     setSaving(true)
 
     try {
-      const body = {
+      const isDecrease = ['SALE', 'ADJUSTMENT_OUT', 'RETURN_OUT', 'EXPIRED', 'DAMAGED', 'LOST'].includes(form.type)
+      const body: Record<string, unknown> = {
         productId: form.productId,
         type: form.type,
         quantity: form.quantity,
+        batchId: form.batchId,
         notes: form.notes || null,
+      }
+
+      if (!isDecrease) {
+        body.unitCost = form.unitCost
+        body.supplierId = form.supplierId
       }
 
       const res = await fetch('/api/inventory-adjustments', {
@@ -117,6 +172,7 @@ export default function InventoryAdjustmentsPage() {
       await loadAdjustments()
       setShowForm(false)
       setForm(emptyAdjustment)
+      setBatches([])
     } catch {
       setError('Something went wrong')
     } finally {
@@ -125,6 +181,7 @@ export default function InventoryAdjustmentsPage() {
   }
 
   const selectedProduct = products.find((p) => p.id === form.productId)
+  const isDecrease = ['SALE', 'ADJUSTMENT_OUT', 'RETURN_OUT', 'EXPIRED', 'DAMAGED', 'LOST'].includes(form.type)
 
   const getTypeBadge = (type: string) => {
     switch (type) {
@@ -206,7 +263,6 @@ export default function InventoryAdjustmentsPage() {
                     <SelectContent>
                       <SelectItem value="ADJUSTMENT_IN">Increase</SelectItem>
                       <SelectItem value="ADJUSTMENT_OUT">Decrease</SelectItem>
-                      <SelectItem value="PURCHASE">Purchase</SelectItem>
                       <SelectItem value="SALE">Sale</SelectItem>
                       <SelectItem value="EXPIRED">Expired</SelectItem>
                       <SelectItem value="DAMAGED">Damaged</SelectItem>
@@ -226,15 +282,51 @@ export default function InventoryAdjustmentsPage() {
                     required
                   />
                 </div>
-                <div className="space-y-2 md:col-span-2 lg:col-span-3">
-                  <Label htmlFor="notes">Notes</Label>
-                  <Input
-                    id="notes"
-                    value={form.notes}
-                    onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                    placeholder="Reason for adjustment"
-                  />
+                <div className="space-y-2">
+                  <Label htmlFor="batchId">Batch</Label>
+                  <Select value={form.batchId || ''} onValueChange={(value) => setForm({ ...form, batchId: value || '' })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select batch" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {batches.map((batch) => (
+                        <SelectItem key={batch.id} value={batch.id}>
+                          {batch.batchNumber} ({batch.quantity} units) {batch.expiryDate ? `- Exp: ${new Date(batch.expiryDate).toLocaleDateString('en-IN')}` : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
+                {!isDecrease && (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="unitCost">Unit Cost</Label>
+                      <Input
+                        id="unitCost"
+                        type="number"
+                        step="0.01"
+                        value={form.unitCost || ''}
+                        onChange={(e) => setForm({ ...form, unitCost: parseFloat(e.target.value) || 0 })}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="supplierId">Supplier</Label>
+                      <Select value={form.supplierId || ''} onValueChange={(value) => setForm({ ...form, supplierId: value || '' })}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select supplier" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {suppliers.map((supplier) => (
+                            <SelectItem key={supplier.id} value={supplier.id}>
+                              {supplier.supplierName}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </>
+                )}
                 <div className="flex items-end gap-2 md:col-span-2 lg:col-span-3">
                   <Button type="submit" disabled={saving}>
                     {saving ? 'Saving...' : 'Create Adjustment'}
@@ -243,8 +335,8 @@ export default function InventoryAdjustmentsPage() {
                     Cancel
                   </Button>
                 </div>
+                {error && <p className="mt-2 text-sm text-destructive md:col-span-2 lg:col-span-3">{error}</p>}
               </form>
-              {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
             </CardContent>
           </Card>
         )}

@@ -58,6 +58,13 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       return NextResponse.json({ error: 'Current stock cannot be updated directly. Use inventory adjustment to correct stock levels.' }, { status: 400 });
     }
 
+    if (gstPercent !== undefined) {
+      const gst = new Prisma.Decimal(gstPercent)
+      if (gst.lessThan(0) || gst.greaterThan(100)) {
+        return NextResponse.json({ error: 'GST percent must be between 0 and 100' }, { status: 400 })
+      }
+    }
+
     const product = await prisma.product.update({
       where: { id },
       data: {

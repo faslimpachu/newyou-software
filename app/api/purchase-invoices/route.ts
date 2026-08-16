@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { generatePurchaseNumber } from '@/lib/api-helpers';
 import { ValidationError } from '@/lib/api-helpers';
 import { Prisma } from '@prisma/client';
+import { receiveStock } from '@/lib/inventory-service';
 
 function toNumber(value: unknown): number {
   return Number(value || 0)
@@ -175,6 +176,11 @@ export async function POST(request: Request) {
           throw new ValidationError('Purchase rate must be greater than zero')
         }
 
+        const gstPercent = new Prisma.Decimal(item.gstPercent ?? productMap.get(item.productId) ?? 0)
+        if (gstPercent.lessThan(0) || gstPercent.greaterThan(100)) {
+          throw new ValidationError(`Invalid GST percent for product`)
+        }
+
         const amount = quantity.times(purchaseRate)
 
         await tx.purchaseInvoiceItem.create({
@@ -184,27 +190,21 @@ export async function POST(request: Request) {
             quantity: quantity.toNumber(),
             purchaseRate: purchaseRate.toNumber(),
             amount: amount.toNumber(),
+            batchNumber: item.batchNumber?.trim() || null,
+            expiryDate: item.expiryDate ? new Date(item.expiryDate) : null,
           },
         })
 
-        await tx.product.update({
-          where: { id: item.productId },
-          data: {
-            currentStock: { increment: quantity.toNumber() },
-            purchasePrice: purchaseRate.toNumber(),
-          },
-        })
-
-        await tx.inventoryTransaction.create({
-          data: {
-            productId: item.productId,
-            type: 'PURCHASE',
-            quantity: quantity.toNumber(),
-            referenceType: 'PURCHASE_INVOICE',
-            referenceId: createdInvoice.id,
-            notes: `Purchase invoice ${invoiceNumber}`,
-          },
-        })
+        await receiveStock({
+          productId: item.productId,
+          quantity: quantity.toNumber(),
+          batchNumber: item.batchNumber?.trim() || `BATCH-${Date.now()}`,
+          supplierId,
+          purchaseInvoiceId: createdInvoice.id,
+          expiryDate: item.expiryDate ? new Date(item.expiryDate) : null,
+          purchaseRate: purchaseRate.toNumber(),
+          notes: `Purchase invoice ${invoiceNumber}`,
+        }, tx)
       }
 
       return createdInvoice

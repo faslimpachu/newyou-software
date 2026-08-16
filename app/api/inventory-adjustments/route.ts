@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { ValidationError } from '@/lib/api-helpers';
 import { Prisma } from '@prisma/client';
+import { adjustStock } from '@/lib/inventory-service';
 
 function toNumber(value: unknown): number {
   return Number(value || 0)
@@ -68,68 +69,40 @@ export async function POST(request: Request) {
       productId,
       type,
       quantity,
+      batchId,
+      unitCost,
+      supplierId,
       notes,
     } = body;
 
-    if (!productId || !type || quantity === undefined || quantity === null) {
-      return NextResponse.json({ error: 'productId, type, and quantity are required' }, { status: 400 });
+    if (!productId || !type || quantity === undefined || quantity === null || !batchId) {
+      return NextResponse.json({ error: 'productId, type, quantity, and batchId are required' }, { status: 400 });
     }
 
-    const validTypes = ['PURCHASE', 'SALE', 'ADJUSTMENT_IN', 'ADJUSTMENT_OUT', 'RETURN_OUT', 'EXPIRED', 'DAMAGED', 'LOST']
+    const validTypes = ['SALE', 'ADJUSTMENT_IN', 'ADJUSTMENT_OUT', 'RETURN_OUT', 'EXPIRED', 'DAMAGED', 'LOST']
     if (!validTypes.includes(type)) {
       return NextResponse.json({ error: 'Invalid transaction type' }, { status: 400 });
     }
 
-    const decreaseTypes = ['SALE', 'ADJUSTMENT_OUT', 'RETURN_OUT', 'EXPIRED', 'DAMAGED', 'LOST']
-    const isDecrease = decreaseTypes.includes(type)
-    const qty = new Prisma.Decimal(quantity)
-
-    if (qty.lessThanOrEqualTo(0)) {
-      return NextResponse.json({ error: 'Quantity must be greater than zero' }, { status: 400 });
+    const allowManualSale = process.env.ALLOW_MANUAL_SALE_ADJUSTMENT !== 'false'
+    if (type === 'SALE' && !allowManualSale) {
+      return NextResponse.json({ error: 'Manual SALE adjustments are not allowed. Use the billing module for sales.' }, { status: 400 });
     }
 
+    const decreaseTypes = ['SALE', 'ADJUSTMENT_OUT', 'RETURN_OUT', 'EXPIRED', 'DAMAGED', 'LOST']
+    const isDecrease = decreaseTypes.includes(type)
+
     const adjustment = await prisma.$transaction(async (tx) => {
-      const product = await tx.product.findUnique({
-        where: { id: productId },
-      });
-
-      if (!product) {
-        throw new ValidationError('Product not found')
-      }
-
-      if (isDecrease) {
-        const result = await tx.product.updateMany({
-          where: {
-            id: productId,
-            currentStock: { gte: qty },
-          },
-          data: { currentStock: { decrement: qty.toNumber() } },
-        });
-
-        if (result.count === 0) {
-          throw new ValidationError('Insufficient stock')
-        }
-      } else {
-        await tx.product.update({
-          where: { id: productId },
-          data: { currentStock: { increment: qty.toNumber() } },
-        })
-      }
-
-      const created = await tx.inventoryTransaction.create({
-        data: {
-          productId,
-          type: type as 'PURCHASE' | 'SALE' | 'ADJUSTMENT_IN' | 'ADJUSTMENT_OUT' | 'RETURN_OUT' | 'EXPIRED' | 'DAMAGED' | 'LOST',
-          quantity: isDecrease ? qty.times(-1).toNumber() : qty.toNumber(),
-          referenceType: 'ADJUSTMENT',
-          notes: notes?.trim() || null,
-        },
-        include: {
-          product: { select: { id: true, name: true, sku: true, unit: true } },
-        },
-      })
-
-      return created
+      return await adjustStock({
+        productId,
+        type: type as 'SALE' | 'ADJUSTMENT_IN' | 'ADJUSTMENT_OUT' | 'RETURN_OUT' | 'EXPIRED' | 'DAMAGED' | 'LOST',
+        quantity,
+        batchId,
+        unitCost: isDecrease ? undefined : unitCost,
+        supplierId: isDecrease ? undefined : supplierId,
+        referenceType: 'ADJUSTMENT',
+        notes,
+      }, tx)
     })
 
     return NextResponse.json({

@@ -12,6 +12,8 @@ beforeEach(async () => {
   await prisma.supplierPayment.deleteMany()
   await prisma.purchaseInvoiceItem.deleteMany()
   await prisma.purchaseInvoice.deleteMany()
+  await prisma.batchReceipt.deleteMany()
+  await prisma.productBatch.deleteMany()
   await prisma.supplier.deleteMany()
   await prisma.product.deleteMany()
   await prisma.productCategory.deleteMany()
@@ -59,7 +61,7 @@ describe('Purchase Invoices API', () => {
         invoiceDate: '2026-08-02',
         supplierId: supplier.id,
         paymentMode: 'CASH',
-        items: [{ productId: product.id, quantity: 50, purchaseRate: 10 }],
+        items: [{ productId: product.id, quantity: 50, purchaseRate: 10, batchNumber: 'BATCH-001' }],
       }),
     })
     const res = await POST(req)
@@ -157,7 +159,7 @@ describe('Purchase Invoices API', () => {
       body: JSON.stringify({
         invoiceDate: '2026-08-02',
         supplierId: supplier.id,
-        items: [{ productId: product.id, quantity: 0, purchaseRate: 10 }],
+        items: [{ productId: product.id, quantity: 0, purchaseRate: 10, batchNumber: 'BATCH-001' }],
       }),
     })
     const res = await POST(req)
@@ -193,7 +195,7 @@ describe('Purchase Invoices API', () => {
       body: JSON.stringify({
         invoiceDate: '2026-08-02',
         supplierId: supplier.id,
-        items: [{ productId: product.id, quantity: 10, purchaseRate: 0 }],
+        items: [{ productId: product.id, quantity: 10, purchaseRate: 0, batchNumber: 'BATCH-001' }],
       }),
     })
     const res = await POST(req)
@@ -209,7 +211,7 @@ describe('Purchase Invoices API', () => {
       body: JSON.stringify({
         invoiceDate: '2026-08-02',
         supplierId: 'non-existent-supplier-id',
-        items: [{ productId: 'non-existent-product-id', quantity: 10, purchaseRate: 10 }],
+        items: [{ productId: 'non-existent-product-id', quantity: 10, purchaseRate: 10, batchNumber: 'BATCH-001' }],
       }),
     })
     const res = await POST(req)
@@ -229,7 +231,7 @@ describe('Purchase Invoices API', () => {
       body: JSON.stringify({
         invoiceDate: '2026-08-02',
         supplierId: supplier.id,
-        items: [{ productId: 'non-existent-product-id', quantity: 10, purchaseRate: 10 }],
+        items: [{ productId: 'non-existent-product-id', quantity: 10, purchaseRate: 10, batchNumber: 'BATCH-001' }],
       }),
     })
     const res = await POST(req)
@@ -270,8 +272,8 @@ describe('Purchase Invoices API', () => {
           invoiceDate: '2026-08-02',
           supplierId: supplier.id,
           items: [
-            { productId: product.id, quantity: 10, purchaseRate: 10 },
-            { productId: product.id, quantity: 5, purchaseRate: 10 },
+            { productId: product.id, quantity: 10, purchaseRate: 10, batchNumber: 'BATCH-001' },
+            { productId: product.id, quantity: 5, purchaseRate: 10, batchNumber: 'BATCH-002' },
           ],
         }),
       })
@@ -316,8 +318,8 @@ describe('Purchase Invoices API', () => {
           invoiceDate: '2026-08-02',
           supplierId: supplier.id,
           items: [
-            { productId: product.id, quantity: 10, purchaseRate: 10 },
-            { productId: product.id, quantity: 5, purchaseRate: 10 },
+            { productId: product.id, quantity: 10, purchaseRate: 10, batchNumber: 'BATCH-001' },
+            { productId: product.id, quantity: 5, purchaseRate: 10, batchNumber: 'BATCH-002' },
           ],
         }),
       })
@@ -357,7 +359,7 @@ describe('Purchase Invoices API', () => {
       body: JSON.stringify({
         invoiceDate: '2026-08-02',
         supplierId: supplier.id,
-        items: [{ productId: product.id, quantity: 50, purchaseRate: 18 }],
+        items: [{ productId: product.id, quantity: 50, purchaseRate: 18, batchNumber: 'BATCH-001' }],
       }),
     })
     const res = await POST(req)
@@ -395,7 +397,7 @@ describe('Purchase Invoices API', () => {
       body: JSON.stringify({
         invoiceDate: '2026-08-02',
         supplierId: supplier.id,
-        items: [{ productId: product.id, quantity: 50, purchaseRate: 12 }],
+        items: [{ productId: product.id, quantity: 50, purchaseRate: 12, batchNumber: 'BATCH-001' }],
       }),
     })
     await POST(firstReq)
@@ -406,7 +408,7 @@ describe('Purchase Invoices API', () => {
       body: JSON.stringify({
         invoiceDate: '2026-08-03',
         supplierId: supplier.id,
-        items: [{ productId: product.id, quantity: 30, purchaseRate: 18 }],
+        items: [{ productId: product.id, quantity: 30, purchaseRate: 18, batchNumber: 'BATCH-001' }],
       }),
     })
     await POST(secondReq)
@@ -443,7 +445,7 @@ describe('Purchase Invoices API', () => {
       body: JSON.stringify({
         invoiceDate: '2026-08-02',
         supplierId: supplier.id,
-        items: [{ productId: product.id, quantity: 50, purchaseRate: 12 }],
+        items: [{ productId: product.id, quantity: 50, purchaseRate: 12, batchNumber: 'BATCH-001' }],
       }),
     })
     const firstRes = await POST(firstReq)
@@ -455,7 +457,7 @@ describe('Purchase Invoices API', () => {
       body: JSON.stringify({
         invoiceDate: '2026-08-03',
         supplierId: supplier.id,
-        items: [{ productId: product.id, quantity: 30, purchaseRate: 18 }],
+        items: [{ productId: product.id, quantity: 30, purchaseRate: 18, batchNumber: 'BATCH-001' }],
       }),
     })
     const secondRes = await POST(secondReq)
@@ -491,9 +493,9 @@ describe('Purchase Invoices API', () => {
         invoiceDate: '2026-08-02',
         supplierId: supplier.id,
         items: [
-          { productId: productA.id, quantity: 10, purchaseRate: 10 },
-          { productId: productB.id, quantity: 5, purchaseRate: 20 },
-          { productId: productC.id, quantity: 2, purchaseRate: 100 },
+            { productId: productA.id, quantity: 10, purchaseRate: 10, batchNumber: 'BATCH-001' },
+            { productId: productB.id, quantity: 5, purchaseRate: 20, batchNumber: 'BATCH-002' },
+            { productId: productC.id, quantity: 2, purchaseRate: 100, batchNumber: 'BATCH-003' },
         ],
       }),
     })
@@ -522,7 +524,7 @@ describe('Purchase Invoices API', () => {
       body: JSON.stringify({
         invoiceDate: '2026-08-02',
         supplierId: supplier.id,
-        items: [{ productId: product.id, quantity: 10, purchaseRate: 10 }],
+        items: [{ productId: product.id, quantity: 10, purchaseRate: 10, batchNumber: 'BATCH-001' }],
       }),
     })
     const res = await POST(req)
@@ -549,7 +551,7 @@ describe('Purchase Invoices API', () => {
       body: JSON.stringify({
         invoiceDate: '2026-08-02',
         supplierId: supplier.id,
-        items: [{ productId: product.id, quantity: 5, purchaseRate: 10 }],
+        items: [{ productId: product.id, quantity: 5, purchaseRate: 10, batchNumber: 'BATCH-001' }],
       }),
     })
     const res = await POST(req)
@@ -576,7 +578,7 @@ describe('Purchase Invoices API', () => {
       body: JSON.stringify({
         invoiceDate: '2026-08-02',
         supplierId: supplier.id,
-        items: [{ productId: product.id, quantity: 10, purchaseRate: 10 }],
+        items: [{ productId: product.id, quantity: 10, purchaseRate: 10, batchNumber: 'BATCH-001' }],
       }),
     })
     const res = await POST(req)
@@ -666,7 +668,7 @@ describe('Purchase Invoices API', () => {
       body: JSON.stringify({
         invoiceDate: '2026-08-02',
         supplierId: supplier.id,
-        items: [{ productId: product.id, quantity: 10, purchaseRate: 10 }],
+        items: [{ productId: product.id, quantity: 10, purchaseRate: 10, batchNumber: 'BATCH-001' }],
       }),
     })
     const res = await POST(req)

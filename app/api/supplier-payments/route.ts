@@ -8,6 +8,25 @@ function toNumber(value: unknown): number {
   return Number(value || 0)
 }
 
+function computePaymentStatus(
+  balance: Prisma.Decimal,
+  paid: Prisma.Decimal,
+  dueDate: Date | null
+): 'PENDING' | 'PARTIAL' | 'PAID' | 'OVERDUE' {
+  if (balance.lessThanOrEqualTo(0)) {
+    return 'PAID'
+  }
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  if (dueDate && new Date(dueDate) < today) {
+    return 'OVERDUE'
+  }
+  if (paid.greaterThan(0)) {
+    return 'PARTIAL'
+  }
+  return 'PENDING'
+}
+
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
@@ -97,21 +116,39 @@ export async function POST(request: Request) {
           throw new ValidationError('Payment supplier does not match the invoice supplier')
         }
 
-        const balance = new Prisma.Decimal(invoice.balance)
-        if (amountDecimal.greaterThan(balance)) {
-          throw new ValidationError(`Payment amount exceeds outstanding balance of ${balance}`)
+        const amountDecimal = new Prisma.Decimal(amount)
+
+        const updated = await tx.purchaseInvoice.updateMany({
+          where: {
+            id: invoiceId,
+            balance: { gte: amountDecimal },
+          },
+          data: {
+            paid: { increment: amountDecimal },
+            balance: { decrement: amountDecimal },
+          },
+        })
+
+        if (updated.count === 0) {
+          throw new ValidationError(`Payment amount exceeds outstanding balance`)
         }
 
-        const paid = new Prisma.Decimal(invoice.paid)
-        const newPaid = paid.plus(amountDecimal)
-        const grandTotal = new Prisma.Decimal(invoice.grandTotal)
-        const newBalance = grandTotal.minus(newPaid)
-        let status: 'PENDING' | 'PARTIAL' | 'PAID' | 'OVERDUE' = 'PENDING'
-        if (newBalance.lessThanOrEqualTo(0)) {
-          status = 'PAID'
-        } else if (newPaid.greaterThan(0)) {
-          status = 'PARTIAL'
+        const updatedInvoice = await tx.purchaseInvoice.findUnique({
+          where: { id: invoiceId },
+        })
+
+        if (!updatedInvoice) {
+          throw new ValidationError('Purchase invoice not found after update')
         }
+
+        const newPaid = new Prisma.Decimal(updatedInvoice.paid)
+        const newBalance = new Prisma.Decimal(updatedInvoice.balance)
+        const status = computePaymentStatus(newBalance, newPaid, updatedInvoice.dueDate)
+
+        await tx.purchaseInvoice.update({
+          where: { id: invoiceId },
+          data: { status },
+        })
 
         const createdPayment = await tx.supplierPayment.create({
           data: {
@@ -123,15 +160,6 @@ export async function POST(request: Request) {
             paymentMode: paymentMode || null,
             reference: reference?.trim() || null,
             notes: notes?.trim() || null,
-          },
-        })
-
-        await tx.purchaseInvoice.update({
-          where: { id: invoiceId },
-          data: {
-            paid: newPaid.toNumber(),
-            balance: newBalance.toNumber(),
-            status,
           },
         })
 

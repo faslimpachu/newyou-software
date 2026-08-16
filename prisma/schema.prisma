@@ -333,6 +333,7 @@ model Supplier {
 
   purchaseInvoices  PurchaseInvoice[]
   payments          SupplierPayment[]
+  receipts          BatchReceipt[]
 
   @@map("suppliers")
 }
@@ -357,8 +358,55 @@ model Product {
   category        ProductCategory?       @relation(fields: [categoryId], references: [id])
   invoiceItems    PurchaseInvoiceItem[]
   transactions    InventoryTransaction[]
+  batches         ProductBatch[]
 
   @@map("products")
+}
+
+enum BatchReceiptSource {
+  PURCHASE
+  ADJUSTMENT
+  OPENING
+}
+
+model ProductBatch {
+  id         String   @id @default(uuid())
+  productId  String
+  batchNumber String
+  expiryDate  DateTime?
+  quantity   Decimal  @default(0)
+  createdAt  DateTime  @default(now())
+
+  product    Product           @relation(fields: [productId], references: [id])
+  receipts   BatchReceipt[]
+  transactions InventoryTransaction[]
+
+  @@index([productId])
+  @@index([expiryDate])
+  @@unique([productId, batchNumber])
+  @@map("product_batches")
+}
+
+model BatchReceipt {
+  id                String   @id @default(uuid())
+  batchId           String
+  supplierId        String
+  purchaseInvoiceId String?
+  sourceType        BatchReceiptSource
+  sourceId          String?
+  quantity          Decimal
+  remainingQuantity Decimal
+  purchaseRate      Decimal
+  createdAt         DateTime  @default(now())
+
+  batch           ProductBatch   @relation(fields: [batchId], references: [id])
+  supplier        Supplier      @relation(fields: [supplierId], references: [id])
+  purchaseInvoice PurchaseInvoice? @relation(fields: [purchaseInvoiceId], references: [id])
+
+  @@index([batchId])
+  @@index([purchaseInvoiceId])
+  @@index([supplierId])
+  @@map("batch_receipts")
 }
 
 model PurchaseInvoice {
@@ -380,6 +428,7 @@ model PurchaseInvoice {
   supplier       Supplier           @relation(fields: [supplierId], references: [id])
   items          PurchaseInvoiceItem[]
   payments       SupplierPayment[]
+  receipts       BatchReceipt[]
 
   @@map("purchase_invoices")
 }
@@ -391,6 +440,8 @@ model PurchaseInvoiceItem {
   quantity     Decimal
   purchaseRate Decimal
   amount       Decimal
+  batchNumber  String?
+  expiryDate   DateTime?
 
   invoice PurchaseInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   product Product        @relation(fields: [productId], references: [id])
@@ -419,6 +470,7 @@ model SupplierPayment {
 model InventoryTransaction {
   id           String            @id @default(uuid())
   productId    String
+  batchId      String?
   type         TransactionType
   quantity     Decimal
   referenceType ReferenceType?
@@ -427,10 +479,12 @@ model InventoryTransaction {
   createdAt    DateTime          @default(now())
 
   product Product @relation(fields: [productId], references: [id])
+  batch  ProductBatch? @relation(fields: [batchId], references: [id])
 
   @@map("inventory_transactions")
   @@index([productId, type])
   @@index([referenceType, referenceId])
+  @@index([batchId])
 }
 
 model Sequence {

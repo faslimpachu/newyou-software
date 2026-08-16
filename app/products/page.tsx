@@ -450,7 +450,107 @@ export default function ProductsPage() {
             )}
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">All Batches</CardTitle>
+            <CardDescription>Batch-level inventory tracking</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <p className="text-sm text-muted-foreground">Loading...</p>
+            ) : (
+              <BatchTable products={products} />
+            )}
+          </CardContent>
+        </Card>
       </div>
     </DashboardShell>
+  )
+}
+
+function BatchTable({ products }: { products: Product[] }) {
+  const [batches, setBatches] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const loadBatches = async () => {
+      try {
+        const res = await fetch('/api/batches')
+        if (res.ok) {
+          const data = await res.json()
+          setBatches(data.batches || [])
+        }
+      } catch {
+        // ignore
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadBatches()
+  }, [])
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'EXPIRED':
+        return { label: 'Expired', variant: 'destructive' as const }
+      case 'EXPIRING_SOON':
+        return { label: 'Expiring Soon', variant: 'secondary' as const }
+      case 'OK':
+        return { label: 'OK', variant: 'default' as const }
+      case 'NO_EXPIRY':
+        return { label: 'No Expiry', variant: 'outline' as const }
+      default:
+        return { label: status, variant: 'outline' as const }
+    }
+  }
+
+  if (loading) {
+    return <p className="text-sm text-muted-foreground">Loading batches...</p>
+  }
+
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Product</TableHead>
+          <TableHead>Batch Number</TableHead>
+          <TableHead>Qty</TableHead>
+          <TableHead>Avg Cost</TableHead>
+          <TableHead>Expiry</TableHead>
+          <TableHead>Status</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {batches.map((batch) => {
+          const statusInfo = getStatusBadge(batch.status)
+          return (
+            <TableRow key={batch.id}>
+              <TableCell className="font-medium">
+                {batch.product?.name || '-'}
+              </TableCell>
+              <TableCell>{batch.batchNumber}</TableCell>
+              <TableCell className="tabular-nums">{batch.quantity}</TableCell>
+              <TableCell>₹{batch.avgCost?.toLocaleString('en-IN') || '-'}</TableCell>
+              <TableCell>
+                {batch.expiryDate
+                  ? new Date(batch.expiryDate).toLocaleDateString('en-IN')
+                  : '-'}
+              </TableCell>
+              <TableCell>
+                <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>
+              </TableCell>
+            </TableRow>
+          )
+        })}
+        {batches.length === 0 && (
+          <TableRow>
+            <TableCell colSpan={6} className="text-center text-muted-foreground">
+              No batches found
+            </TableCell>
+          </TableRow>
+        )}
+      </TableBody>
+    </Table>
   )
 }

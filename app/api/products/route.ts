@@ -90,6 +90,11 @@ export async function POST(request: Request) {
 
     const code = await generatePurchaseNumber('PRODUCT')
 
+    const gst = new Prisma.Decimal(body.gstPercent ?? 0)
+    if (gst.lessThan(0) || gst.greaterThan(100)) {
+      return NextResponse.json({ error: 'GST percent must be between 0 and 100' }, { status: 400 })
+    }
+
     const product = await prisma.product.create({
       data: {
         name: name.trim(),

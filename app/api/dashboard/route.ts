@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
+import { getInventoryValue, getExpiryStats } from '@/lib/inventory-service';
 
 function startOfDay(date: Date) {
   const d = new Date(date)
@@ -189,6 +190,9 @@ export async function GET() {
           todayPurchase,
           monthPurchase,
           pendingPayments,
+          inventoryValue,
+          expiryStats,
+          totalBatches,
         ] = await Promise.all([
           prisma.supplier.count({ where: { status: 'ACTIVE' } }),
           prisma.product.findMany({
@@ -204,9 +208,12 @@ export async function GET() {
             _sum: { grandTotal: true },
           }),
           prisma.purchaseInvoice.aggregate({
-            where: { status: { in: ['PENDING', 'PARTIAL'] } },
+            where: { status: { in: ['PENDING', 'PARTIAL', 'OVERDUE'] } },
             _sum: { balance: true },
           }),
+          getInventoryValue(),
+          getExpiryStats(),
+          prisma.productBatch.count({ where: { quantity: { gt: 0 } } }),
         ])
 
         const lowStockItems = lowStockProducts.filter((p) => new Prisma.Decimal(p.currentStock).lessThan(p.minimumStock)).length
@@ -217,6 +224,9 @@ export async function GET() {
           todayPurchase: todayPurchase._sum.grandTotal || 0,
           monthlyPurchase: monthPurchase._sum.grandTotal || 0,
           pendingPayments: pendingPayments._sum.balance || 0,
+          inventoryValue,
+          ...expiryStats,
+          totalBatches,
         }
       })(),
     ])

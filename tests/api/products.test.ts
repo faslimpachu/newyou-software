@@ -11,6 +11,11 @@ beforeAll(async () => {
 beforeEach(async () => {
   await prisma.inventoryTransaction.deleteMany()
   await prisma.purchaseInvoiceItem.deleteMany()
+  await prisma.purchaseInvoice.deleteMany()
+  await prisma.supplierPayment.deleteMany()
+  await prisma.batchReceipt.deleteMany()
+  await prisma.productBatch.deleteMany()
+  await prisma.supplier.deleteMany()
   await prisma.product.deleteMany()
   await prisma.productCategory.deleteMany()
   await prisma.sequence.deleteMany()

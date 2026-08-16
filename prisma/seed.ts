@@ -65,6 +65,8 @@ async function main() {
   await prisma.purchaseInvoice.deleteMany()
   await prisma.supplierPayment.deleteMany()
   await prisma.product.deleteMany()
+  await prisma.productBatch.deleteMany()
+  await prisma.batchReceipt.deleteMany()
   await prisma.productCategory.deleteMany()
   await prisma.sequence.deleteMany()
 
@@ -158,6 +160,28 @@ async function main() {
       data: { ...product, code: `PRD-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${String(productMap.size + 1).padStart(4, '0')}` },
     })
     productMap.set(product.sku, created.id)
+
+    if (product.currentStock > 0) {
+      const batch = await prisma.productBatch.create({
+        data: {
+          productId: created.id,
+          batchNumber: 'OPENING',
+          expiryDate: null,
+          quantity: product.currentStock,
+        },
+      })
+
+      await prisma.batchReceipt.create({
+        data: {
+          batchId: batch.id,
+          supplierId: (supplierMap.get('ABC Pharma Pvt Ltd') || supplierMap.values().next().value)!,
+          sourceType: 'OPENING',
+          quantity: product.currentStock,
+          remainingQuantity: product.currentStock,
+          purchaseRate: product.purchasePrice,
+        },
+      })
+    }
   }
 
   const purchaseInvoices = [
