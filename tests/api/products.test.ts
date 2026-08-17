@@ -2,6 +2,8 @@ import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest'
 import { GET, POST } from '@/app/api/products/route'
 import { GET as GETById, PATCH, DELETE } from '@/app/api/products/[id]/route'
 import { GET as GETLowStock } from '@/app/api/products/low-stock/route'
+import { GET as BatchesGet } from '@/app/api/batches/route'
+import { POST as PurchasePost } from '@/app/api/purchase-invoices/route'
 import { prisma } from '@/lib/prisma'
 
 beforeAll(async () => {
@@ -387,5 +389,52 @@ describe('Products API', () => {
     expect(res.status).toBe(400)
     const data = await res.json()
     expect(data.error).toBe('GST percent must be between 0 and 100')
+  })
+
+  it('GET batches includes supplier names for batch table', async () => {
+    const supplier = await prisma.supplier.create({
+      data: { supplierName: 'Batch Supplier', status: 'ACTIVE' },
+    })
+    const category = await prisma.productCategory.create({
+      data: { name: 'Medicines', active: true },
+    })
+    const product = await prisma.product.create({
+      data: {
+        name: 'Batch Product',
+        code: 'PRD-BATCH-SUP',
+        categoryId: category.id,
+        unit: 'pcs',
+        purchasePrice: 10,
+        sellingPrice: 15,
+        currentStock: 0,
+        minimumStock: 10,
+        maximumStock: 200,
+      },
+    })
+
+    const req = new Request('http://localhost/api/purchase-invoices', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        invoiceDate: '2026-08-02',
+        supplierId: supplier.id,
+        paymentMode: 'CASH',
+        items: [{ productId: product.id, quantity: 50, purchaseRate: 10, batchNumber: 'BATCH-SUP', expiryDate: '2026-12-31' }],
+      }),
+    })
+    const postRes = await PurchasePost(req)
+    if (postRes.status !== 201) {
+      const err = await postRes.json()
+      console.error('Purchase invoice creation failed:', err)
+    }
+    expect(postRes.status).toBe(201)
+
+    const batches = await prisma.productBatch.findMany({ where: { productId: product.id } })
+    expect(batches).toHaveLength(1)
+
+    const batchRes = await BatchesGet(new Request('http://localhost/api/batches'))
+    const batchData = await batchRes.json()
+    expect(batchData.batches).toHaveLength(1)
+    expect(batchData.batches[0].receipts[0].supplierName).toBe('Batch Supplier')
   })
 })

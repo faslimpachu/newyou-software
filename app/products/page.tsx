@@ -515,6 +515,7 @@ function BatchTable({ products }: { products: Product[] }) {
         <TableRow>
           <TableHead>Product</TableHead>
           <TableHead>Batch Number</TableHead>
+          <TableHead>Supplier</TableHead>
           <TableHead>Qty</TableHead>
           <TableHead>Avg Cost</TableHead>
           <TableHead>Expiry</TableHead>
@@ -524,12 +525,14 @@ function BatchTable({ products }: { products: Product[] }) {
       <TableBody>
         {batches.map((batch) => {
           const statusInfo = getStatusBadge(batch.status)
+          const supplierNames = [...new Set((batch.receipts || []).map((r: any) => r.supplierName).filter(Boolean))]
           return (
             <TableRow key={batch.id}>
               <TableCell className="font-medium">
                 {batch.product?.name || '-'}
               </TableCell>
               <TableCell>{batch.batchNumber}</TableCell>
+              <TableCell>{supplierNames.length > 0 ? supplierNames.join(', ') : '-'}</TableCell>
               <TableCell className="tabular-nums">{batch.quantity}</TableCell>
               <TableCell>₹{batch.avgCost?.toLocaleString('en-IN') || '-'}</TableCell>
               <TableCell>
@@ -545,7 +548,7 @@ function BatchTable({ products }: { products: Product[] }) {
         })}
         {batches.length === 0 && (
           <TableRow>
-            <TableCell colSpan={6} className="text-center text-muted-foreground">
+            <TableCell colSpan={7} className="text-center text-muted-foreground">
               No batches found
             </TableCell>
           </TableRow>

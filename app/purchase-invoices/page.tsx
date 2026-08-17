@@ -42,6 +42,8 @@ interface InvoiceItem {
   quantity: number
   purchaseRate: number
   amount: number
+  batchNumber: string
+  expiryDate: string
 }
 
 interface PurchaseInvoice {
@@ -66,6 +68,8 @@ interface PurchaseInvoice {
     quantity: number
     purchaseRate: number
     amount: number
+    batchNumber: string | null
+    expiryDate: string | null
     product: { id: string; name: string; sku: string | null; unit: string }
   }[]
 }
@@ -75,6 +79,8 @@ const emptyItem: InvoiceItem = {
   quantity: 0,
   purchaseRate: 0,
   amount: 0,
+  batchNumber: '',
+  expiryDate: '',
 }
 
 export default function PurchaseInvoicesPage() {
@@ -184,6 +190,8 @@ export default function PurchaseInvoicesPage() {
           productId: item.productId,
           quantity: item.quantity,
           purchaseRate: item.purchaseRate,
+          batchNumber: item.batchNumber?.trim() || null,
+          expiryDate: item.expiryDate || null,
         })),
       }
 
@@ -331,6 +339,8 @@ export default function PurchaseInvoicesPage() {
                         <TableHead>Product</TableHead>
                         <TableHead>Quantity</TableHead>
                         <TableHead>Purchase Rate</TableHead>
+                        <TableHead>Batch Number</TableHead>
+                        <TableHead>Expiry Date</TableHead>
                         <TableHead className="text-right">Amount</TableHead>
                         <TableHead></TableHead>
                       </TableRow>
@@ -368,6 +378,22 @@ export default function PurchaseInvoicesPage() {
                               value={item.purchaseRate || ''}
                               onChange={(e) => handleItemChange(index, 'purchaseRate', parseFloat(e.target.value) || 0)}
                               className="w-32"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              value={item.batchNumber || ''}
+                              onChange={(e) => handleItemChange(index, 'batchNumber', e.target.value)}
+                              placeholder="Batch No."
+                              className="w-32"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              type="date"
+                              value={item.expiryDate || ''}
+                              onChange={(e) => handleItemChange(index, 'expiryDate', e.target.value)}
+                              className="w-40"
                             />
                           </TableCell>
                           <TableCell className="text-right tabular-nums">
@@ -522,6 +548,8 @@ export default function PurchaseInvoicesPage() {
                     <TableHead>Product</TableHead>
                     <TableHead>Quantity</TableHead>
                     <TableHead>Purchase Rate</TableHead>
+                    <TableHead>Batch Number</TableHead>
+                    <TableHead>Expiry Date</TableHead>
                     <TableHead className="text-right">Amount</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -531,6 +559,8 @@ export default function PurchaseInvoicesPage() {
                       <TableCell className="font-medium">{item.product.name}</TableCell>
                       <TableCell>{item.quantity} {item.product.unit}</TableCell>
                       <TableCell>₹{item.purchaseRate.toLocaleString('en-IN')}</TableCell>
+                      <TableCell>{item.batchNumber || '-'}</TableCell>
+                      <TableCell>{item.expiryDate ? new Date(item.expiryDate).toLocaleDateString('en-IN') : '-'}</TableCell>
                       <TableCell className="text-right tabular-nums">₹{item.amount.toLocaleString('en-IN')}</TableCell>
                     </TableRow>
                   ))}

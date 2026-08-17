@@ -19,6 +19,11 @@ export interface DashboardPurchaseStats {
   todayPurchase: number
   monthlyPurchase: number
   pendingPayments: number
+  inventoryValue: number
+  expiredStockValue: number
+  expiringSoonCount: number
+  expiringSoonValue: number
+  totalBatches: number
 }
 
 export interface DashboardChartData {

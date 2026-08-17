@@ -46,8 +46,10 @@ describe('Session URL-safe base64', () => {
 describe('Dashboard API', () => {
   it('returns 200 with expected top-level keys', async () => {
     const passwordHash = await hashPassword('password123')
-    await prisma.user.create({
-      data: {
+    await prisma.user.upsert({
+      where: { username: 'dashuser' },
+      update: {},
+      create: {
         username: 'dashuser',
         name: 'Dash User',
         passwordHash,
@@ -75,5 +77,11 @@ describe('Dashboard API', () => {
     expect(data).toHaveProperty('recentRegistrations')
     expect(data).toHaveProperty('upcomingFollowUps')
     expect(data).toHaveProperty('recentBilling')
+    expect(data.purchase).toBeDefined()
+    expect(data.purchase).toHaveProperty('inventoryValue')
+    expect(data.purchase).toHaveProperty('expiredStockValue')
+    expect(data.purchase).toHaveProperty('expiringSoonCount')
+    expect(data.purchase).toHaveProperty('expiringSoonValue')
+    expect(data.purchase).toHaveProperty('totalBatches')
   })
 })

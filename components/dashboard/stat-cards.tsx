@@ -1,6 +1,6 @@
 'use client'
 
-import { ArrowDownRight, ArrowUpRight, CalendarClock, CalendarDays, Activity, Users, Leaf, Stethoscope, IndianRupee, Receipt, Package, Truck, Wallet } from 'lucide-react'
+import { ArrowDownRight, ArrowUpRight, CalendarClock, CalendarDays, Activity, Users, Leaf, Stethoscope, IndianRupee, Receipt, Package, Truck, Wallet, Archive, AlertTriangle, Clock, Hash } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import { useDashboardData } from './use-dashboard-data'
@@ -18,7 +18,7 @@ export function StatCards() {
   if (loading || !data) {
     return (
       <section aria-label="Key metrics" className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {Array.from({ length: 11 }).map((_, i) => (
+        {Array.from({ length: 16 }).map((_, i) => (
           <Card key={i} className="flex flex-col gap-3 rounded-2xl border-border/70 p-5 shadow-sm">
             <div className="h-10 w-10 animate-pulse rounded-xl bg-muted" />
             <div className="space-y-2">
@@ -38,6 +38,11 @@ export function StatCards() {
     todayPurchase: 0,
     monthlyPurchase: 0,
     pendingPayments: 0,
+    inventoryValue: 0,
+    expiredStockValue: 0,
+    expiringSoonCount: 0,
+    expiringSoonValue: 0,
+    totalBatches: 0,
   }
 
   const stats = [
@@ -52,6 +57,11 @@ export function StatCards() {
     { key: 'suppliers', label: 'Total Suppliers', value: fmt(purchase.totalSuppliers), trend: 'up' as const, icon: Truck, hint: 'active' },
     { key: 'low-stock', label: 'Low Stock Items', value: fmt(purchase.lowStockItems), trend: 'down' as const, icon: Package, hint: 'needs reorder' },
     { key: 'pending-payments', label: 'Pending Payments', value: `₹${fmt(purchase.pendingPayments)}`, trend: 'down' as const, icon: Wallet, hint: 'outstanding' },
+    { key: 'inventory-value', label: 'Inventory Value', value: `₹${fmt(purchase.inventoryValue)}`, trend: 'up' as const, icon: Archive, hint: 'receipt-layer costing' },
+    { key: 'expired-stock', label: 'Expired Stock Value', value: `₹${fmt(purchase.expiredStockValue)}`, trend: 'down' as const, icon: AlertTriangle, hint: 'needs disposal' },
+    { key: 'expiring-soon-count', label: 'Expiring Soon Count', value: fmt(purchase.expiringSoonCount), trend: 'down' as const, icon: Clock, hint: 'within 30 days' },
+    { key: 'expiring-soon-value', label: 'Expiring Soon Value', value: `₹${fmt(purchase.expiringSoonValue)}`, trend: 'down' as const, icon: Clock, hint: 'financial at-risk' },
+    { key: 'total-batches', label: 'Total Batches', value: fmt(purchase.totalBatches), trend: 'up' as const, icon: Hash, hint: 'active batches' },
   ]
 
   return (
@@ -76,6 +86,10 @@ export function StatCards() {
                 {stat.icon === Truck && <Truck className="size-5" />}
                 {stat.icon === Package && <Package className="size-5" />}
                 {stat.icon === Wallet && <Wallet className="size-5" />}
+                {stat.icon === Archive && <Archive className="size-5" />}
+                {stat.icon === AlertTriangle && <AlertTriangle className="size-5" />}
+                {stat.icon === Clock && <Clock className="size-5" />}
+                {stat.icon === Hash && <Hash className="size-5" />}
               </div>
               <span
                 className={cn(

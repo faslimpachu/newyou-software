@@ -80,6 +80,51 @@ describe('Purchase Invoices API', () => {
     expect(Number(transactions[0].quantity)).toBe(50)
   })
 
+  it('POST creates invoice with batch number and expiry date', async () => {
+    const supplier = await prisma.supplier.create({
+      data: { supplierName: 'Test Supplier', status: 'ACTIVE' },
+    })
+    const category = await prisma.productCategory.create({
+      data: { name: 'Medicines', active: true },
+    })
+    const product = await prisma.product.create({
+      data: {
+        name: 'Test Product',
+        code: 'PRD-20260802-BATCH',
+        categoryId: category.id,
+        unit: 'pcs',
+        purchasePrice: 10,
+        sellingPrice: 15,
+        currentStock: 0,
+        minimumStock: 10,
+        maximumStock: 200,
+      },
+    })
+
+    const req = new Request('http://localhost/api/purchase-invoices', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        invoiceDate: '2026-08-02',
+        supplierId: supplier.id,
+        paymentMode: 'CASH',
+        items: [
+          { productId: product.id, quantity: 50, purchaseRate: 10, batchNumber: 'BATCH-001', expiryDate: '2026-12-31' },
+        ],
+      }),
+    })
+    const res = await POST(req)
+    expect(res.status).toBe(201)
+    const data = await res.json()
+    expect(data.invoice).toBeDefined()
+    expect(data.invoice.items[0].batchNumber).toBe('BATCH-001')
+    expect(data.invoice.items[0].expiryDate).toBeTruthy()
+
+    const batches = await prisma.productBatch.findMany({ where: { productId: product.id } })
+    expect(batches).toHaveLength(1)
+    expect(batches[0].batchNumber).toBe('BATCH-001')
+  })
+
   it('GET returns invoices with items', async () => {
     const supplier = await prisma.supplier.create({
       data: { supplierName: 'Test Supplier', status: 'ACTIVE' },
