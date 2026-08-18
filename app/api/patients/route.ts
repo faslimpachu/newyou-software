@@ -7,9 +7,12 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const search = url.searchParams.get('search') || '';
     const status = url.searchParams.get('status') || '';
-    const page = parseInt(url.searchParams.get('page') || '1');
-    const limit = parseInt(url.searchParams.get('limit') || '10');
-    const skip = (page - 1) * limit;
+    const pageParam = url.searchParams.get('page')
+    const limitParam = url.searchParams.get('limit')
+    const hasPagination = pageParam !== null || limitParam !== null
+    const page = hasPagination ? parseInt(pageParam || '1') : 0
+    const limit = hasPagination ? parseInt(limitParam || '10') : 0
+    const skip = hasPagination ? (page - 1) * limit : 0
 
     const where: Record<string, unknown> = {};
     if (search) {
@@ -26,17 +29,18 @@ export async function GET(request: Request) {
     const [patients, total] = await Promise.all([
       prisma.patient.findMany({
         where,
-        skip,
-        take: limit,
+        ...(hasPagination ? { skip, take: limit } : {}),
         orderBy: { createdAt: 'desc' },
         include: {
           visits: { orderBy: { createdAt: 'desc' } },
         },
       }),
       prisma.patient.count({ where }),
-    ]);
+    ])
 
-    return NextResponse.json({ patients, total, page, limit });
+    return hasPagination
+      ? NextResponse.json({ patients, total, page, limit })
+      : NextResponse.json({ patients, total: patients.length })
   } catch (e) {
     console.error('Patients GET error', e);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
