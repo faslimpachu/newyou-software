@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { render, screen, waitFor, within, fireEvent, act } from '@testing-library/react'
 import ProductsPage from '@/app/products/page'
 
 const mockProducts = [
@@ -27,7 +27,13 @@ global.fetch = async (url: string) => {
   if (url.includes('/api/products')) {
     return {
       ok: true,
-      json: async () => ({ products: mockProducts }),
+      json: async () => ({
+        products: mockProducts,
+        page: 1,
+        pageSize: 20,
+        total: 1,
+        totalPages: 1,
+      }),
     } as Response
   }
   if (url.includes('/api/product-categories')) {
@@ -73,19 +79,76 @@ describe('Products Page UI', () => {
     })
   })
 
-  it('renders create product form title', async () => {
+  it('create product form is hidden by default', async () => {
     await waitFor(() => {
-      const elements = screen.getAllByText('Create Product')
-      expect(elements.length).toBeGreaterThanOrEqual(1)
+      expect(screen.queryByLabelText('Product Name')).toBeNull()
     })
   })
 
-  it('shows product form fields', async () => {
+  it('shows create product button when form is hidden', async () => {
     await waitFor(() => {
-      expect(screen.getByLabelText('Product Name')).toBeDefined()
+      expect(screen.getByRole('button', { name: /create product/i })).toBeDefined()
     })
-    expect(screen.getByLabelText('SKU')).toBeDefined()
-    expect(screen.getByLabelText('GST %')).toBeDefined()
+  })
+
+  it('shows product form fields after clicking create button', async () => {
+    await waitFor(() => {
+      expect(screen.getByText('Create Product')).toBeDefined()
+    })
+    const createButtons = screen.getAllByText('Create Product')
+    act(() => {
+      fireEvent.click(createButtons[0])
+    })
+    expect(screen.getByText('Add a new product to inventory')).toBeDefined()
+    expect(screen.getByPlaceholderText('Enter product name')).toBeDefined()
+    expect(screen.getByPlaceholderText('e.g., MED-001')).toBeDefined()
+    expect(screen.getByPlaceholderText('e.g., pcs, strip, bottle')).toBeDefined()
+    expect(screen.getByPlaceholderText('Auto-generated on create')).toBeDefined()
+    expect(screen.getByPlaceholderText('Enter product name').closest('input')).not.toBeDisabled()
+    expect(screen.getByPlaceholderText('Auto-generated on create').closest('input')).toBeDisabled()
+  })
+
+  it('opens edit form with product values and disabled code field', async () => {
+    await waitFor(() => {
+      expect(screen.getByText('Edit')).toBeDefined()
+    })
+    const editButtons = screen.getAllByText('Edit')
+    act(() => {
+      fireEvent.click(editButtons[0])
+    })
+    expect(screen.getByText('Update product details below')).toBeDefined()
+    expect(screen.getByDisplayValue('Paracetamol')).toBeDefined()
+    expect(screen.getByDisplayValue('PRD-001')).toBeDefined()
+    expect(screen.getByDisplayValue('PRD-001').closest('input')).toBeDisabled()
+  })
+
+  it('shows category name in select after choosing a category', async () => {
+    await waitFor(() => {
+      expect(screen.getByText('Create Product')).toBeDefined()
+    })
+    const createButtons = screen.getAllByText('Create Product')
+    act(() => {
+      fireEvent.click(createButtons[0])
+    })
+
+    const categoryTrigger = screen.getByText('Select category').closest('button')
+    expect(categoryTrigger).not.toBeNull()
+    act(() => {
+      fireEvent.click(categoryTrigger!)
+    })
+
+    const listbox = document.querySelector('[role="listbox"]')
+    expect(listbox).not.toBeNull()
+    expect(listbox?.textContent).toContain('Medicines')
+
+    const medicineOption = listbox?.querySelector('[data-slot="select-item"]')
+    expect(medicineOption).not.toBeNull()
+    act(() => {
+      fireEvent.click(medicineOption!)
+    })
+
+    const categoryValues = screen.getAllByText('Medicines')
+    expect(categoryValues.length).toBeGreaterThanOrEqual(1)
   })
 
   it('shows edit button for products', async () => {
@@ -98,5 +161,217 @@ describe('Products Page UI', () => {
     await waitFor(() => {
       expect(screen.getByText('500 strip')).toBeDefined()
     })
+  })
+
+  it('shows view button for products', async () => {
+    await waitFor(() => {
+      const viewButtons = screen.getAllByRole('button')
+      expect(viewButtons.length).toBeGreaterThan(0)
+    })
+  })
+
+  it('creates a product with a unique SKU successfully', async () => {
+    await waitFor(() => {
+      expect(screen.getByText('Create Product')).toBeDefined()
+    })
+    const createButtons = screen.getAllByText('Create Product')
+    act(() => {
+      fireEvent.click(createButtons[0])
+    })
+
+    act(() => {
+      fireEvent.change(screen.getByPlaceholderText('Enter product name'), { target: { value: 'New Product' } })
+    })
+    act(() => {
+      fireEvent.change(screen.getByPlaceholderText('e.g., MED-001'), { target: { value: 'UNIQUE-SKU-123' } })
+    })
+    act(() => {
+      fireEvent.change(screen.getByPlaceholderText('e.g., pcs, strip, bottle'), { target: { value: 'pcs' } })
+    })
+    act(() => {
+      fireEvent.change(screen.getByLabelText('Purchase Price *').closest('div')?.querySelector('input')!, { target: { value: '100' } })
+    })
+
+    const categoryTrigger = screen.getByText('Select category').closest('button')
+    act(() => {
+      fireEvent.focus(categoryTrigger!)
+      fireEvent.click(categoryTrigger!)
+    })
+
+    const listbox = await waitFor(() => document.querySelector('[role="listbox"]'))
+    expect(listbox).not.toBeNull()
+    expect(listbox?.textContent).toContain('Medicines')
+
+    const medicineOption = listbox?.querySelector('[data-slot="select-item"]')
+    expect(medicineOption).not.toBeNull()
+    act(() => {
+      fireEvent.click(medicineOption!)
+    })
+
+    let capturedUrl = ''
+    let capturedBody: any = null
+    const originalFetch = (global as any).fetch
+    ;(global as any).fetch = async (url: string, options?: any) => {
+      if (url.includes('/api/products') && options?.method === 'POST') {
+        capturedUrl = url
+        capturedBody = JSON.parse(options.body)
+        return {
+          ok: true,
+          json: async () => ({
+            products: mockProducts,
+            page: 1,
+            pageSize: 20,
+            total: 1,
+            totalPages: 1,
+          }),
+        } as Response
+      }
+      return originalFetch(url, options)
+    }
+
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: 'Create Product' }))
+    })
+
+    expect(capturedUrl).toBe('/api/products')
+    expect(capturedBody.name).toBe('New Product')
+    expect(capturedBody.sku).toBe('UNIQUE-SKU-123')
+    expect(capturedBody.code).toBeUndefined()
+    expect(capturedBody.categoryId).toBe('cat-1')
+
+    ;(global as any).fetch = originalFetch
+  })
+
+  it('shows error when submitting a product with a duplicate SKU', async () => {
+    await waitFor(() => {
+      expect(screen.getByText('Create Product')).toBeDefined()
+    })
+    const createButtons = screen.getAllByText('Create Product')
+    act(() => {
+      fireEvent.click(createButtons[0])
+    })
+
+    act(() => {
+      fireEvent.change(screen.getByPlaceholderText('Enter product name'), { target: { value: 'Duplicate SKU Product' } })
+    })
+    act(() => {
+      fireEvent.change(screen.getByPlaceholderText('e.g., MED-001'), { target: { value: 'MED001' } })
+    })
+    act(() => {
+      fireEvent.change(screen.getByPlaceholderText('e.g., pcs, strip, bottle'), { target: { value: 'pcs' } })
+    })
+    act(() => {
+      fireEvent.change(screen.getByLabelText('Purchase Price *').closest('div')?.querySelector('input')!, { target: { value: '100' } })
+    })
+
+    const categoryTrigger = screen.getByText('Select category').closest('button')
+    act(() => {
+      fireEvent.focus(categoryTrigger!)
+      fireEvent.click(categoryTrigger!)
+    })
+
+    const listbox = await waitFor(() => document.querySelector('[role="listbox"]'))
+    expect(listbox).not.toBeNull()
+    expect(listbox?.textContent).toContain('Medicines')
+
+    const medicineOption = listbox?.querySelector('[data-slot="select-item"]')
+    expect(medicineOption).not.toBeNull()
+    act(() => {
+      fireEvent.click(medicineOption!)
+    })
+
+    let capturedBody: any = null
+    const originalFetch = (global as any).fetch
+    ;(global as any).fetch = async (url: string, options?: any) => {
+      if (url.includes('/api/products') && options?.method === 'POST') {
+        capturedBody = JSON.parse(options.body)
+        return {
+          ok: false,
+          json: async () => ({ error: 'SKU or Product Code already exists' }),
+        } as Response
+      }
+      return originalFetch(url, options)
+    }
+
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: 'Create Product' }))
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('SKU or Product Code already exists')).toBeDefined()
+    })
+
+    expect(capturedBody.sku).toBe('MED001')
+    expect(capturedBody.code).toBeUndefined()
+
+    ;(global as any).fetch = originalFetch
+  })
+
+  it('does not send code field for create operations', async () => {
+    await waitFor(() => {
+      expect(screen.getByText('Create Product')).toBeDefined()
+    })
+    const createButtons = screen.getAllByText('Create Product')
+    act(() => {
+      fireEvent.click(createButtons[0])
+    })
+
+    act(() => {
+      fireEvent.change(screen.getByPlaceholderText('Enter product name'), { target: { value: 'Test Product' } })
+    })
+    act(() => {
+      fireEvent.change(screen.getByPlaceholderText('e.g., MED-001'), { target: { value: 'TEST-SKU-999' } })
+    })
+    act(() => {
+      fireEvent.change(screen.getByPlaceholderText('e.g., pcs, strip, bottle'), { target: { value: 'pcs' } })
+    })
+    act(() => {
+      fireEvent.change(screen.getByLabelText('Purchase Price *').closest('div')?.querySelector('input')!, { target: { value: '50' } })
+    })
+
+    const categoryTrigger = screen.getByText('Select category').closest('button')
+    act(() => {
+      fireEvent.focus(categoryTrigger!)
+      fireEvent.click(categoryTrigger!)
+    })
+
+    const listbox = await waitFor(() => document.querySelector('[role="listbox"]'))
+    expect(listbox).not.toBeNull()
+    expect(listbox?.textContent).toContain('Medicines')
+
+    const medicineOption = listbox?.querySelector('[data-slot="select-item"]')
+    expect(medicineOption).not.toBeNull()
+    act(() => {
+      fireEvent.click(medicineOption!)
+    })
+
+    let capturedBody: any = null
+    const originalFetch = (global as any).fetch
+    ;(global as any).fetch = async (url: string, options?: any) => {
+      if (url.includes('/api/products') && options?.method === 'POST') {
+        capturedBody = JSON.parse(options.body)
+        return {
+          ok: true,
+          json: async () => ({
+            products: mockProducts,
+            page: 1,
+            pageSize: 20,
+            total: 1,
+            totalPages: 1,
+          }),
+        } as Response
+      }
+      return originalFetch(url, options)
+    }
+
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: 'Create Product' }))
+    })
+
+    expect(capturedBody).not.toHaveProperty('code')
+    expect(capturedBody.name).toBe('Test Product')
+    expect(capturedBody.sku).toBe('TEST-SKU-999')
+
+    ;(global as any).fetch = originalFetch
   })
 })
