@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -71,7 +71,15 @@ const emptySupplier = {
   address: '',
   gstNumber: '',
   openingBalance: 0,
-  status: 'ACTIVE',
+  status: 'ACTIVE' as const,
+}
+
+type FieldError = {
+  supplierName?: string
+  phone?: string
+  email?: string
+  gstNumber?: string
+  openingBalance?: string
 }
 
 export default function SuppliersPage() {
@@ -79,32 +87,83 @@ export default function SuppliersPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [fieldErrors, setFieldErrors] = useState<FieldError>({})
+  const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState(emptySupplier)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [viewingSupplier, setViewingSupplier] = useState<SupplierLedger | null>(null)
+  const [page, setPage] = useState(1)
+  const [pageSize] = useState(20)
+  const [totalPages, setTotalPages] = useState(1)
+  const [total, setTotal] = useState(0)
 
-  const loadSuppliers = async () => {
+  const loadSuppliers = useCallback(async (pageNum = 1) => {
     try {
-      const res = await fetch('/api/suppliers')
+      const res = await fetch(`/api/suppliers?page=${pageNum}&pageSize=${pageSize}`)
       if (!res.ok) throw new Error('Failed to load suppliers')
       const data = await res.json()
       setSuppliers(data.suppliers)
+      setTotalPages(data.totalPages || 1)
+      setTotal(data.total || 0)
+      setPage(data.page || pageNum)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load suppliers')
     } finally {
       setLoading(false)
     }
-  }
+  }, [pageSize])
 
   useEffect(() => {
-    loadSuppliers()
-  }, [])
+    loadSuppliers(1)
+  }, [loadSuppliers])
+
+  const handlePrevPage = () => {
+    if (page > 1) {
+      loadSuppliers(page - 1)
+    }
+  }
+
+  const handleNextPage = () => {
+    if (page < totalPages) {
+      loadSuppliers(page + 1)
+    }
+  }
+
+  const validate = useCallback(() => {
+    const errors: FieldError = {}
+
+    if (!form.supplierName.trim()) {
+      errors.supplierName = 'Supplier name is required'
+    }
+
+    if (form.phone && !/^[6-9]\d{9}$/.test(form.phone.replace(/\s+/g, ''))) {
+      errors.phone = 'Enter a valid 10-digit Indian mobile number'
+    }
+
+    if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+      errors.email = 'Enter a valid email address'
+    }
+
+    if (form.gstNumber && !/^[0-9A-Z]{15}$/.test(form.gstNumber.toUpperCase())) {
+      errors.gstNumber = 'GST number must be 15 alphanumeric characters (e.g., GSTIN1234567890)'
+    }
+
+    if (form.openingBalance < 0) {
+      errors.openingBalance = 'Opening balance cannot be negative'
+    }
+
+    setFieldErrors(errors)
+    return Object.keys(errors).length === 0
+  }, [form])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
-    setSaving(true)
+    setFieldErrors({})
 
+    if (!validate()) return
+
+    setSaving(true)
     try {
       const url = editingId ? `/api/suppliers/${editingId}` : '/api/suppliers'
       const method = editingId ? 'PATCH' : 'POST'
@@ -125,6 +184,8 @@ export default function SuppliersPage() {
       await loadSuppliers()
       setForm(emptySupplier)
       setEditingId(null)
+      setShowForm(false)
+      setFieldErrors({})
     } catch {
       setError('Something went wrong')
     } finally {
@@ -144,6 +205,9 @@ export default function SuppliersPage() {
       openingBalance: supplier.openingBalance,
       status: supplier.status,
     })
+    setShowForm(true)
+    setFieldErrors({})
+    setError('')
   }
 
   const handleDelete = async (id: string) => {
@@ -151,6 +215,9 @@ export default function SuppliersPage() {
     const res = await fetch(`/api/suppliers/${id}`, { method: 'DELETE' })
     if (res.ok) {
       await loadSuppliers()
+      if (viewingSupplier?.supplier.id === id) {
+        setViewingSupplier(null)
+      }
     }
   }
 
@@ -168,118 +235,165 @@ export default function SuppliersPage() {
   const handleCancel = () => {
     setEditingId(null)
     setForm(emptySupplier)
+    setShowForm(false)
+    setFieldErrors({})
+    setError('')
+  }
+
+  const formatPhone = (value: string) => {
+    const digits = value.replace(/\D/g, '').slice(0, 10)
+    return digits
+  }
+
+  const formatGst = (value: string) => {
+    return value.toUpperCase().replace(/[^0-9A-Z]/g, '').slice(0, 15)
   }
 
   return (
     <DashboardShell>
       <div className="mx-auto flex max-w-[1600px] flex-col gap-6">
-        <div>
-          <h1 className="font-display text-2xl font-semibold tracking-tight text-foreground">
-            Suppliers
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Manage suppliers and view supplier ledger
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="font-display text-2xl font-semibold tracking-tight text-foreground">
+              Suppliers
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Manage suppliers and view supplier ledger
+            </p>
+          </div>
+          {!showForm && !editingId && (
+            <Button onClick={() => setShowForm(true)}>
+              <Plus className="mr-2 size-4" />
+              Create Supplier
+            </Button>
+          )}
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">
-              {editingId ? 'Edit Supplier' : 'Create Supplier'}
-            </CardTitle>
-            <CardDescription>
-              {editingId ? 'Update supplier details below' : 'Add a new supplier to the system'}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              <div className="space-y-2">
-                <Label htmlFor="supplierName">Supplier Name</Label>
-                <Input
-                  id="supplierName"
-                  value={form.supplierName}
-                  onChange={(e) => setForm({ ...form, supplierName: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="contactPerson">Contact Person</Label>
-                <Input
-                  id="contactPerson"
-                  value={form.contactPerson}
-                  onChange={(e) => setForm({ ...form, contactPerson: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="phone">Phone</Label>
-                <Input
-                  id="phone"
-                  value={form.phone}
-                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="address">Address</Label>
-                <Input
-                  id="address"
-                  value={form.address}
-                  onChange={(e) => setForm({ ...form, address: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="gstNumber">GST Number</Label>
-                <Input
-                  id="gstNumber"
-                  value={form.gstNumber}
-                  onChange={(e) => setForm({ ...form, gstNumber: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="openingBalance">Opening Balance</Label>
-                <Input
-                  id="openingBalance"
-                  type="number"
-                  step="0.01"
-                  value={form.openingBalance}
-                  onChange={(e) => setForm({ ...form, openingBalance: parseFloat(e.target.value) || 0 })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="status">Status</Label>
-                <Select value={form.status} onValueChange={(value) => setForm({ ...form, status: value || 'ACTIVE' })}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ACTIVE">Active</SelectItem>
-                    <SelectItem value="INACTIVE">Inactive</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex items-end gap-2 md:col-span-2 lg:col-span-3">
-                <Button type="submit" disabled={saving}>
-                  <Plus className="mr-2 size-4" />
-                  {saving ? 'Saving...' : editingId ? 'Update Supplier' : 'Create Supplier'}
-                </Button>
-                {editingId && (
+        {showForm && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">
+                {editingId ? 'Edit Supplier' : 'Create Supplier'}
+              </CardTitle>
+              <CardDescription>
+                {editingId ? 'Update supplier details below' : 'Add a new supplier to the system'}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                <div className="space-y-2">
+                  <Label htmlFor="supplierName">Supplier Name *</Label>
+                  <Input
+                    id="supplierName"
+                    value={form.supplierName}
+                    onChange={(e) => setForm({ ...form, supplierName: e.target.value })}
+                    placeholder="Enter supplier name"
+                    className={fieldErrors.supplierName ? 'border-destructive' : ''}
+                  />
+                  {fieldErrors.supplierName && (
+                    <p className="text-xs text-destructive">{fieldErrors.supplierName}</p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="contactPerson">Contact Person</Label>
+                  <Input
+                    id="contactPerson"
+                    value={form.contactPerson}
+                    onChange={(e) => setForm({ ...form, contactPerson: e.target.value })}
+                    placeholder="Primary contact name"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Phone</Label>
+                  <Input
+                    id="phone"
+                    value={form.phone}
+                    onChange={(e) => setForm({ ...form, phone: formatPhone(e.target.value) })}
+                    placeholder="10-digit mobile number"
+                    maxLength={10}
+                    className={fieldErrors.phone ? 'border-destructive' : ''}
+                  />
+                  {fieldErrors.phone && (
+                    <p className="text-xs text-destructive">{fieldErrors.phone}</p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={form.email}
+                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    placeholder="name@company.com"
+                    className={fieldErrors.email ? 'border-destructive' : ''}
+                  />
+                  {fieldErrors.email && (
+                    <p className="text-xs text-destructive">{fieldErrors.email}</p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="address">Address</Label>
+                  <Input
+                    id="address"
+                    value={form.address}
+                    onChange={(e) => setForm({ ...form, address: e.target.value })}
+                    placeholder="Full address"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="gstNumber">GST Number</Label>
+                  <Input
+                    id="gstNumber"
+                    value={form.gstNumber}
+                    onChange={(e) => setForm({ ...form, gstNumber: formatGst(e.target.value) })}
+                    placeholder="GSTIN1234567890"
+                    maxLength={15}
+                    className={fieldErrors.gstNumber ? 'border-destructive' : ''}
+                  />
+                  {fieldErrors.gstNumber && (
+                    <p className="text-xs text-destructive">{fieldErrors.gstNumber}</p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="openingBalance">Opening Balance</Label>
+                  <Input
+                    id="openingBalance"
+                    type="number"
+                    step="0.01"
+                    value={form.openingBalance}
+                    onChange={(e) => setForm({ ...form, openingBalance: parseFloat(e.target.value) || 0 })}
+                    className={fieldErrors.openingBalance ? 'border-destructive' : ''}
+                  />
+                  {fieldErrors.openingBalance && (
+                    <p className="text-xs text-destructive">{fieldErrors.openingBalance}</p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="status">Status</Label>
+                  <Select value={form.status} onValueChange={(value) => setForm({ ...form, status: value || 'ACTIVE' })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ACTIVE">Active</SelectItem>
+                      <SelectItem value="INACTIVE">Inactive</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-end gap-2 md:col-span-2 lg:col-span-3">
+                  <Button type="submit" disabled={saving}>
+                    <Plus className="mr-2 size-4" />
+                    {saving ? 'Saving...' : editingId ? 'Update Supplier' : 'Create Supplier'}
+                  </Button>
                   <Button type="button" variant="outline" onClick={handleCancel}>
                     Cancel
                   </Button>
-                )}
-              </div>
-            </form>
-            {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
-          </CardContent>
-        </Card>
+                </div>
+              </form>
+              {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader>
@@ -298,7 +412,7 @@ export default function SuppliersPage() {
                     <TableHead>Phone</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>GST Number</TableHead>
-                    <TableHead>Opening Balance</TableHead>
+                    <TableHead className="text-right">Opening Balance</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -308,10 +422,10 @@ export default function SuppliersPage() {
                     <TableRow key={supplier.id}>
                       <TableCell className="font-medium">{supplier.supplierName}</TableCell>
                       <TableCell>{supplier.contactPerson || '-'}</TableCell>
-                      <TableCell>{supplier.phone || '-'}</TableCell>
+                      <TableCell>{supplier.phone ? formatPhoneDisplay(supplier.phone) : '-'}</TableCell>
                       <TableCell>{supplier.email || '-'}</TableCell>
                       <TableCell>{supplier.gstNumber || '-'}</TableCell>
-                      <TableCell>₹{supplier.openingBalance.toLocaleString('en-IN')}</TableCell>
+                      <TableCell className="text-right tabular-nums">₹{supplier.openingBalance.toLocaleString('en-IN')}</TableCell>
                       <TableCell>
                         <Badge variant={supplier.status === 'ACTIVE' ? 'default' : 'destructive'}>
                           {supplier.status}
@@ -346,6 +460,32 @@ export default function SuppliersPage() {
             )}
           </CardContent>
         </Card>
+
+        {!loading && totalPages > 1 && (
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">
+              Page {page} of {totalPages} ({total} total)
+            </p>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handlePrevPage}
+                disabled={page <= 1}
+              >
+                Previous
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleNextPage}
+                disabled={page >= totalPages}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        )}
 
         {viewingSupplier && (
           <Card>
@@ -458,4 +598,10 @@ export default function SuppliersPage() {
       </div>
     </DashboardShell>
   )
+}
+
+function formatPhoneDisplay(value: string) {
+  const digits = value.replace(/\D/g, '').slice(0, 10)
+  if (digits.length <= 5) return digits
+  return `${digits.slice(0, 5)} ${digits.slice(5)}`
 }

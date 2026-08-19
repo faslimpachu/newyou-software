@@ -81,15 +81,36 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Supplier name is required' }, { status: 400 });
     }
 
+    const trimmedPhone = typeof phone === 'string' ? phone.trim() : ''
+    const trimmedEmail = typeof email === 'string' ? email.trim() : ''
+    const trimmedGst = typeof gstNumber === 'string' ? gstNumber.trim() : ''
+
+    if (trimmedPhone && !/^[6-9]\d{9}$/.test(trimmedPhone)) {
+      return NextResponse.json({ error: 'Enter a valid 10-digit Indian mobile number' }, { status: 400 });
+    }
+
+    if (trimmedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      return NextResponse.json({ error: 'Enter a valid email address' }, { status: 400 });
+    }
+
+    if (trimmedGst && !/^[0-9A-Z]{15}$/.test(trimmedGst.toUpperCase())) {
+      return NextResponse.json({ error: 'GST number must be 15 alphanumeric characters (e.g., GSTIN1234567890)' }, { status: 400 });
+    }
+
+    const openingBalanceValue = openingBalance ?? 0
+    if (openingBalanceValue < 0) {
+      return NextResponse.json({ error: 'Opening balance cannot be negative' }, { status: 400 });
+    }
+
     const supplier = await prisma.supplier.create({
       data: {
         supplierName: supplierName.trim(),
         contactPerson: contactPerson?.trim() || null,
-        phone: phone?.trim() || null,
-        email: email?.trim() || null,
+        phone: trimmedPhone || null,
+        email: trimmedEmail || null,
         address: address?.trim() || null,
-        gstNumber: gstNumber?.trim() || null,
-        openingBalance: openingBalance ?? 0,
+        gstNumber: trimmedGst ? trimmedGst.toUpperCase() : null,
+        openingBalance: openingBalanceValue,
         status: status || 'ACTIVE',
       },
     });

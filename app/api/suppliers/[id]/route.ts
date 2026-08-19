@@ -123,15 +123,39 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       status,
     } = body;
 
+    if (supplierName !== undefined && !supplierName.trim()) {
+      return NextResponse.json({ error: 'Supplier name is required' }, { status: 400 });
+    }
+
+    const trimmedPhone = typeof phone === 'string' ? phone.trim() : ''
+    const trimmedEmail = typeof email === 'string' ? email.trim() : ''
+    const trimmedGst = typeof gstNumber === 'string' ? gstNumber.trim() : ''
+
+    if (trimmedPhone && !/^[6-9]\d{9}$/.test(trimmedPhone)) {
+      return NextResponse.json({ error: 'Enter a valid 10-digit Indian mobile number' }, { status: 400 });
+    }
+
+    if (trimmedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      return NextResponse.json({ error: 'Enter a valid email address' }, { status: 400 });
+    }
+
+    if (trimmedGst && !/^[0-9A-Z]{15}$/.test(trimmedGst.toUpperCase())) {
+      return NextResponse.json({ error: 'GST number must be 15 alphanumeric characters (e.g., GSTIN1234567890)' }, { status: 400 });
+    }
+
+    if (openingBalance !== undefined && openingBalance < 0) {
+      return NextResponse.json({ error: 'Opening balance cannot be negative' }, { status: 400 });
+    }
+
     const supplier = await prisma.supplier.update({
       where: { id },
       data: {
         ...(supplierName !== undefined && { supplierName: supplierName.trim() }),
         ...(contactPerson !== undefined && { contactPerson: contactPerson?.trim() || null }),
-        ...(phone !== undefined && { phone: phone?.trim() || null }),
-        ...(email !== undefined && { email: email?.trim() || null }),
+        ...(phone !== undefined && { phone: trimmedPhone || null }),
+        ...(email !== undefined && { email: trimmedEmail || null }),
         ...(address !== undefined && { address: address?.trim() || null }),
-        ...(gstNumber !== undefined && { gstNumber: gstNumber?.trim() || null }),
+        ...(gstNumber !== undefined && { gstNumber: trimmedGst ? trimmedGst.toUpperCase() : null }),
         ...(openingBalance !== undefined && { openingBalance }),
         ...(status !== undefined && { status }),
       },
