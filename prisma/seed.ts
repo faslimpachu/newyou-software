@@ -120,15 +120,9 @@ async function main() {
     })
   }
 
-  const categories = [
-    { name: 'Medicines', description: 'Allopathic and Ayurvedic medicines' },
-    { name: 'Supplements', description: 'Vitamins, minerals, and health supplements' },
-    { name: 'Herbal Products', description: 'Herbal powders, oils, and formulations' },
-    { name: 'Equipment', description: 'Medical and clinic equipment' },
-    { name: 'Consumables', description: 'Disposable items and consumables' },
-    { name: 'Other', description: 'Miscellaneous items' },
-  ]
-
+  // ------------------------------------------------------------------
+  // 1. Clean PMS tables only (preserve clinical seed behavior)
+  // ------------------------------------------------------------------
   await prisma.inventoryTransaction.deleteMany()
   await prisma.batchReceipt.deleteMany()
   await prisma.purchaseInvoiceItem.deleteMany()
@@ -148,6 +142,18 @@ async function main() {
   await prisma.visit.deleteMany()
   await prisma.patient.deleteMany()
 
+  // ------------------------------------------------------------------
+  // 2. Categories
+  // ------------------------------------------------------------------
+  const categories = [
+    { name: 'Medicines', description: 'Allopathic and Ayurvedic medicines' },
+    { name: 'Supplements', description: 'Vitamins, minerals, and health supplements' },
+    { name: 'Herbal Products', description: 'Herbal powders, oils, and formulations' },
+    { name: 'Equipment', description: 'Medical and clinic equipment' },
+    { name: 'Consumables', description: 'Disposable items and consumables' },
+    { name: 'Other', description: 'Miscellaneous items' },
+  ]
+
   const categoryMap = new Map<string, string>()
   for (const cat of categories) {
     const created = await prisma.productCategory.create({
@@ -156,6 +162,9 @@ async function main() {
     categoryMap.set(cat.name, created.id)
   }
 
+  // ------------------------------------------------------------------
+  // 3. Suppliers
+  // ------------------------------------------------------------------
   const suppliers = [
     {
       supplierName: 'ABC Pharma Pvt Ltd',
@@ -217,53 +226,58 @@ async function main() {
     supplierMap.set(supplier.supplierName, created.id)
   }
 
+  // ------------------------------------------------------------------
+  // 4. Products
+  // ------------------------------------------------------------------
   const products = [
-    { name: 'Paracetamol 500mg', sku: 'MED001', categoryId: categoryMap.get('Medicines')!, unit: 'strip', purchasePrice: 8, sellingPrice: 15, gstPercent: 5, minimumStock: 50, maximumStock: 200, currentStock: 500 },
-    { name: 'Amoxicillin 250mg', sku: 'MED002', categoryId: categoryMap.get('Medicines')!, unit: 'strip', purchasePrice: 25, sellingPrice: 45, gstPercent: 5, minimumStock: 30, maximumStock: 150, currentStock: 200 },
-    { name: 'Vitamin D3 60K', sku: 'SUP001', categoryId: categoryMap.get('Supplements')!, unit: 'bottle', purchasePrice: 80, sellingPrice: 150, gstPercent: 5, minimumStock: 20, maximumStock: 100, currentStock: 100 },
-    { name: 'Omega-3 Fish Oil', sku: 'SUP002', categoryId: categoryMap.get('Supplements')!, unit: 'bottle', purchasePrice: 120, sellingPrice: 220, gstPercent: 5, minimumStock: 15, maximumStock: 80, currentStock: 75 },
-    { name: 'Triphala Powder', sku: 'HERB001', categoryId: categoryMap.get('Herbal Products')!, unit: 'packet', purchasePrice: 45, sellingPrice: 90, gstPercent: 5, minimumStock: 20, maximumStock: 100, currentStock: 150 },
-    { name: 'Ashwagandha Capsules', sku: 'HERB002', categoryId: categoryMap.get('Herbal Products')!, unit: 'bottle', purchasePrice: 150, sellingPrice: 280, gstPercent: 5, minimumStock: 10, maximumStock: 60, currentStock: 60 },
-    { name: 'Digital BP Monitor', sku: 'EQP001', categoryId: categoryMap.get('Equipment')!, unit: 'pcs', purchasePrice: 1200, sellingPrice: 2000, gstPercent: 12, minimumStock: 5, maximumStock: 20, currentStock: 15 },
-    { name: 'Stethoscope', sku: 'EQP002', categoryId: categoryMap.get('Equipment')!, unit: 'pcs', purchasePrice: 350, sellingPrice: 600, gstPercent: 12, minimumStock: 5, maximumStock: 20, currentStock: 10 },
-    { name: 'Syringes 10ml', sku: 'CON001', categoryId: categoryMap.get('Consumables')!, unit: 'box', purchasePrice: 45, sellingPrice: 80, gstPercent: 5, minimumStock: 30, maximumStock: 150, currentStock: 200 },
-    { name: 'Gauze Pieces', sku: 'CON002', categoryId: categoryMap.get('Consumables')!, unit: 'packet', purchasePrice: 15, sellingPrice: 28, gstPercent: 5, minimumStock: 50, maximumStock: 300, currentStock: 300 },
-    { name: 'Protein Powder', sku: 'SUP003', categoryId: categoryMap.get('Supplements')!, unit: 'packet', purchasePrice: 250, sellingPrice: 450, gstPercent: 5, minimumStock: 15, maximumStock: 80, currentStock: 45 },
-    { name: 'Cetrizine 10mg', sku: 'MED003', categoryId: categoryMap.get('Medicines')!, unit: 'strip', purchasePrice: 12, sellingPrice: 22, gstPercent: 5, minimumStock: 40, maximumStock: 200, currentStock: 350 },
+    { name: 'Paracetamol 500mg', sku: 'MED001', categoryId: categoryMap.get('Medicines')!, unit: 'strip', purchasePrice: 8, sellingPrice: 15, gstPercent: 5, minimumStock: 50, maximumStock: 200, currentStock: 0 },
+    { name: 'Amoxicillin 250mg', sku: 'MED002', categoryId: categoryMap.get('Medicines')!, unit: 'strip', purchasePrice: 25, sellingPrice: 45, gstPercent: 5, minimumStock: 30, maximumStock: 150, currentStock: 0 },
+    { name: 'Vitamin D3 60K', sku: 'SUP001', categoryId: categoryMap.get('Supplements')!, unit: 'bottle', purchasePrice: 80, sellingPrice: 150, gstPercent: 5, minimumStock: 20, maximumStock: 100, currentStock: 0 },
+    { name: 'Omega-3 Fish Oil', sku: 'SUP002', categoryId: categoryMap.get('Supplements')!, unit: 'bottle', purchasePrice: 120, sellingPrice: 220, gstPercent: 5, minimumStock: 15, maximumStock: 80, currentStock: 0 },
+    { name: 'Triphala Powder', sku: 'HERB001', categoryId: categoryMap.get('Herbal Products')!, unit: 'packet', purchasePrice: 45, sellingPrice: 90, gstPercent: 5, minimumStock: 20, maximumStock: 100, currentStock: 0 },
+    { name: 'Ashwagandha Capsules', sku: 'HERB002', categoryId: categoryMap.get('Herbal Products')!, unit: 'bottle', purchasePrice: 150, sellingPrice: 280, gstPercent: 5, minimumStock: 10, maximumStock: 60, currentStock: 0 },
+    { name: 'Digital BP Monitor', sku: 'EQP001', categoryId: categoryMap.get('Equipment')!, unit: 'pcs', purchasePrice: 1200, sellingPrice: 2000, gstPercent: 12, minimumStock: 5, maximumStock: 20, currentStock: 0 },
+    { name: 'Stethoscope', sku: 'EQP002', categoryId: categoryMap.get('Equipment')!, unit: 'pcs', purchasePrice: 350, sellingPrice: 600, gstPercent: 12, minimumStock: 5, maximumStock: 20, currentStock: 0 },
+    { name: 'Syringes 10ml', sku: 'CON001', categoryId: categoryMap.get('Consumables')!, unit: 'box', purchasePrice: 45, sellingPrice: 80, gstPercent: 5, minimumStock: 30, maximumStock: 150, currentStock: 0 },
+    { name: 'Gauze Pieces', sku: 'CON002', categoryId: categoryMap.get('Consumables')!, unit: 'packet', purchasePrice: 15, sellingPrice: 28, gstPercent: 5, minimumStock: 50, maximumStock: 300, currentStock: 0 },
+    { name: 'Protein Powder', sku: 'SUP003', categoryId: categoryMap.get('Supplements')!, unit: 'packet', purchasePrice: 250, sellingPrice: 450, gstPercent: 5, minimumStock: 15, maximumStock: 80, currentStock: 0 },
+    { name: 'Cetrizine 10mg', sku: 'MED003', categoryId: categoryMap.get('Medicines')!, unit: 'strip', purchasePrice: 12, sellingPrice: 22, gstPercent: 5, minimumStock: 40, maximumStock: 200, currentStock: 0 },
   ]
 
   const productMap = new Map<string, string>()
   for (const product of products) {
     const created = await prisma.product.create({
-      data: { ...product, code: `PRD-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${String(productMap.size + 1).padStart(4, '0')}` },
+      data: {
+        ...product,
+        code: `PRD-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${String(productMap.size + 1).padStart(4, '0')}`,
+      },
     })
     productMap.set(product.sku, created.id)
-
-    if (product.currentStock > 0) {
-      const batch = await prisma.productBatch.create({
-        data: {
-          productId: created.id,
-          batchNumber: 'OPENING',
-          expiryDate: null,
-          quantity: product.currentStock,
-        },
-      })
-
-      await prisma.batchReceipt.create({
-        data: {
-          batchId: batch.id,
-          supplierId: (supplierMap.get('ABC Pharma Pvt Ltd') || supplierMap.values().next().value)!,
-          sourceType: 'OPENING',
-          quantity: product.currentStock,
-          remainingQuantity: product.currentStock,
-          purchaseRate: product.purchasePrice,
-        },
-      })
-    }
   }
 
-  const purchaseInvoices = [
-    {
+  // ------------------------------------------------------------------
+  // 5. Helpers
+  // ------------------------------------------------------------------
+  const today = new Date()
+  const dayMs = 24 * 60 * 60 * 1000
+
+  function dateStr(daysFromNow: number): string {
+    const d = new Date(today.getTime() + daysFromNow * dayMs)
+    return d.toISOString().split('T')[0]
+  }
+
+  // ------------------------------------------------------------------
+  // 6. Purchase Invoices with batch-level items
+  //    This section exercises:
+  //    - receiveStock() business rules via direct model creation
+  //    - Same batch + same expiry reused across suppliers
+  //    - Expired and expiring-soon batches
+  //    - OVERDUE invoice example
+  // ------------------------------------------------------------------
+
+  // Invoice 1: PAID medicine + supplement purchases
+  const invoice1 = await prisma.purchaseInvoice.create({
+    data: {
       invoiceNumber: 'PINV-20260801-0001',
       invoiceDate: new Date('2026-08-01'),
       supplierId: supplierMap.get('ABC Pharma Pvt Ltd')!,
@@ -277,26 +291,34 @@ async function main() {
       balance: 0,
       status: 'PAID',
     },
-    {
+  })
+
+  // Invoice 2: PARTIAL, due date in the past -> OVERDUE after partial payment
+  const invoice2 = await prisma.purchaseInvoice.create({
+    data: {
       invoiceNumber: 'PINV-20260801-0002',
       invoiceDate: new Date('2026-08-01'),
       supplierId: supplierMap.get('XYZ Healthcare')!,
       paymentMode: 'CREDIT',
-      dueDate: new Date('2026-08-20'),
+      dueDate: new Date('2026-08-10'),
       notes: 'Supplements batch',
       subtotal: 4500,
       tax: 540,
       grandTotal: 5040,
       paid: 2000,
       balance: 3040,
-      status: 'PARTIAL',
+      status: 'OVERDUE',
     },
-    {
+  })
+
+  // Invoice 3: PENDING herbal products
+  const invoice3 = await prisma.purchaseInvoice.create({
+    data: {
       invoiceNumber: 'PINV-20260802-0001',
       invoiceDate: new Date('2026-08-02'),
       supplierId: supplierMap.get('Herbal Life India')!,
       paymentMode: 'CASH',
-      dueDate: new Date('2026-08-10'),
+      dueDate: new Date('2026-08-20'),
       notes: 'Herbal products',
       subtotal: 1800,
       tax: 216,
@@ -305,7 +327,11 @@ async function main() {
       balance: 2016,
       status: 'PENDING',
     },
-    {
+  })
+
+  // Invoice 4: PARTIAL equipment
+  const invoice4 = await prisma.purchaseInvoice.create({
+    data: {
       invoiceNumber: 'PINV-20260802-0002',
       invoiceDate: new Date('2026-08-02'),
       supplierId: supplierMap.get('MediEquip Solutions')!,
@@ -319,46 +345,272 @@ async function main() {
       balance: 3960,
       status: 'PARTIAL',
     },
-  ]
+  })
 
-  const invoiceMap = new Map<string, string>()
-  for (const invoice of purchaseInvoices) {
-    const created = await prisma.purchaseInvoice.create({
-      data: invoice as any,
-    })
-    invoiceMap.set(invoice.invoiceNumber, created.id)
-  }
-
-  const invoice1Id = invoiceMap.get('PINV-20260801-0001')!
-  const invoice2Id = invoiceMap.get('PINV-20260801-0002')!
-  const invoice3Id = invoiceMap.get('PINV-20260802-0001')!
-  const invoice4Id = invoiceMap.get('PINV-20260802-0002')!
-
+  // ------------------------------------------------------------------
+  // 7. Invoice items -> ProductBatch + BatchReceipt + InventoryTransaction
+  // ------------------------------------------------------------------
   const invoiceItems = [
-    { invoiceId: invoice1Id, productId: productMap.get('MED001')!, quantity: 100, purchaseRate: 8, amount: 800 },
-    { invoiceId: invoice1Id, productId: productMap.get('MED002')!, quantity: 50, purchaseRate: 25, amount: 1250 },
-    { invoiceId: invoice1Id, productId: productMap.get('MED003')!, quantity: 70, purchaseRate: 12, amount: 840 },
-    { invoiceId: invoice2Id, productId: productMap.get('SUP001')!, quantity: 40, purchaseRate: 80, amount: 3200 },
-    { invoiceId: invoice2Id, productId: productMap.get('SUP002')!, quantity: 20, purchaseRate: 120, amount: 2400 },
-    { invoiceId: invoice2Id, productId: productMap.get('SUP003')!, quantity: 25, purchaseRate: 250, amount: 6250 },
-    { invoiceId: invoice3Id, productId: productMap.get('HERB001')!, quantity: 80, purchaseRate: 45, amount: 3600 },
-    { invoiceId: invoice3Id, productId: productMap.get('HERB002')!, quantity: 30, purchaseRate: 150, amount: 4500 },
-    { invoiceId: invoice4Id, productId: productMap.get('EQP001')!, quantity: 3, purchaseRate: 1200, amount: 3600 },
-    { invoiceId: invoice4Id, productId: productMap.get('EQP002')!, quantity: 2, purchaseRate: 350, amount: 700 },
-    { invoiceId: invoice4Id, productId: productMap.get('CON001')!, quantity: 100, purchaseRate: 45, amount: 4500 },
+    // Invoice 1 items
+    { invoiceId: invoice1.id, productId: productMap.get('MED001')!, quantity: 100, purchaseRate: 8, amount: 800, batchNumber: 'PCM-001', expiryDate: dateStr(60) },
+    { invoiceId: invoice1.id, productId: productMap.get('MED002')!, quantity: 50, purchaseRate: 25, amount: 1250, batchNumber: 'AMX-001', expiryDate: dateStr(90) },
+    { invoiceId: invoice1.id, productId: productMap.get('MED003')!, quantity: 70, purchaseRate: 12, amount: 840, batchNumber: 'CTZ-001', expiryDate: dateStr(120) },
+    // Invoice 2 items
+    { invoiceId: invoice2.id, productId: productMap.get('SUP001')!, quantity: 40, purchaseRate: 80, amount: 3200, batchNumber: 'VITD-001', expiryDate: dateStr(180) },
+    { invoiceId: invoice2.id, productId: productMap.get('SUP002')!, quantity: 20, purchaseRate: 120, amount: 2400, batchNumber: 'OMG-001', expiryDate: dateStr(150) },
+    { invoiceId: invoice2.id, productId: productMap.get('SUP003')!, quantity: 25, purchaseRate: 250, amount: 6250, batchNumber: 'PRO-001', expiryDate: dateStr(100) },
+    // Invoice 3 items
+    { invoiceId: invoice3.id, productId: productMap.get('HERB001')!, quantity: 80, purchaseRate: 45, amount: 3600, batchNumber: 'TRI-001', expiryDate: dateStr(200) },
+    { invoiceId: invoice3.id, productId: productMap.get('HERB002')!, quantity: 30, purchaseRate: 150, amount: 4500, batchNumber: 'ASH-001', expiryDate: dateStr(250) },
+    // Invoice 4 items
+    { invoiceId: invoice4.id, productId: productMap.get('EQP001')!, quantity: 3, purchaseRate: 1200, amount: 3600, batchNumber: 'BPM-001', expiryDate: null },
+    { invoiceId: invoice4.id, productId: productMap.get('EQP002')!, quantity: 2, purchaseRate: 350, amount: 700, batchNumber: 'STH-001', expiryDate: null },
+    { invoiceId: invoice4.id, productId: productMap.get('CON001')!, quantity: 100, purchaseRate: 45, amount: 4500, batchNumber: 'SYR-001', expiryDate: dateStr(365) },
   ]
+
+  const batchMap = new Map<string, string>()
+  const receiptMap = new Map<string, string>()
 
   for (const item of invoiceItems) {
     await prisma.purchaseInvoiceItem.create({
-      data: item,
+      data: {
+        invoiceId: item.invoiceId,
+        productId: item.productId,
+        quantity: item.quantity,
+        purchaseRate: item.purchaseRate,
+        amount: item.amount,
+        batchNumber: item.batchNumber,
+        expiryDate: item.expiryDate ? new Date(item.expiryDate) : null,
+      },
+    })
+
+    const batchKey = `${item.productId}::${item.batchNumber}`
+    let batchId = batchMap.get(batchKey)
+
+    if (!batchId) {
+      const batch = await prisma.productBatch.create({
+        data: {
+          productId: item.productId,
+          batchNumber: item.batchNumber,
+          expiryDate: item.expiryDate ? new Date(item.expiryDate) : null,
+          quantity: item.quantity,
+        },
+      })
+      batchId = batch.id
+      batchMap.set(batchKey, batch.id)
+    } else {
+      await prisma.productBatch.update({
+        where: { id: batchId },
+        data: { quantity: { increment: item.quantity } },
+      })
+    }
+
+    const receipt = await prisma.batchReceipt.create({
+      data: {
+        batchId: batchId!,
+        supplierId: (item.invoiceId === invoice1.id || item.invoiceId === invoice3.id)
+          ? supplierMap.get('ABC Pharma Pvt Ltd')!
+          : item.invoiceId === invoice2.id
+            ? supplierMap.get('XYZ Healthcare')!
+            : item.invoiceId === invoice4.id
+              ? supplierMap.get('MediEquip Solutions')!
+              : supplierMap.get('ABC Pharma Pvt Ltd')!,
+        purchaseInvoiceId: item.invoiceId,
+        sourceType: 'PURCHASE',
+        quantity: item.quantity,
+        remainingQuantity: item.quantity,
+        purchaseRate: item.purchaseRate,
+      },
+    })
+    receiptMap.set(`${batchId}::${receipt.id}`, receipt.id)
+
+    await prisma.inventoryTransaction.create({
+      data: {
+        productId: item.productId,
+        batchId: batchId!,
+        type: 'PURCHASE',
+        quantity: item.quantity,
+        referenceType: 'PURCHASE_INVOICE',
+        referenceId: item.invoiceId,
+        notes: `Purchased from invoice ${item.invoiceId}`,
+      },
+    })
+
+    await prisma.product.update({
+      where: { id: item.productId },
+      data: { currentStock: { increment: item.quantity } },
     })
   }
 
+  // ------------------------------------------------------------------
+  // 8. Same batch, same expiry, different supplier scenario
+  //    Product MED001, batch PCM-001, expiry +60 days:
+  //    - First purchased from ABC Pharma (invoice1)
+  //    - Then purchased from XYZ Healthcare (new invoice5)
+  // ------------------------------------------------------------------
+  const invoice5 = await prisma.purchaseInvoice.create({
+    data: {
+      invoiceNumber: 'PINV-20260803-0001',
+      invoiceDate: new Date('2026-08-03'),
+      supplierId: supplierMap.get('XYZ Healthcare')!,
+      paymentMode: 'CREDIT',
+      dueDate: new Date('2026-09-01'),
+      notes: 'Repeat batch from different supplier',
+      subtotal: 400,
+      tax: 48,
+      grandTotal: 448,
+      paid: 0,
+      balance: 448,
+      status: 'PENDING',
+    },
+  })
+
+  const invoice5Item = {
+    invoiceId: invoice5.id,
+    productId: productMap.get('MED001')!,
+    quantity: 50,
+    purchaseRate: 9,
+    amount: 450,
+    batchNumber: 'PCM-001',
+    expiryDate: dateStr(60),
+  }
+
+  await prisma.purchaseInvoiceItem.create({
+    data: {
+      invoiceId: invoice5Item.invoiceId,
+      productId: invoice5Item.productId,
+      quantity: invoice5Item.quantity,
+      purchaseRate: invoice5Item.purchaseRate,
+      amount: invoice5Item.amount,
+      batchNumber: invoice5Item.batchNumber,
+      expiryDate: new Date(invoice5Item.expiryDate!),
+    },
+  })
+
+  const batchKey5 = `${invoice5Item.productId}::${invoice5Item.batchNumber}`
+  const existingBatchId = batchMap.get(batchKey5)!
+
+  await prisma.productBatch.update({
+    where: { id: existingBatchId },
+    data: { quantity: { increment: invoice5Item.quantity } },
+  })
+
+  await prisma.batchReceipt.create({
+    data: {
+      batchId: existingBatchId,
+      supplierId: supplierMap.get('XYZ Healthcare')!,
+      purchaseInvoiceId: invoice5.id,
+      sourceType: 'PURCHASE',
+      quantity: invoice5Item.quantity,
+      remainingQuantity: invoice5Item.quantity,
+      purchaseRate: invoice5Item.purchaseRate,
+    },
+  })
+
+  await prisma.inventoryTransaction.create({
+    data: {
+      productId: invoice5Item.productId,
+      batchId: existingBatchId,
+      type: 'PURCHASE',
+      quantity: invoice5Item.quantity,
+      referenceType: 'PURCHASE_INVOICE',
+      referenceId: invoice5.id,
+      notes: `Repeat batch PCM-001 from XYZ Healthcare`,
+    },
+  })
+
+  await prisma.product.update({
+    where: { id: invoice5Item.productId },
+    data: { currentStock: { increment: invoice5Item.quantity } },
+  })
+
+  // ------------------------------------------------------------------
+  // 9. Create expired batch and expiring-soon batch explicitly
+  // ------------------------------------------------------------------
+  const expiredBatch = await prisma.productBatch.create({
+    data: {
+      productId: productMap.get('MED001')!,
+      batchNumber: 'PCM-EXPIRED',
+      expiryDate: new Date('2026-07-01'),
+      quantity: 40,
+    },
+  })
+
+  await prisma.batchReceipt.create({
+    data: {
+      batchId: expiredBatch.id,
+      supplierId: supplierMap.get('ABC Pharma Pvt Ltd')!,
+      purchaseInvoiceId: invoice1.id,
+      sourceType: 'PURCHASE',
+      quantity: 40,
+      remainingQuantity: 40,
+      purchaseRate: 8,
+    },
+  })
+
+  await prisma.inventoryTransaction.create({
+    data: {
+      productId: productMap.get('MED001')!,
+      batchId: expiredBatch.id,
+      type: 'PURCHASE',
+      quantity: 40,
+      referenceType: 'PURCHASE_INVOICE',
+      referenceId: invoice1.id,
+      notes: 'Expired batch',
+    },
+  })
+
+  await prisma.product.update({
+    where: { id: productMap.get('MED001')! },
+    data: { currentStock: { increment: 40 } },
+  })
+
+  const expiringBatch = await prisma.productBatch.create({
+    data: {
+      productId: productMap.get('MED002')!,
+      batchNumber: 'AMX-SOON',
+      expiryDate: new Date(dateStr(15)),
+      quantity: 25,
+    },
+  })
+
+  await prisma.batchReceipt.create({
+    data: {
+      batchId: expiringBatch.id,
+      supplierId: supplierMap.get('XYZ Healthcare')!,
+      purchaseInvoiceId: invoice2.id,
+      sourceType: 'PURCHASE',
+      quantity: 25,
+      remainingQuantity: 25,
+      purchaseRate: 26,
+    },
+  })
+
+  await prisma.inventoryTransaction.create({
+    data: {
+      productId: productMap.get('MED002')!,
+      batchId: expiringBatch.id,
+      type: 'PURCHASE',
+      quantity: 25,
+      referenceType: 'PURCHASE_INVOICE',
+      referenceId: invoice2.id,
+      notes: 'Expiring soon batch',
+    },
+  })
+
+  await prisma.product.update({
+    where: { id: productMap.get('MED002')! },
+    data: { currentStock: { increment: 25 } },
+  })
+
+  // ------------------------------------------------------------------
+  // 10. Supplier Payments
+  // ------------------------------------------------------------------
   const supplierPayments = [
     {
       paymentNumber: 'PPAY-20260802-0001',
       supplierId: supplierMap.get('ABC Pharma Pvt Ltd')!,
-      invoiceId: invoice1Id,
+      invoiceId: invoice1.id,
       amount: 2800,
       paymentDate: new Date('2026-08-02'),
       paymentMode: 'BANK',
@@ -368,7 +620,7 @@ async function main() {
     {
       paymentNumber: 'PPAY-20260802-0002',
       supplierId: supplierMap.get('XYZ Healthcare')!,
-      invoiceId: invoice2Id,
+      invoiceId: invoice2.id,
       amount: 2000,
       paymentDate: new Date('2026-08-02'),
       paymentMode: 'BANK',
@@ -378,7 +630,7 @@ async function main() {
     {
       paymentNumber: 'PPAY-20260802-0003',
       supplierId: supplierMap.get('MediEquip Solutions')!,
-      invoiceId: invoice4Id,
+      invoiceId: invoice4.id,
       amount: 5000,
       paymentDate: new Date('2026-08-02'),
       paymentMode: 'BANK',
@@ -393,26 +645,109 @@ async function main() {
     })
   }
 
-  const inventoryTransactions = [
-    { productId: productMap.get('MED001')!, type: 'PURCHASE', quantity: 100, referenceType: 'PURCHASE_INVOICE', referenceId: invoice1Id, notes: 'Purchased from ABC Pharma' },
-    { productId: productMap.get('MED002')!, type: 'PURCHASE', quantity: 50, referenceType: 'PURCHASE_INVOICE', referenceId: invoice1Id, notes: 'Purchased from ABC Pharma' },
-    { productId: productMap.get('MED003')!, type: 'PURCHASE', quantity: 70, referenceType: 'PURCHASE_INVOICE', referenceId: invoice1Id, notes: 'Purchased from ABC Pharma' },
-    { productId: productMap.get('SUP001')!, type: 'PURCHASE', quantity: 40, referenceType: 'PURCHASE_INVOICE', referenceId: invoice2Id, notes: 'Purchased from XYZ Healthcare' },
-    { productId: productMap.get('SUP002')!, type: 'PURCHASE', quantity: 20, referenceType: 'PURCHASE_INVOICE', referenceId: invoice2Id, notes: 'Purchased from XYZ Healthcare' },
-    { productId: productMap.get('SUP003')!, type: 'PURCHASE', quantity: 25, referenceType: 'PURCHASE_INVOICE', referenceId: invoice2Id, notes: 'Purchased from XYZ Healthcare' },
-    { productId: productMap.get('HERB001')!, type: 'PURCHASE', quantity: 80, referenceType: 'PURCHASE_INVOICE', referenceId: invoice3Id, notes: 'Purchased from Herbal Life India' },
-    { productId: productMap.get('HERB002')!, type: 'PURCHASE', quantity: 30, referenceType: 'PURCHASE_INVOICE', referenceId: invoice3Id, notes: 'Purchased from Herbal Life India' },
-    { productId: productMap.get('EQP001')!, type: 'PURCHASE', quantity: 3, referenceType: 'PURCHASE_INVOICE', referenceId: invoice4Id, notes: 'Purchased from MediEquip Solutions' },
-    { productId: productMap.get('EQP002')!, type: 'PURCHASE', quantity: 2, referenceType: 'PURCHASE_INVOICE', referenceId: invoice4Id, notes: 'Purchased from MediEquip Solutions' },
-    { productId: productMap.get('CON001')!, type: 'PURCHASE', quantity: 100, referenceType: 'PURCHASE_INVOICE', referenceId: invoice4Id, notes: 'Purchased from MediEquip Solutions' },
-  ]
+  // ------------------------------------------------------------------
+  // 11. Inventory Adjustments
+  // ------------------------------------------------------------------
+  // Find first batch for MED001 for adjustment
+  const med001Batches = await prisma.productBatch.findMany({
+    where: { productId: productMap.get('MED001')! },
+    orderBy: { createdAt: 'asc' },
+  })
 
-  for (const tx of inventoryTransactions) {
+  if (med001Batches.length > 0) {
+    const targetBatch = med001Batches[0]
+    const receipts = await prisma.batchReceipt.findMany({
+      where: { batchId: targetBatch.id },
+      orderBy: { createdAt: 'asc' },
+    })
+
+    if (receipts.length > 0) {
+      const receipt = receipts[0]
+      await prisma.batchReceipt.update({
+        where: { id: receipt.id },
+        data: { remainingQuantity: { decrement: 10 } },
+      })
+    }
+
+    await prisma.productBatch.update({
+      where: { id: targetBatch.id },
+      data: { quantity: { decrement: 10 } },
+    })
+
+    await prisma.product.update({
+      where: { id: productMap.get('MED001')! },
+      data: { currentStock: { decrement: 10 } },
+    })
+
     await prisma.inventoryTransaction.create({
-      data: tx as any,
+      data: {
+        productId: productMap.get('MED001')!,
+        batchId: targetBatch.id,
+        type: 'ADJUSTMENT_OUT',
+        quantity: 10,
+        referenceType: 'ADJUSTMENT',
+        notes: 'Physical count correction',
+      },
     })
   }
 
+  // ------------------------------------------------------------------
+  // 12. Additional inventory transactions for dashboard coverage
+  // ------------------------------------------------------------------
+  // SALE transaction example (manual, if feature flag allows)
+  const med002Batches = await prisma.productBatch.findMany({
+    where: { productId: productMap.get('MED002')! },
+    orderBy: { createdAt: 'asc' },
+  })
+
+  if (med002Batches.length > 0) {
+    const saleBatch = med002Batches[0]
+    const saleReceipts = await prisma.batchReceipt.findMany({
+      where: { batchId: saleBatch.id },
+      orderBy: { createdAt: 'asc' },
+    })
+
+    if (saleReceipts.length > 0) {
+      const saleReceipt = saleReceipts[0]
+      await prisma.batchReceipt.update({
+        where: { id: saleReceipt.id },
+        data: { remainingQuantity: { decrement: 5 } },
+      })
+    }
+
+    await prisma.productBatch.update({
+      where: { id: saleBatch.id },
+      data: { quantity: { decrement: 5 } },
+    })
+
+    await prisma.product.update({
+      where: { id: productMap.get('MED002')! },
+      data: { currentStock: { decrement: 5 } },
+    })
+
+    await prisma.inventoryTransaction.create({
+      data: {
+        productId: productMap.get('MED002')!,
+        batchId: saleBatch.id,
+        type: 'SALE',
+        quantity: 5,
+        referenceType: 'ADJUSTMENT',
+        notes: 'Sample sale transaction',
+      },
+    })
+  }
+
+  // ------------------------------------------------------------------
+  // 13. Recalculate invoice balances and statuses to match seed state
+  // ------------------------------------------------------------------
+  await prisma.purchaseInvoice.update({
+    where: { id: invoice2.id },
+    data: { status: 'OVERDUE' },
+  })
+
+  // ------------------------------------------------------------------
+  // 14. Clinical seed (patients, visits, follow-ups)
+  // ------------------------------------------------------------------
   await prisma.patient.deleteMany()
   await prisma.visit.deleteMany()
   await prisma.followUp.deleteMany()
@@ -556,7 +891,7 @@ async function main() {
     data: { lastNumber: ayurcareVisitCounter },
   })
 
-  console.log('Seed completed with 100 patients, visits, and follow-ups')
+  console.log('Seed completed with PMS data: categories, suppliers, products, batches, invoices, payments, adjustments, transactions, and 100 patients/visits/follow-ups')
 }
 
 main()
