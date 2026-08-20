@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/table'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { SearchableSelect, SearchableSelectItem } from '@/components/ui/searchable-select'
 import { DashboardShell } from '@/components/dashboard/dashboard-shell'
 import { Plus } from 'lucide-react'
 
@@ -236,23 +237,23 @@ export default function InventoryAdjustmentsPage() {
               <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 <div className="space-y-2">
                   <Label htmlFor="productId">Product</Label>
-                  <Select value={form.productId || ''} onValueChange={(value) => setForm({ ...form, productId: value || '' })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select product">
-                        {(value) => {
-                          const product = products.find((p) => p.id === value)
-                          return product ? `${product.name} ${product.sku ? `(${product.sku})` : ''}` : 'Select product'
-                        }}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {products.map((product) => (
-                        <SelectItem key={product.id} value={product.id}>
-                          {product.name} {product.sku ? `(${product.sku})` : ''}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    value={form.productId || ''}
+                    onValueChange={(value) => {
+                      setForm({ ...form, productId: value || '', batchId: '' })
+                    }}
+                    placeholder="Select product"
+                    renderValue={(id) => {
+                      const product = products.find((p) => p.id === id)
+                      return product ? `${product.name} ${product.sku ? `(${product.sku})` : ''}` : 'Select product'
+                    }}
+                  >
+                    {products.map((product) => (
+                      <SearchableSelectItem key={product.id} value={product.id}>
+                        {product.name} {product.sku ? `(${product.sku})` : ''}
+                      </SearchableSelectItem>
+                    ))}
+                  </SearchableSelect>
                   {selectedProduct && (
                     <p className="text-xs text-muted-foreground">
                       Current Stock: {selectedProduct.currentStock} {selectedProduct.unit}
@@ -289,23 +290,21 @@ export default function InventoryAdjustmentsPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="batchId">Batch</Label>
-                  <Select value={form.batchId || ''} onValueChange={(value) => setForm({ ...form, batchId: value || '' })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select batch">
-                        {(value) => {
-                          const batch = batches.find((b) => b.id === value)
-                          return batch ? `${batch.batchNumber} (${batch.quantity} units) ${batch.expiryDate ? `- Exp: ${new Date(batch.expiryDate).toLocaleDateString('en-IN')}` : ''}` : 'Select batch'
-                        }}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {batches.map((batch) => (
-                        <SelectItem key={batch.id} value={batch.id}>
-                          {batch.batchNumber} ({batch.quantity} units) {batch.expiryDate ? `- Exp: ${new Date(batch.expiryDate).toLocaleDateString('en-IN')}` : ''}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    value={form.batchId || ''}
+                    onValueChange={(value) => setForm({ ...form, batchId: value || '' })}
+                    placeholder="Select batch"
+                    renderValue={(id) => {
+                      const batch = batches.find((b) => b.id === id)
+                      return batch ? `${batch.batchNumber} (${batch.quantity} units) ${batch.expiryDate ? `- Exp: ${new Date(batch.expiryDate).toLocaleDateString('en-IN')}` : ''}` : 'Select batch'
+                    }}
+                  >
+                    {batches.map((batch) => (
+                      <SearchableSelectItem key={batch.id} value={batch.id}>
+                        {batch.batchNumber} ({batch.quantity} units) {batch.expiryDate ? `- Exp: ${new Date(batch.expiryDate).toLocaleDateString('en-IN')}` : ''}
+                      </SearchableSelectItem>
+                    ))}
+                  </SearchableSelect>
                 </div>
                 {!isDecrease && (
                   <>
@@ -322,23 +321,21 @@ export default function InventoryAdjustmentsPage() {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="supplierId">Supplier</Label>
-                      <Select value={form.supplierId || ''} onValueChange={(value) => setForm({ ...form, supplierId: value || '' })}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select supplier">
-                            {(value) => {
-                              const supplier = suppliers.find((s) => s.id === value)
-                              return supplier ? supplier.supplierName : 'Select supplier'
-                            }}
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          {suppliers.map((supplier) => (
-                            <SelectItem key={supplier.id} value={supplier.id}>
-                              {supplier.supplierName}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <SearchableSelect
+                        value={form.supplierId || ''}
+                        onValueChange={(value) => setForm({ ...form, supplierId: value || '' })}
+                        placeholder="Select supplier"
+                        renderValue={(id) => {
+                          const supplier = suppliers.find((s) => s.id === id)
+                          return supplier ? supplier.supplierName : 'Select supplier'
+                        }}
+                      >
+                        {suppliers.map((supplier) => (
+                          <SearchableSelectItem key={supplier.id} value={supplier.id}>
+                            {supplier.supplierName}
+                          </SearchableSelectItem>
+                        ))}
+                      </SearchableSelect>
                     </div>
                   </>
                 )}
