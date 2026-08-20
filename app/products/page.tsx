@@ -78,7 +78,6 @@ const emptyProduct = {
   maximumStock: 200,
   currentStock: 0,
   imageUrl: '',
-  active: true,
 }
 
 export default function ProductsPage() {
@@ -229,7 +228,7 @@ export default function ProductsPage() {
     try {
       const url = editingId ? `/api/products/${editingId}` : '/api/products'
       const method = editingId ? 'PATCH' : 'POST'
-      const { code: _code, currentStock: _currentStock, ...rest } = form
+      const { code: _code, currentStock: _currentStock, active: _active, ...rest } = form
       const body = editingId
         ? { ...rest, categoryId: form.categoryId || null, code: form.code }
         : { ...rest, categoryId: form.categoryId || null }
@@ -274,7 +273,6 @@ export default function ProductsPage() {
       maximumStock: product.maximumStock,
       currentStock: product.currentStock,
       imageUrl: product.imageUrl || '',
-      active: product.active,
     })
     setShowForm(true)
     setFieldErrors({})
@@ -291,8 +289,8 @@ export default function ProductsPage() {
     if (res.ok) {
       await loadProducts(page)
       await loadLowStockCount()
-      if (viewingProduct?.id === id) {
-        setViewingProduct(null)
+      if (editingId === id || viewingProduct?.id === id) {
+        handleCancel()
       }
     }
   }

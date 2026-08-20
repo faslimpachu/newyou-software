@@ -65,6 +65,18 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       }
     }
 
+    const existing = await prisma.product.findUnique({ where: { id }, select: { active: true } })
+    if (!existing) {
+      return NextResponse.json({ error: 'Product not found' }, { status: 404 })
+    }
+    if (!existing.active) {
+      return NextResponse.json({ error: 'Cannot update a deactivated product.' }, { status: 400 })
+    }
+
+    if (active !== undefined) {
+      return NextResponse.json({ error: 'Product activation status cannot be changed here. Use delete to deactivate.' }, { status: 400 })
+    }
+
     const product = await prisma.product.update({
       where: { id },
       data: {
@@ -78,7 +90,6 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         ...(minimumStock !== undefined && { minimumStock }),
         ...(maximumStock !== undefined && { maximumStock }),
         ...(imageUrl !== undefined && { imageUrl: imageUrl?.trim() || null }),
-        ...(active !== undefined && { active }),
       },
       include: {
         category: { select: { id: true, name: true } },

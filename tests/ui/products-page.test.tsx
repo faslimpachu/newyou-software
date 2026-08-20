@@ -165,6 +165,47 @@ describe('Products Page UI', () => {
     ;(global as any).fetch = originalFetch
   })
 
+  it('does not send active field in PATCH body when editing', async () => {
+    await waitFor(() => {
+      expect(screen.getByText('Edit')).toBeDefined()
+    })
+    const editButtons = screen.getAllByText('Edit')
+    act(() => {
+      fireEvent.click(editButtons[0])
+    })
+
+    let capturedBody: any = null
+    const originalFetch = (global as any).fetch
+    ;(global as any).fetch = async (url: string, options?: any) => {
+      if (url.includes('/api/products/') && options?.method === 'PATCH') {
+        capturedBody = JSON.parse(options.body)
+        return {
+          ok: true,
+          json: async () => ({
+            product: { ...mockProducts[0] },
+          }),
+        } as Response
+      }
+      return originalFetch(url, options)
+    }
+
+    act(() => {
+      fireEvent.change(screen.getByDisplayValue('Paracetamol'), { target: { value: 'Paracetamol Updated' } })
+    })
+
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: 'Update Product' }))
+    })
+
+    await waitFor(() => {
+      expect(capturedBody).not.toBeNull()
+    })
+
+    expect(capturedBody).not.toHaveProperty('active')
+
+    ;(global as any).fetch = originalFetch
+  })
+
   it('shows category name in select after choosing a category', async () => {
     await waitFor(() => {
       expect(screen.getByText('Create Product')).toBeDefined()
@@ -416,5 +457,60 @@ describe('Products Page UI', () => {
     expect(capturedBody.sku).toBe('TEST-SKU-999')
 
     ;(global as any).fetch = originalFetch
+  })
+
+  it('closes edit form when the product being edited is deactivated', async () => {
+    const originalConfirm = window.confirm
+    ;(window as any).confirm = () => true
+
+    await waitFor(() => {
+      expect(screen.getByText('Edit')).toBeDefined()
+    })
+    const editButtons = screen.getAllByText('Edit')
+    act(() => {
+      fireEvent.click(editButtons[0])
+    })
+
+    expect(screen.getByText('Update product details below')).toBeDefined()
+    expect(screen.getByDisplayValue('Paracetamol')).toBeDefined()
+
+    let deleteCalled = false
+    const originalFetch = (global as any).fetch
+    ;(global as any).fetch = async (url: string, options?: any) => {
+      if (url.includes('/api/products/') && options?.method === 'DELETE') {
+        deleteCalled = true
+        return { ok: true, json: async () => ({ success: true }) } as Response
+      }
+      if (url.includes('/api/products') && options?.method === 'GET') {
+        return {
+          ok: true,
+          json: async () => ({
+            products: [],
+            page: 1,
+            pageSize: 20,
+            total: 0,
+            totalPages: 1,
+          }),
+        } as Response
+      }
+      return originalFetch(url, options)
+    }
+
+    const deleteButtons = screen.getAllByRole('button', { name: 'Delete' })
+    act(() => {
+      fireEvent.click(deleteButtons[0])
+    })
+
+    await waitFor(() => {
+      expect(deleteCalled).toBe(true)
+    })
+
+    await waitFor(() => {
+      expect(screen.queryByText('Update product details below')).toBeNull()
+    })
+    expect(screen.queryByDisplayValue('Paracetamol')).toBeNull()
+
+    ;(global as any).fetch = originalFetch
+    ;(window as any).confirm = originalConfirm
   })
 })

@@ -514,4 +514,84 @@ describe('Products API', () => {
     const data = await res.json()
     expect(data.error).toBe('SKU already exists')
   })
+
+  it('PATCH rejects update of deactivated product', async () => {
+    const category = await prisma.productCategory.create({
+      data: { name: 'Medicines', active: true },
+    })
+    const product = await prisma.product.create({
+      data: {
+        name: 'Deactivated Product',
+        code: 'PRD-INACTIVE-001',
+        categoryId: category.id,
+        unit: 'pcs',
+        purchasePrice: 10,
+        sellingPrice: 15,
+        gstPercent: 5,
+        active: false,
+      },
+    })
+
+    const req = new Request(`http://localhost/api/products/${product.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'Updated Name' }),
+    })
+    const res = await PATCH(req, { params: { id: product.id } })
+    expect(res.status).toBe(400)
+    const data = await res.json()
+    expect(data.error).toBe('Cannot update a deactivated product.')
+  })
+
+  it('PATCH rejects toggling active status', async () => {
+    const category = await prisma.productCategory.create({
+      data: { name: 'Medicines', active: true },
+    })
+    const product = await prisma.product.create({
+      data: {
+        name: 'Active Product',
+        code: 'PRD-ACTIVE-TOGGLE',
+        categoryId: category.id,
+        unit: 'pcs',
+        purchasePrice: 10,
+        sellingPrice: 15,
+        gstPercent: 5,
+        active: true,
+      },
+    })
+
+    const req = new Request(`http://localhost/api/products/${product.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ active: false }),
+    })
+    const res = await PATCH(req, { params: { id: product.id } })
+    expect(res.status).toBe(400)
+    const data = await res.json()
+    expect(data.error).toBe('Product activation status cannot be changed here. Use delete to deactivate.')
+  })
+
+  it('POST creates product with active=true regardless of request body', async () => {
+    const category = await prisma.productCategory.create({
+      data: { name: 'Medicines', active: true },
+    })
+
+    const req = new Request('http://localhost/api/products', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Force Active Product',
+        categoryId: category.id,
+        unit: 'pcs',
+        purchasePrice: 10,
+        sellingPrice: 15,
+        gstPercent: 5,
+        active: false,
+      }),
+    })
+    const res = await POST(req)
+    expect(res.status).toBe(201)
+    const data = await res.json()
+    expect(data.product.active).toBe(true)
+  })
 })

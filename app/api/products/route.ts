@@ -109,7 +109,7 @@ export async function POST(request: Request) {
         maximumStock: maximumStock ?? 200,
         currentStock: currentStock ?? 0,
         imageUrl: imageUrl?.trim() || null,
-        active: active ?? true,
+        active: true,
       },
       include: {
         category: { select: { id: true, name: true } },
