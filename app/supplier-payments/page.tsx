@@ -195,7 +195,12 @@ export default function SupplierPaymentsPage() {
                   <Label htmlFor="supplierId">Supplier</Label>
                   <Select value={form.supplierId || ''} onValueChange={(value) => setForm({ ...form, supplierId: value || '', invoiceId: '' })}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select supplier" />
+                      <SelectValue placeholder="Select supplier">
+                        {(value) => {
+                          const supplier = suppliers.find((s) => s.id === value)
+                          return supplier ? supplier.supplierName : 'Select supplier'
+                        }}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {suppliers.map((supplier) => (
@@ -210,7 +215,13 @@ export default function SupplierPaymentsPage() {
                   <Label htmlFor="invoiceId">Invoice (Optional)</Label>
                   <Select value={form.invoiceId || ''} onValueChange={(value) => setForm({ ...form, invoiceId: value || '' })}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select invoice" />
+                      <SelectValue placeholder="Select invoice">
+                        {(value) => {
+                          if (!value) return 'None'
+                          const invoice = invoices.find((inv) => inv.id === value)
+                          return invoice ? `${invoice.invoiceNumber} (Balance: ₹${invoice.balance.toLocaleString('en-IN')})` : 'Select invoice'
+                        }}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="">None</SelectItem>

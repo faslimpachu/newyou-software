@@ -431,7 +431,12 @@ export default function ProductsPage() {
                       onValueChange={(value) => setForm({ ...form, categoryId: value || '' })}
                     >
                       <SelectTrigger className={fieldErrors.categoryId ? 'border-destructive' : ''}>
-                        <SelectValue placeholder="Select category" />
+                        <SelectValue placeholder="Select category">
+                          {(value) => {
+                            const category = categories.find((c) => c.id === value)
+                            return category ? category.name : 'Select category'
+                          }}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         {categories.map((category) => (

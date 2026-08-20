@@ -238,7 +238,12 @@ export default function InventoryAdjustmentsPage() {
                   <Label htmlFor="productId">Product</Label>
                   <Select value={form.productId || ''} onValueChange={(value) => setForm({ ...form, productId: value || '' })}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select product" />
+                      <SelectValue placeholder="Select product">
+                        {(value) => {
+                          const product = products.find((p) => p.id === value)
+                          return product ? `${product.name} ${product.sku ? `(${product.sku})` : ''}` : 'Select product'
+                        }}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {products.map((product) => (
@@ -286,7 +291,12 @@ export default function InventoryAdjustmentsPage() {
                   <Label htmlFor="batchId">Batch</Label>
                   <Select value={form.batchId || ''} onValueChange={(value) => setForm({ ...form, batchId: value || '' })}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select batch" />
+                      <SelectValue placeholder="Select batch">
+                        {(value) => {
+                          const batch = batches.find((b) => b.id === value)
+                          return batch ? `${batch.batchNumber} (${batch.quantity} units) ${batch.expiryDate ? `- Exp: ${new Date(batch.expiryDate).toLocaleDateString('en-IN')}` : ''}` : 'Select batch'
+                        }}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {batches.map((batch) => (
@@ -314,7 +324,12 @@ export default function InventoryAdjustmentsPage() {
                       <Label htmlFor="supplierId">Supplier</Label>
                       <Select value={form.supplierId || ''} onValueChange={(value) => setForm({ ...form, supplierId: value || '' })}>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select supplier" />
+                          <SelectValue placeholder="Select supplier">
+                            {(value) => {
+                              const supplier = suppliers.find((s) => s.id === value)
+                              return supplier ? supplier.supplierName : 'Select supplier'
+                            }}
+                          </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
                           {suppliers.map((supplier) => (

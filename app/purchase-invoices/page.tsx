@@ -280,7 +280,12 @@ export default function PurchaseInvoicesPage() {
                     <Label htmlFor="supplierId">Supplier</Label>
                     <Select value={form.supplierId || ''} onValueChange={(value) => setForm({ ...form, supplierId: value || '' })}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select supplier" />
+                        <SelectValue placeholder="Select supplier">
+                          {(value) => {
+                            const supplier = suppliers.find((s) => s.id === value)
+                            return supplier ? supplier.supplierName : 'Select supplier'
+                          }}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         {suppliers.map((supplier) => (
@@ -351,7 +356,12 @@ export default function PurchaseInvoicesPage() {
                           <TableCell>
                             <Select value={item.productId || ''} onValueChange={(value) => handleItemChange(index, 'productId', value || '')}>
                               <SelectTrigger>
-                                <SelectValue placeholder="Select product" />
+                                <SelectValue placeholder="Select product">
+                                  {(value) => {
+                                    const product = products.find((p) => p.id === value)
+                                    return product ? `${product.name} ${product.sku ? `(${product.sku})` : ''}` : 'Select product'
+                                  }}
+                                </SelectValue>
                               </SelectTrigger>
                               <SelectContent>
                                 {products.map((product) => (
