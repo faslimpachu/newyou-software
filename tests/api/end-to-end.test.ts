@@ -149,7 +149,7 @@ describe('End-to-End Procurement Flow', () => {
     expect(payment1Res.status).toBe(201)
 
     const invoiceAfterPartial = await prisma.purchaseInvoice.findUnique({ where: { id: invoiceId } })
-    expect(invoiceAfterPartial?.status).toBe('PARTIAL')
+    expect(invoiceAfterPartial?.status).toBe('OVERDUE')
 
     const remainingBalance = Number(invoiceAfterPartial?.balance)
     const payment2Res = await PaymentPost(

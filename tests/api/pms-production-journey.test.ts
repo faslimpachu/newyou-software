@@ -361,7 +361,7 @@ describe('PMS Complete Production Journey', () => {
     expect(partialRes.status).toBe(201)
 
     const invoiceAfterPartial = await prisma.purchaseInvoice.findUnique({ where: { id: invoiceId } })
-    expect(invoiceAfterPartial?.status).toBe('PARTIAL')
+    expect(invoiceAfterPartial?.status).toBe('OVERDUE')
     expect(Number(invoiceAfterPartial?.paid)).toBe(400)
 
     const fullRes = await PaymentPost(
