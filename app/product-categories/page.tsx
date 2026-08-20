@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/table'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { DashboardShell } from '@/components/dashboard/dashboard-shell'
 import { Plus, Trash2 } from 'lucide-react'
 
@@ -45,6 +46,7 @@ export default function ProductCategoriesPage() {
   const [error, setError] = useState('')
   const [form, setForm] = useState(emptyCategory)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<Category | null>(null)
 
   const loadCategories = async () => {
     try {
@@ -107,7 +109,15 @@ export default function ProductCategoriesPage() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Deactivate this category?')) return
+    const category = categories.find((c) => c.id === id)
+    if (!category) return
+    setDeleteTarget(category)
+  }
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return
+    const id = deleteTarget.id
+    setDeleteTarget(null)
     const res = await fetch(`/api/product-categories/${id}`, { method: 'DELETE' })
     if (res.ok) {
       await loadCategories()
@@ -234,6 +244,17 @@ export default function ProductCategoriesPage() {
             )}
           </CardContent>
         </Card>
+
+        {deleteTarget && (
+          <ConfirmDialog
+            title="Deactivate this category?"
+            description={`This will mark ${deleteTarget.name} as inactive. This action can be reversed later.`}
+            confirmLabel="Deactivate"
+            confirmVariant="destructive"
+            onCancel={() => setDeleteTarget(null)}
+            onConfirm={confirmDelete}
+          />
+        )}
       </div>
     </DashboardShell>
   )

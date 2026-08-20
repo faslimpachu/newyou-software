@@ -86,9 +86,6 @@ describe('Product Categories Page UI', () => {
   })
 
   it('closes edit form when the category being edited is deactivated', async () => {
-    const originalConfirm = window.confirm
-    ;(window as any).confirm = () => true
-
     await waitFor(() => {
       const editButtons = screen.getAllByText('Edit')
       expect(editButtons.length).toBeGreaterThan(0)
@@ -119,9 +116,19 @@ describe('Product Categories Page UI', () => {
       return originalFetch(url, options)
     }
 
-    const deleteButtons = screen.getAllByRole('button', { name: '' })
+    const row = screen.getByText('Medicines').closest('tr')
+    expect(row).not.toBeNull()
+    const deleteButtons = within(row!).getAllByRole('button', { name: '' })
     act(() => {
       fireEvent.click(deleteButtons[0])
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('Deactivate this category?')).toBeDefined()
+    })
+    const confirmButton = screen.getByRole('button', { name: 'Deactivate' })
+    act(() => {
+      fireEvent.click(confirmButton)
     })
 
     await waitFor(() => {
@@ -134,6 +141,44 @@ describe('Product Categories Page UI', () => {
     expect(screen.queryByDisplayValue('Medicines')).toBeNull()
 
     ;(global as any).fetch = originalFetch
-    ;(window as any).confirm = originalConfirm
+  })
+
+  it('shows confirm dialog when delete is clicked', async () => {
+    await waitFor(() => {
+      expect(screen.getByText('Medicines')).toBeDefined()
+    })
+    const row = screen.getByText('Medicines').closest('tr')
+    expect(row).not.toBeNull()
+    const deleteButtons = within(row!).getAllByRole('button', { name: '' })
+    act(() => {
+      fireEvent.click(deleteButtons[0])
+    })
+    await waitFor(() => {
+      expect(screen.getByText('Deactivate this category?')).toBeDefined()
+    })
+    expect(screen.getByText(/This will mark Medicines as inactive/)).toBeDefined()
+  })
+
+  it('cancels delete and keeps category when Cancel is clicked', async () => {
+    await waitFor(() => {
+      expect(screen.getByText('Medicines')).toBeDefined()
+    })
+    const row = screen.getByText('Medicines').closest('tr')
+    expect(row).not.toBeNull()
+    const deleteButtons = within(row!).getAllByRole('button', { name: '' })
+    act(() => {
+      fireEvent.click(deleteButtons[0])
+    })
+    await waitFor(() => {
+      expect(screen.getByText('Deactivate this category?')).toBeDefined()
+    })
+    const cancelButton = screen.getByRole('button', { name: 'Cancel' })
+    act(() => {
+      fireEvent.click(cancelButton)
+    })
+    await waitFor(() => {
+      expect(screen.queryByText('Deactivate this category?')).toBeNull()
+    })
+    expect(screen.getByText('Medicines')).toBeDefined()
   })
 })

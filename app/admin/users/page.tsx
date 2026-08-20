@@ -20,6 +20,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { DashboardShell } from '@/components/dashboard/dashboard-shell'
 import { Plus, Trash2 } from 'lucide-react'
 
@@ -52,6 +53,7 @@ export default function UsersPage() {
   const [error, setError] = useState('')
   const [form, setForm] = useState(emptyUser)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<User | null>(null)
 
   const loadUsers = async () => {
     try {
@@ -127,7 +129,15 @@ export default function UsersPage() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Deactivate this user?')) return
+    const user = users.find((u) => u.id === id)
+    if (!user) return
+    setDeleteTarget(user)
+  }
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return
+    const id = deleteTarget.id
+    setDeleteTarget(null)
     const res = await fetch(`/api/admin/users/${id}`, { method: 'DELETE' })
     if (res.ok) {
       await loadUsers()
@@ -328,6 +338,17 @@ export default function UsersPage() {
             )}
           </CardContent>
         </Card>
+
+        {deleteTarget && (
+          <ConfirmDialog
+            title="Deactivate this user?"
+            description={`This will mark ${deleteTarget.name} as inactive. This action can be reversed later.`}
+            confirmLabel="Deactivate"
+            confirmVariant="destructive"
+            onCancel={() => setDeleteTarget(null)}
+            onConfirm={confirmDelete}
+          />
+        )}
       </div>
     </DashboardShell>
   )
