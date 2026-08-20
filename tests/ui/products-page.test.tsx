@@ -21,6 +21,24 @@ const mockProducts = [
     active: true,
     createdAt: new Date().toISOString(),
   },
+  {
+    id: '2',
+    name: 'Deactivated Product',
+    code: 'PRD-002',
+    sku: 'MED002',
+    categoryId: 'cat-1',
+    category: { id: 'cat-1', name: 'Medicines' },
+    unit: 'strip',
+    purchasePrice: 10,
+    sellingPrice: 15,
+    gstPercent: 5,
+    minimumStock: 50,
+    maximumStock: 200,
+    currentStock: 0,
+    imageUrl: null,
+    active: false,
+    createdAt: new Date().toISOString(),
+  },
 ]
 
 global.fetch = async (url: string) => {
@@ -110,7 +128,8 @@ describe('Products Page UI', () => {
 
   it('opens edit form with product values and disabled code field', async () => {
     await waitFor(() => {
-      expect(screen.getByText('Edit')).toBeDefined()
+      const editButtons = screen.getAllByText('Edit')
+      expect(editButtons.length).toBeGreaterThan(0)
     })
     const editButtons = screen.getAllByText('Edit')
     act(() => {
@@ -122,9 +141,34 @@ describe('Products Page UI', () => {
     expect(screen.getByDisplayValue('PRD-001').closest('input')).toBeDisabled()
   })
 
+  it('disables Edit button for deactivated products', async () => {
+    await waitFor(() => {
+      expect(screen.getByText('Deactivated Product')).toBeDefined()
+    })
+
+    const deactivatedRow = screen.getByText('Deactivated Product').closest('tr')
+    expect(deactivatedRow).not.toBeNull()
+
+    const editButton = within(deactivatedRow!).getByRole('button', { name: 'Edit' })
+    expect(editButton).toBeDisabled()
+  })
+
+  it('hides Delete button for deactivated products', async () => {
+    await waitFor(() => {
+      expect(screen.getByText('Deactivated Product')).toBeDefined()
+    })
+
+    const deactivatedRow = screen.getByText('Deactivated Product').closest('tr')
+    expect(deactivatedRow).not.toBeNull()
+
+    const deleteButtons = within(deactivatedRow!).queryAllByRole('button', { name: 'Delete' })
+    expect(deleteButtons).toHaveLength(0)
+  })
+
   it('does not send currentStock in PATCH body when editing', async () => {
     await waitFor(() => {
-      expect(screen.getByText('Edit')).toBeDefined()
+      const editButtons = screen.getAllByText('Edit')
+      expect(editButtons.length).toBeGreaterThan(0)
     })
     const editButtons = screen.getAllByText('Edit')
     act(() => {
@@ -167,7 +211,8 @@ describe('Products Page UI', () => {
 
   it('does not send active field in PATCH body when editing', async () => {
     await waitFor(() => {
-      expect(screen.getByText('Edit')).toBeDefined()
+      const editButtons = screen.getAllByText('Edit')
+      expect(editButtons.length).toBeGreaterThan(0)
     })
     const editButtons = screen.getAllByText('Edit')
     act(() => {
@@ -237,7 +282,8 @@ describe('Products Page UI', () => {
 
   it('shows edit button for products', async () => {
     await waitFor(() => {
-      expect(screen.getByText('Edit')).toBeDefined()
+      const editButtons = screen.getAllByText('Edit')
+      expect(editButtons.length).toBeGreaterThan(0)
     })
   })
 
@@ -464,7 +510,8 @@ describe('Products Page UI', () => {
     ;(window as any).confirm = () => true
 
     await waitFor(() => {
-      expect(screen.getByText('Edit')).toBeDefined()
+      const editButtons = screen.getAllByText('Edit')
+      expect(editButtons.length).toBeGreaterThan(0)
     })
     const editButtons = screen.getAllByText('Edit')
     act(() => {

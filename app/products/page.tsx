@@ -656,14 +656,14 @@ export default function ProductsPage() {
                                 <Button size="icon-sm" variant="ghost" onClick={() => handleView(product)} title="View">
                                   <Eye className="size-4" />
                                 </Button>
-                                <Button size="icon-sm" variant="ghost" onClick={() => handleEdit(product)} title="Edit">
-                                  Edit
+                              <Button size="icon-sm" variant="ghost" onClick={() => handleEdit(product)} title="Edit" disabled={!product.active}>
+                                Edit
+                              </Button>
+                              {product.active && (
+                                <Button size="icon-sm" variant="ghost" className="text-destructive" onClick={() => handleDelete(product.id)} title="Delete">
+                                  <Trash2 className="size-4" />
                                 </Button>
-                                {product.active && (
-                                  <Button size="icon-sm" variant="ghost" className="text-destructive" onClick={() => handleDelete(product.id)} title="Delete">
-                                    <Trash2 className="size-4" />
-                                  </Button>
-                                )}
+                              )}
                               </div>
                             </TableCell>
                           </TableRow>

@@ -96,6 +96,116 @@ describe('Products API', () => {
     expect(data.products[0].category.name).toBe('Supplements')
   })
 
+  it('GET returns all products when no active filter is provided', async () => {
+    const category = await prisma.productCategory.create({
+      data: { name: 'Medicines', active: true },
+    })
+    await prisma.product.create({
+      data: {
+        name: 'Active Product GET',
+        code: 'PRD-ACTIVE-GET2',
+        categoryId: category.id,
+        unit: 'pcs',
+        purchasePrice: 10,
+        sellingPrice: 15,
+        gstPercent: 5,
+        active: true,
+      },
+    })
+    await prisma.product.create({
+      data: {
+        name: 'Inactive Product GET',
+        code: 'PRD-INACTIVE-GET2',
+        categoryId: category.id,
+        unit: 'pcs',
+        purchasePrice: 10,
+        sellingPrice: 15,
+        gstPercent: 5,
+        active: false,
+      },
+    })
+
+    const req = new Request('http://localhost/api/products', { method: 'GET' })
+    const res = await GET(req)
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.products).toHaveLength(2)
+  })
+
+  it('GET filters by active=true when explicitly passed', async () => {
+    const category = await prisma.productCategory.create({
+      data: { name: 'Medicines', active: true },
+    })
+    await prisma.product.create({
+      data: {
+        name: 'Active Product GET3',
+        code: 'PRD-ACTIVE-GET3',
+        categoryId: category.id,
+        unit: 'pcs',
+        purchasePrice: 10,
+        sellingPrice: 15,
+        gstPercent: 5,
+        active: true,
+      },
+    })
+    await prisma.product.create({
+      data: {
+        name: 'Inactive Product GET3',
+        code: 'PRD-INACTIVE-GET3',
+        categoryId: category.id,
+        unit: 'pcs',
+        purchasePrice: 10,
+        sellingPrice: 15,
+        gstPercent: 5,
+        active: false,
+      },
+    })
+
+    const req = new Request('http://localhost/api/products?active=true', { method: 'GET' })
+    const res = await GET(req)
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.products).toHaveLength(1)
+    expect(data.products[0].name).toBe('Active Product GET3')
+  })
+
+  it('GET filters by active=false when explicitly passed', async () => {
+    const category = await prisma.productCategory.create({
+      data: { name: 'Medicines', active: true },
+    })
+    await prisma.product.create({
+      data: {
+        name: 'Active Product GET4',
+        code: 'PRD-ACTIVE-GET4',
+        categoryId: category.id,
+        unit: 'pcs',
+        purchasePrice: 10,
+        sellingPrice: 15,
+        gstPercent: 5,
+        active: true,
+      },
+    })
+    await prisma.product.create({
+      data: {
+        name: 'Inactive Product GET4',
+        code: 'PRD-INACTIVE-GET4',
+        categoryId: category.id,
+        unit: 'pcs',
+        purchasePrice: 10,
+        sellingPrice: 15,
+        gstPercent: 5,
+        active: false,
+      },
+    })
+
+    const req = new Request('http://localhost/api/products?active=false', { method: 'GET' })
+    const res = await GET(req)
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.products).toHaveLength(1)
+    expect(data.products[0].name).toBe('Inactive Product GET4')
+  })
+
   it('PATCH updates a product', async () => {
     const category = await prisma.productCategory.create({
       data: { name: 'Medicines', active: true },
