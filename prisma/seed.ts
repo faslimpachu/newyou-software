@@ -744,6 +744,152 @@ async function main() {
   })
 
   // ------------------------------------------------------------------
+  // 8a. Additional 20 purchase invoices for pagination coverage
+  // ------------------------------------------------------------------
+  const extraInvoiceCount = 20
+  const extraInvoices: Awaited<ReturnType<typeof prisma.purchaseInvoice.create>>[] = []
+  const extraInvoiceItems: Array<{
+    invoiceId: string
+    productId: string
+    quantity: number
+    purchaseRate: number
+    amount: number
+    batchNumber: string
+    expiryDate: string
+  }> = []
+
+  const invoiceStatuses = ['PENDING', 'PAID', 'PARTIAL', 'OVERDUE'] as string[]
+  const paymentModes = ['BANK', 'CASH', 'CREDIT'] as string[]
+  const supplierNames = Array.from(supplierMap.keys())
+  const productSkuList = Array.from(productMap.keys())
+
+  for (let i = 0; i < extraInvoiceCount; i++) {
+    const invoiceDate = new Date('2026-08-04')
+    invoiceDate.setDate(invoiceDate.getDate() + i)
+    const dueDate = new Date(invoiceDate)
+    dueDate.setDate(dueDate.getDate() + randomInt(15, 45))
+    const status = randomItem(invoiceStatuses) as typeof invoiceStatuses[number]
+    const paymentMode = randomItem(paymentModes) as typeof paymentModes[number]
+    const supplierName = randomItem(supplierNames)
+    const subtotal = randomInt(500, 8000)
+    const tax = Math.round(subtotal * 0.05)
+    const grandTotal = subtotal + tax
+    const paid = status === 'PAID' ? grandTotal : status === 'PARTIAL' ? randomInt(0, grandTotal) : 0
+    const balance = grandTotal - paid
+
+    const invoice = await prisma.purchaseInvoice.create({
+      data: {
+        invoiceNumber: `PINV-20260804-${String(i + 1).padStart(4, '0')}`,
+        invoiceDate,
+        supplierId: supplierMap.get(supplierName)!,
+        paymentMode: paymentMode as any,
+        dueDate,
+        notes: `Seed invoice ${i + 6}`,
+        subtotal,
+        tax,
+        grandTotal,
+        paid,
+        balance,
+        status: status as any,
+      },
+    })
+
+    extraInvoices.push(invoice)
+
+    const itemCount = randomInt(1, 4)
+    const usedProductSkus = new Set<string>()
+    for (let j = 0; j < itemCount; j++) {
+      let sku = randomItem(productSkuList)
+      while (usedProductSkus.has(sku)) {
+        sku = randomItem(productSkuList)
+      }
+      usedProductSkus.add(sku)
+
+      const productId = productMap.get(sku)!
+      const quantity = randomInt(10, 200)
+      const purchaseRate = randomInt(10, 500)
+      const amount = quantity * purchaseRate
+      const batchNumber = `SEED-${String(i + 6).padStart(3, '0')}-${String(j + 1).padStart(2, '0')}`
+      const expiryDate = dateStr(randomInt(30, 365))
+
+      extraInvoiceItems.push({
+        invoiceId: invoice.id,
+        productId,
+        quantity,
+        purchaseRate,
+        amount,
+        batchNumber,
+        expiryDate,
+      })
+    }
+  }
+
+  for (const item of extraInvoiceItems) {
+    await prisma.purchaseInvoiceItem.create({
+      data: {
+        invoiceId: item.invoiceId,
+        productId: item.productId,
+        quantity: item.quantity,
+        purchaseRate: item.purchaseRate,
+        amount: item.amount,
+        batchNumber: item.batchNumber,
+        expiryDate: new Date(item.expiryDate),
+      },
+    })
+
+    const batchKey = `${item.productId}::${item.batchNumber}`
+    let batchId = batchMap.get(batchKey)
+
+    if (!batchId) {
+      const batch = await prisma.productBatch.create({
+        data: {
+          productId: item.productId,
+          batchNumber: item.batchNumber,
+          expiryDate: new Date(item.expiryDate),
+          quantity: item.quantity,
+        },
+      })
+      batchId = batch.id
+      batchMap.set(batchKey, batch.id)
+    } else {
+      await prisma.productBatch.update({
+        where: { id: batchId },
+        data: { quantity: { increment: item.quantity } },
+      })
+    }
+
+    const invoice = extraInvoices.find((inv) => inv.id === item.invoiceId)!
+    await prisma.batchReceipt.create({
+      data: {
+        batchId: batchId!,
+        supplierId: invoice.supplierId,
+        purchaseInvoiceId: item.invoiceId,
+        sourceType: 'PURCHASE',
+        quantity: item.quantity,
+        remainingQuantity: item.quantity,
+        purchaseRate: item.purchaseRate,
+      },
+    })
+
+    await prisma.inventoryTransaction.create({
+      data: {
+        productId: item.productId,
+        batchId: batchId!,
+        type: 'PURCHASE',
+        quantity: item.quantity,
+        referenceType: 'PURCHASE_INVOICE',
+        referenceId: item.invoiceId,
+        notes: `Purchased from seed invoice ${item.invoiceId}`,
+      },
+    })
+
+    await prisma.product.update({
+      where: { id: item.productId },
+      data: { currentStock: { increment: item.quantity } },
+    })
+  }
+
+  // ------------------------------------------------------------------
   // 9. Create expired batch and expiring-soon batch explicitly
   // ------------------------------------------------------------------
   const expiredBatch = await prisma.productBatch.create({

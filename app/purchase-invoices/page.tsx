@@ -34,7 +34,6 @@ interface Product {
   id: string
   name: string
   sku: string | null
-  purchasePrice: number
   unit: string
 }
 
