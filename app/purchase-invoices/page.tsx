@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/table'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { SearchableSelect, SearchableSelectItem } from '@/components/ui/searchable-select'
 import { DashboardShell } from '@/components/dashboard/dashboard-shell'
 import { Plus, Trash2, Eye } from 'lucide-react'
 
@@ -278,23 +279,21 @@ export default function PurchaseInvoicesPage() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="supplierId">Supplier</Label>
-                    <Select value={form.supplierId || ''} onValueChange={(value) => setForm({ ...form, supplierId: value || '' })}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select supplier">
-                          {(value) => {
-                            const supplier = suppliers.find((s) => s.id === value)
-                            return supplier ? supplier.supplierName : 'Select supplier'
-                          }}
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {suppliers.map((supplier) => (
-                          <SelectItem key={supplier.id} value={supplier.id}>
-                            {supplier.supplierName}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <SearchableSelect
+                      value={form.supplierId || ''}
+                      onValueChange={(value) => setForm({ ...form, supplierId: value || '' })}
+                      placeholder="Select supplier"
+                      renderValue={(id) => {
+                        const supplier = suppliers.find((s) => s.id === id)
+                        return supplier ? supplier.supplierName : 'Select supplier'
+                      }}
+                    >
+                      {suppliers.map((supplier) => (
+                        <SearchableSelectItem key={supplier.id} value={supplier.id}>
+                          {supplier.supplierName}
+                        </SearchableSelectItem>
+                      ))}
+                    </SearchableSelect>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="paymentMode">Payment Mode</Label>
@@ -354,23 +353,21 @@ export default function PurchaseInvoicesPage() {
                       {form.items.map((item, index) => (
                         <TableRow key={index}>
                           <TableCell>
-                            <Select value={item.productId || ''} onValueChange={(value) => handleItemChange(index, 'productId', value || '')}>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select product">
-                                  {(value) => {
-                                    const product = products.find((p) => p.id === value)
-                                    return product ? `${product.name} ${product.sku ? `(${product.sku})` : ''}` : 'Select product'
-                                  }}
-                                </SelectValue>
-                              </SelectTrigger>
-                              <SelectContent>
-                                {products.map((product) => (
-                                  <SelectItem key={product.id} value={product.id}>
-                                    {product.name} {product.sku ? `(${product.sku})` : ''}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                            <SearchableSelect
+                              value={item.productId || ''}
+                              onValueChange={(value) => handleItemChange(index, 'productId', value || '')}
+                              placeholder="Select product"
+                              renderValue={(id) => {
+                                const product = products.find((p) => p.id === id)
+                                return product ? `${product.name} ${product.sku ? `(${product.sku})` : ''}` : 'Select product'
+                              }}
+                            >
+                              {products.map((product) => (
+                                <SearchableSelectItem key={product.id} value={product.id}>
+                                  {product.name} {product.sku ? `(${product.sku})` : ''}
+                                </SearchableSelectItem>
+                              ))}
+                            </SearchableSelect>
                           </TableCell>
                           <TableCell>
                             <Input

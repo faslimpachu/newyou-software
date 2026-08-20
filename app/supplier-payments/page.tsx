@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/table'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { SearchableSelect, SearchableSelectItem } from '@/components/ui/searchable-select'
 import { DashboardShell } from '@/components/dashboard/dashboard-shell'
 import { Plus } from 'lucide-react'
 
@@ -193,45 +194,41 @@ export default function SupplierPaymentsPage() {
               <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 <div className="space-y-2">
                   <Label htmlFor="supplierId">Supplier</Label>
-                  <Select value={form.supplierId || ''} onValueChange={(value) => setForm({ ...form, supplierId: value || '', invoiceId: '' })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select supplier">
-                        {(value) => {
-                          const supplier = suppliers.find((s) => s.id === value)
-                          return supplier ? supplier.supplierName : 'Select supplier'
-                        }}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {suppliers.map((supplier) => (
-                        <SelectItem key={supplier.id} value={supplier.id}>
-                          {supplier.supplierName}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    value={form.supplierId || ''}
+                    onValueChange={(value) => setForm({ ...form, supplierId: value || '', invoiceId: '' })}
+                    placeholder="Select supplier"
+                    renderValue={(id) => {
+                      const supplier = suppliers.find((s) => s.id === id)
+                      return supplier ? supplier.supplierName : 'Select supplier'
+                    }}
+                  >
+                    {suppliers.map((supplier) => (
+                      <SearchableSelectItem key={supplier.id} value={supplier.id}>
+                        {supplier.supplierName}
+                      </SearchableSelectItem>
+                    ))}
+                  </SearchableSelect>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="invoiceId">Invoice (Optional)</Label>
-                  <Select value={form.invoiceId || ''} onValueChange={(value) => setForm({ ...form, invoiceId: value || '' })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select invoice">
-                        {(value) => {
-                          if (!value) return 'None'
-                          const invoice = invoices.find((inv) => inv.id === value)
-                          return invoice ? `${invoice.invoiceNumber} (Balance: ₹${invoice.balance.toLocaleString('en-IN')})` : 'Select invoice'
-                        }}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">None</SelectItem>
-                      {invoices.map((invoice) => (
-                        <SelectItem key={invoice.id} value={invoice.id}>
-                          {invoice.invoiceNumber} (Balance: ₹{invoice.balance.toLocaleString('en-IN')})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    value={form.invoiceId || ''}
+                    onValueChange={(value) => setForm({ ...form, invoiceId: value || '' })}
+                    placeholder="Select invoice"
+                    renderValue={(id) => {
+                      if (!id) return 'None'
+                      const invoice = invoices.find((inv) => inv.id === id)
+                      return invoice ? `${invoice.invoiceNumber} (Balance: ₹${invoice.balance.toLocaleString('en-IN')})` : 'Select invoice'
+                    }}
+                  >
+                    <SearchableSelectItem value="">None</SearchableSelectItem>
+                    {invoices.map((invoice) => (
+                      <SearchableSelectItem key={invoice.id} value={invoice.id}>
+                        {invoice.invoiceNumber} (Balance: ₹{invoice.balance.toLocaleString('en-IN')})
+                      </SearchableSelectItem>
+                    ))}
+                  </SearchableSelect>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="amount">Amount</Label>
