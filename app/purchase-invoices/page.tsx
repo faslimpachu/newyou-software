@@ -93,6 +93,10 @@ export default function PurchaseInvoicesPage() {
   const [error, setError] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [viewingInvoice, setViewingInvoice] = useState<PurchaseInvoice | null>(null)
+  const [page, setPage] = useState(1)
+  const [pageSize] = useState(20)
+  const [totalPages, setTotalPages] = useState(1)
+  const [total, setTotal] = useState(0)
 
   const [form, setForm] = useState({
     invoiceDate: new Date().toISOString().split('T')[0],
@@ -103,12 +107,15 @@ export default function PurchaseInvoicesPage() {
     items: [emptyItem],
   })
 
-  const loadInvoices = async () => {
+  const loadInvoices = async (pageNum = 1) => {
     try {
-      const res = await fetch('/api/purchase-invoices')
+      const res = await fetch(`/api/purchase-invoices?page=${pageNum}&pageSize=${pageSize}`)
       if (!res.ok) throw new Error('Failed to load invoices')
       const data = await res.json()
       setInvoices(data.invoices)
+      setTotalPages(data.totalPages || 1)
+      setTotal(data.total || 0)
+      setPage(data.page || pageNum)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load invoices')
     } finally {
@@ -141,10 +148,22 @@ export default function PurchaseInvoicesPage() {
   }
 
   useEffect(() => {
-    loadInvoices()
+    loadInvoices(1)
     loadSuppliers()
     loadProducts()
   }, [])
+
+  const handlePrevPage = () => {
+    if (page > 1) {
+      loadInvoices(page - 1)
+    }
+  }
+
+  const handleNextPage = () => {
+    if (page < totalPages) {
+      loadInvoices(page + 1)
+    }
+  }
 
   const handleItemChange = (index: number, field: keyof InvoiceItem, value: string | number) => {
     const newItems = [...form.items]
@@ -457,7 +476,9 @@ export default function PurchaseInvoicesPage() {
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Purchase Invoices</CardTitle>
-            <CardDescription>{invoices.length} invoice(s) in the system</CardDescription>
+            <CardDescription>
+              {total > 0 ? `Page ${page} of ${totalPages} (${total} total)` : `${invoices.length} invoice(s) in the system`}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             {loading ? (
@@ -511,6 +532,32 @@ export default function PurchaseInvoicesPage() {
             )}
           </CardContent>
         </Card>
+
+        {!loading && totalPages > 1 && (
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">
+              Page {page} of {totalPages} ({total} total)
+            </p>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handlePrevPage}
+                disabled={page <= 1}
+              >
+                Previous
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleNextPage}
+                disabled={page >= totalPages}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        )}
 
         {viewingInvoice && (
           <Card>

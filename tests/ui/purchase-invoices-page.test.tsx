@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { render, screen, waitFor, fireEvent, act, within } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent, act, within, cleanup } from '@testing-library/react'
 import PurchaseInvoicesPage from '@/app/purchase-invoices/page'
 
 const mockSuppliers = [
@@ -33,6 +33,25 @@ const mockInvoices = [
       { id: 'item-1', productId: 'prod-1', quantity: 10, purchaseRate: 100, amount: 1000, batchNumber: 'BATCH-001', expiryDate: '2026-12-31', product: { id: 'prod-1', name: 'Paracetamol', sku: 'MED001', unit: 'strip' } },
     ],
   },
+  ...Array.from({ length: 24 }).map((_, i) => ({
+    id: `inv-${i + 2}`,
+    invoiceNumber: `PINV-20260820-${String(i + 2).padStart(4, '0')}`,
+    invoiceDate: '2026-08-20',
+    supplierId: 'supp-1',
+    paymentMode: 'BANK',
+    dueDate: '2026-08-21',
+    notes: `Test ${i + 2}`,
+    subtotal: 1000,
+    tax: 120,
+    grandTotal: 1120,
+    paid: 0,
+    balance: 1120,
+    status: 'PENDING',
+    supplier: { id: 'supp-1', supplierName: 'Om Sai Medical' },
+    items: [
+      { id: `item-${i + 2}`, productId: 'prod-1', quantity: 10, purchaseRate: 100, amount: 1000, batchNumber: 'BATCH-001', expiryDate: '2026-12-31', product: { id: 'prod-1', name: 'Paracetamol', sku: 'MED001', unit: 'strip' } },
+    ],
+  })),
 ]
 
 global.fetch = async (url: string) => {
@@ -43,9 +62,20 @@ global.fetch = async (url: string) => {
         json: async () => ({ invoice: mockInvoices[0] }),
       } as Response
     }
+    const urlObj = new URL(url, 'http://localhost')
+    const pageParam = parseInt(urlObj.searchParams.get('page') || '1')
+    const pageSizeParam = parseInt(urlObj.searchParams.get('pageSize') || '20')
+    const start = (pageParam - 1) * pageSizeParam
+    const pagedInvoices = mockInvoices.slice(start, start + pageSizeParam)
     return {
       ok: true,
-      json: async () => ({ invoices: mockInvoices }),
+      json: async () => ({
+        invoices: pagedInvoices,
+        page: pageParam,
+        pageSize: pageSizeParam,
+        total: mockInvoices.length,
+        totalPages: Math.ceil(mockInvoices.length / pageSizeParam),
+      }),
     } as Response
   }
   if (url.includes('/api/suppliers')) {
@@ -139,13 +169,14 @@ describe('Purchase Invoices Page UI', () => {
     await waitFor(() => {
       expect(screen.getByText('PINV-20260820-0001')).toBeDefined()
     })
-    expect(screen.getByText('Om Sai Medical')).toBeDefined()
-    expect(screen.getByText('PENDING')).toBeDefined()
+    expect(screen.getAllByText('Om Sai Medical').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('PENDING').length).toBeGreaterThan(0)
   })
 
   it('shows invoice count', async () => {
     await waitFor(() => {
-      expect(screen.getByText(/1 invoice\(s\) in the system/)).toBeDefined()
+      const totalTexts = screen.getAllByText(/25 total/)
+      expect(totalTexts.length).toBeGreaterThan(0)
     })
   })
 
@@ -373,5 +404,137 @@ describe('Purchase Invoices Page UI', () => {
     const dateInputsAfter = document.querySelectorAll('input[type="date"]')
     expect(dateInputsAfter.length).toBeGreaterThan(0)
     expect((dateInputsAfter[0] as HTMLInputElement).value).toBe('2026-12-31')
+  })
+
+  it('shows pagination info when there are multiple pages', async () => {
+    await waitFor(() => {
+      expect(screen.getByText('PINV-20260820-0001')).toBeDefined()
+    })
+    const pageTexts = screen.getAllByText(/Page 1 of 2/)
+    expect(pageTexts.length).toBeGreaterThan(0)
+    const totalTexts = screen.getAllByText(/25 total/)
+    expect(totalTexts.length).toBeGreaterThan(0)
+  })
+
+  it('navigates to next page when Next is clicked', async () => {
+    cleanup()
+    global.fetch = async (url: string) => {
+      if (url.includes('/api/purchase-invoices')) {
+        if (url.includes('/api/purchase-invoices/') && !url.includes('?')) {
+          return {
+            ok: true,
+            json: async () => ({ invoice: mockInvoices[0] }),
+          } as Response
+        }
+        const urlObj = new URL(url, 'http://localhost')
+        const pageParam = parseInt(urlObj.searchParams.get('page') || '1')
+        const pageSizeParam = parseInt(urlObj.searchParams.get('pageSize') || '20')
+        const start = (pageParam - 1) * pageSizeParam
+        const pagedInvoices = mockInvoices.slice(start, start + pageSizeParam)
+        return {
+          ok: true,
+          json: async () => ({
+            invoices: pagedInvoices,
+            page: pageParam,
+            pageSize: pageSizeParam,
+            total: mockInvoices.length,
+            totalPages: Math.ceil(mockInvoices.length / pageSizeParam),
+          }),
+        } as Response
+      }
+      if (url.includes('/api/suppliers')) {
+        return {
+          ok: true,
+          json: async () => ({ suppliers: mockSuppliers }),
+        } as Response
+      }
+      if (url.includes('/api/products')) {
+        return {
+          ok: true,
+          json: async () => ({ products: mockProducts }),
+        } as Response
+      }
+      return {
+        ok: true,
+        json: async () => ({}),
+      } as Response
+    }
+    render(<PurchaseInvoicesPage />)
+    await waitFor(() => {
+      expect(screen.getByText('PINV-20260820-0001')).toBeDefined()
+    })
+    const nextButton = screen.getByRole('button', { name: /Next/i })
+    act(() => {
+      fireEvent.click(nextButton)
+    })
+    await waitFor(() => {
+      const page2Texts = screen.getAllByText(/Page 2 of 2/)
+      expect(page2Texts.length).toBeGreaterThan(0)
+    })
+  })
+
+  it('navigates to previous page when Previous is clicked', async () => {
+    cleanup()
+    global.fetch = async (url: string) => {
+      if (url.includes('/api/purchase-invoices')) {
+        if (url.includes('/api/purchase-invoices/') && !url.includes('?')) {
+          return {
+            ok: true,
+            json: async () => ({ invoice: mockInvoices[0] }),
+          } as Response
+        }
+        const urlObj = new URL(url, 'http://localhost')
+        const pageParam = parseInt(urlObj.searchParams.get('page') || '1')
+        const pageSizeParam = parseInt(urlObj.searchParams.get('pageSize') || '20')
+        const start = (pageParam - 1) * pageSizeParam
+        const pagedInvoices = mockInvoices.slice(start, start + pageSizeParam)
+        return {
+          ok: true,
+          json: async () => ({
+            invoices: pagedInvoices,
+            page: pageParam,
+            pageSize: pageSizeParam,
+            total: mockInvoices.length,
+            totalPages: Math.ceil(mockInvoices.length / pageSizeParam),
+          }),
+        } as Response
+      }
+      if (url.includes('/api/suppliers')) {
+        return {
+          ok: true,
+          json: async () => ({ suppliers: mockSuppliers }),
+        } as Response
+      }
+      if (url.includes('/api/products')) {
+        return {
+          ok: true,
+          json: async () => ({ products: mockProducts }),
+        } as Response
+      }
+      return {
+        ok: true,
+        json: async () => ({}),
+      } as Response
+    }
+    render(<PurchaseInvoicesPage />)
+    await waitFor(() => {
+      expect(screen.getByText('PINV-20260820-0001')).toBeDefined()
+    })
+    const nextButton = screen.getByRole('button', { name: /Next/i })
+    act(() => {
+      fireEvent.click(nextButton)
+    })
+    await waitFor(() => {
+      const page2Texts = screen.getAllByText(/Page 2 of 2/)
+      expect(page2Texts.length).toBeGreaterThan(0)
+    })
+    const prevButton = screen.getByRole('button', { name: /Previous/i })
+    act(() => {
+      fireEvent.click(prevButton)
+    })
+    await waitFor(() => {
+      const page1Texts = screen.getAllByText(/Page 1 of 2/)
+      expect(page1Texts.length).toBeGreaterThan(0)
+    })
   })
 })
