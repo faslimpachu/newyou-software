@@ -229,7 +229,7 @@ export default function ProductsPage() {
     try {
       const url = editingId ? `/api/products/${editingId}` : '/api/products'
       const method = editingId ? 'PATCH' : 'POST'
-      const { code: _code, ...rest } = form
+      const { code: _code, currentStock: _currentStock, ...rest } = form
       const body = editingId
         ? { ...rest, categoryId: form.categoryId || null, code: form.code }
         : { ...rest, categoryId: form.categoryId || null }

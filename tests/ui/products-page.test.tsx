@@ -122,6 +122,49 @@ describe('Products Page UI', () => {
     expect(screen.getByDisplayValue('PRD-001').closest('input')).toBeDisabled()
   })
 
+  it('does not send currentStock in PATCH body when editing', async () => {
+    await waitFor(() => {
+      expect(screen.getByText('Edit')).toBeDefined()
+    })
+    const editButtons = screen.getAllByText('Edit')
+    act(() => {
+      fireEvent.click(editButtons[0])
+    })
+
+    let capturedBody: any = null
+    const originalFetch = (global as any).fetch
+    ;(global as any).fetch = async (url: string, options?: any) => {
+      if (url.includes('/api/products/') && options?.method === 'PATCH') {
+        capturedBody = JSON.parse(options.body)
+        return {
+          ok: true,
+          json: async () => ({
+            product: { ...mockProducts[0], currentStock: 500 },
+          }),
+        } as Response
+      }
+      return originalFetch(url, options)
+    }
+
+    act(() => {
+      fireEvent.change(screen.getByDisplayValue('Paracetamol'), { target: { value: 'Paracetamol Updated' } })
+    })
+
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: 'Update Product' }))
+    })
+
+    await waitFor(() => {
+      expect(capturedBody).not.toBeNull()
+    })
+
+    expect(capturedBody.name).toBe('Paracetamol Updated')
+    expect(capturedBody).not.toHaveProperty('currentStock')
+    expect(capturedBody.code).toBe('PRD-001')
+
+    ;(global as any).fetch = originalFetch
+  })
+
   it('shows category name in select after choosing a category', async () => {
     await waitFor(() => {
       expect(screen.getByText('Create Product')).toBeDefined()
