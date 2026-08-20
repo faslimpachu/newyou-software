@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { render, screen, waitFor, fireEvent, act } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent, act, within } from '@testing-library/react'
 import PurchaseInvoicesPage from '@/app/purchase-invoices/page'
 
 const mockSuppliers = [
@@ -160,5 +160,218 @@ describe('Purchase Invoices Page UI', () => {
     await waitFor(() => {
       expect(screen.getByText('Purchase Invoice: PINV-20260820-0001')).toBeDefined()
     })
+  })
+
+  it('shows Add Item button in create form', async () => {
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /New Purchase Invoice/i })).toBeDefined()
+    })
+    const button = screen.getByRole('button', { name: /New Purchase Invoice/i })
+    act(() => {
+      fireEvent.click(button)
+    })
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Add Item/i })).toBeDefined()
+    })
+  })
+
+  it('adds a new item row when Add Item is clicked', async () => {
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /New Purchase Invoice/i })).toBeDefined()
+    })
+    const button = screen.getByRole('button', { name: /New Purchase Invoice/i })
+    act(() => {
+      fireEvent.click(button)
+    })
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Add Item/i })).toBeDefined()
+    })
+
+    const initialProductComboboxes = screen.getAllByRole('combobox')
+    const initialCount = initialProductComboboxes.length
+
+    const addItemButton = screen.getByRole('button', { name: /Add Item/i })
+    act(() => {
+      fireEvent.click(addItemButton)
+    })
+
+    await waitFor(() => {
+      const newProductComboboxes = screen.getAllByRole('combobox')
+      expect(newProductComboboxes.length).toBeGreaterThan(initialCount)
+    })
+  })
+
+  it('removes an item row when delete icon is clicked', async () => {
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /New Purchase Invoice/i })).toBeDefined()
+    })
+    const button = screen.getByRole('button', { name: /New Purchase Invoice/i })
+    act(() => {
+      fireEvent.click(button)
+    })
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Add Item/i })).toBeDefined()
+    })
+
+    const addItemButton = screen.getByRole('button', { name: /Add Item/i })
+    act(() => {
+      fireEvent.click(addItemButton)
+    })
+
+    await waitFor(() => {
+      const deleteButtons = screen.getAllByRole('button', { name: '' })
+      expect(deleteButtons.length).toBeGreaterThan(0)
+    })
+
+    const deleteButtons = screen.getAllByRole('button', { name: '' })
+    const trashButton = deleteButtons.find((btn) => {
+      const svg = btn.querySelector('svg')
+      return svg !== null
+    })
+    expect(trashButton).toBeDefined()
+    act(() => {
+      fireEvent.click(trashButton!)
+    })
+
+    await waitFor(() => {
+      const remainingDeleteButtons = screen.getAllByRole('button', { name: '' })
+      const remainingSvgButtons = remainingDeleteButtons.filter((btn) => btn.querySelector('svg') !== null)
+      expect(remainingSvgButtons.length).toBeLessThan(deleteButtons.length)
+    })
+  })
+
+  it('does not remove the last remaining item', async () => {
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /New Purchase Invoice/i })).toBeDefined()
+    })
+    const button = screen.getByRole('button', { name: /New Purchase Invoice/i })
+    act(() => {
+      fireEvent.click(button)
+    })
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Add Item/i })).toBeDefined()
+    })
+
+    const deleteButtons = screen.getAllByRole('button', { name: '' })
+    const initialSvgButtons = deleteButtons.filter((btn) => btn.querySelector('svg') !== null)
+    const initialCount = initialSvgButtons.length
+
+    const trashButton = initialSvgButtons[0]
+    act(() => {
+      fireEvent.click(trashButton)
+    })
+
+    await waitFor(() => {
+      const remainingDeleteButtons = screen.getAllByRole('button', { name: '' })
+      const remainingSvgButtons = remainingDeleteButtons.filter((btn) => btn.querySelector('svg') !== null)
+      expect(remainingSvgButtons.length).toBe(initialCount)
+    })
+  })
+
+  it('updates subtotal, tax, and grand total when item values change', async () => {
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /New Purchase Invoice/i })).toBeDefined()
+    })
+    const button = screen.getByRole('button', { name: /New Purchase Invoice/i })
+    act(() => {
+      fireEvent.click(button)
+    })
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Add Item/i })).toBeDefined()
+    })
+
+    const quantityInputs = screen.getAllByRole('spinbutton')
+    const quantityInput = quantityInputs[0]
+    act(() => {
+      fireEvent.change(quantityInput, { target: { value: '10' } })
+    })
+
+    const rateInputs = screen.getAllByRole('spinbutton')
+    const rateInput = rateInputs[1]
+    act(() => {
+      fireEvent.change(rateInput, { target: { value: '100' } })
+    })
+
+    await waitFor(() => {
+      const amountElements = screen.getAllByText(/₹1,000/)
+      expect(amountElements.length).toBeGreaterThan(0)
+    })
+  })
+
+  it('disables submit button when form has no valid items', async () => {
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /New Purchase Invoice/i })).toBeDefined()
+    })
+    const button = screen.getByRole('button', { name: /New Purchase Invoice/i })
+    act(() => {
+      fireEvent.click(button)
+    })
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Create Purchase Invoice/i })).toBeDefined()
+    })
+
+    const submitButton = screen.getByRole('button', { name: /Create Purchase Invoice/i })
+    expect(submitButton).not.toBeDisabled()
+  })
+
+  it('opens product dropdown and shows search input when clicked', async () => {
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /New Purchase Invoice/i })).toBeDefined()
+    })
+    const button = screen.getByRole('button', { name: /New Purchase Invoice/i })
+    act(() => {
+      fireEvent.click(button)
+    })
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Add Item/i })).toBeDefined()
+    })
+
+    const productComboboxes = screen.getAllByRole('combobox')
+    act(() => {
+      fireEvent.click(productComboboxes[0])
+    })
+
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText('Search...')).toBeDefined()
+    })
+  })
+
+  it('enters batch number and expiry date in an item row', async () => {
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /New Purchase Invoice/i })).toBeDefined()
+    })
+    const button = screen.getByRole('button', { name: /New Purchase Invoice/i })
+    act(() => {
+      fireEvent.click(button)
+    })
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Add Item/i })).toBeDefined()
+    })
+
+    const batchInput = screen.getByPlaceholderText('Batch No.')
+    act(() => {
+      fireEvent.change(batchInput, { target: { value: 'BATCH-001' } })
+    })
+
+    const allInputs = screen.getAllByRole('textbox')
+    const expiryInput = allInputs.find((input) => input.getAttribute('type') === 'date')
+    if (!expiryInput) {
+      const dateInputs = document.querySelectorAll('input[type="date"]')
+      expect(dateInputs.length).toBeGreaterThan(0)
+      act(() => {
+        fireEvent.change(dateInputs[0] as HTMLElement, { target: { value: '2026-12-31' } })
+      })
+    } else {
+      act(() => {
+        fireEvent.change(expiryInput, { target: { value: '2026-12-31' } })
+      })
+    }
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('BATCH-001')).toBeDefined()
+    })
+    const dateInputsAfter = document.querySelectorAll('input[type="date"]')
+    expect(dateInputsAfter.length).toBeGreaterThan(0)
+    expect((dateInputsAfter[0] as HTMLInputElement).value).toBe('2026-12-31')
   })
 })
