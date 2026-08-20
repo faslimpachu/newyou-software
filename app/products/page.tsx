@@ -40,7 +40,7 @@ interface Product {
   categoryId: string | null
   category: { id: string; name: string } | null
   unit: string
-  purchasePrice: number
+  // purchasePrice: number  // hidden per inventory architecture — actual cost lives in BatchReceipt.purchaseRate
   sellingPrice: number
   gstPercent: number
   minimumStock: number
@@ -57,7 +57,7 @@ type FieldError = {
   sku?: string
   categoryId?: string
   unit?: string
-  purchasePrice?: string
+  // purchasePrice?: string  // hidden in UI
   sellingPrice?: string
   gstPercent?: string
   minimumStock?: string
@@ -72,7 +72,7 @@ const emptyProduct = {
   sku: '',
   categoryId: '',
   unit: 'pcs',
-  purchasePrice: 0,
+  // purchasePrice: 0,  // hidden in UI
   sellingPrice: 0,
   gstPercent: 0,
   minimumStock: 10,
@@ -170,17 +170,18 @@ export default function ProductsPage() {
       errors.unit = 'Unit is required'
     }
 
-    if (form.purchasePrice < 0) {
-      errors.purchasePrice = 'Purchase price cannot be negative'
-    }
+    // purchasePrice validation removed from UI — actual cost tracked at BatchReceipt level
+    // if (form.purchasePrice < 0) {
+    //   errors.purchasePrice = 'Purchase price cannot be negative'
+    // }
 
     if (form.sellingPrice < 0) {
       errors.sellingPrice = 'Selling price cannot be negative'
     }
 
-    if (form.sellingPrice > 0 && form.purchasePrice > 0 && form.sellingPrice < form.purchasePrice) {
-      errors.sellingPrice = 'Selling price should be at least equal to purchase price'
-    }
+    // if (form.sellingPrice > 0 && form.purchasePrice > 0 && form.sellingPrice < form.purchasePrice) {
+    //   errors.sellingPrice = 'Selling price should be at least equal to purchase price'
+    // }
 
     if (form.gstPercent < 0 || form.gstPercent > 100) {
       errors.gstPercent = 'GST must be between 0 and 100'
@@ -477,7 +478,8 @@ export default function ProductsPage() {
                     <p className="text-xs text-destructive">{fieldErrors.unit}</p>
                   )}
                 </div>
-                <div className="space-y-2">
+                {/* Purchase Price field hidden — actual cost tracked at BatchReceipt level */}
+                {/* <div className="space-y-2">
                   <Label htmlFor="purchasePrice">Purchase Price *</Label>
                   <Input
                     id="purchasePrice"
@@ -491,7 +493,7 @@ export default function ProductsPage() {
                   {fieldErrors.purchasePrice && (
                     <p className="text-xs text-destructive">{fieldErrors.purchasePrice}</p>
                   )}
-                </div>
+                </div> */}
                 <div className="space-y-2">
                   <Label htmlFor="sellingPrice">Selling Price *</Label>
                   <Input
@@ -631,9 +633,9 @@ export default function ProductsPage() {
                         <TableHead>Product Name</TableHead>
                         <TableHead>Code</TableHead>
                         <TableHead>SKU</TableHead>
-                        <TableHead>Category</TableHead>
-                        <TableHead className="text-right">Purchase Price</TableHead>
-                        <TableHead className="text-right">Selling Price</TableHead>
+                         <TableHead>Category</TableHead>
+                         {/* <TableHead className="text-right">Purchase Price</TableHead> */}
+                         <TableHead className="text-right">Selling Price</TableHead>
                         <TableHead className="text-right">Stock</TableHead>
                         <TableHead>Min / Max</TableHead>
                         <TableHead>Status</TableHead>
@@ -648,9 +650,9 @@ export default function ProductsPage() {
                             <TableCell className="font-medium">{product.name}</TableCell>
                             <TableCell className="font-mono text-xs">{product.code}</TableCell>
                             <TableCell>{product.sku || '-'}</TableCell>
-                            <TableCell>{product.category?.name || '-'}</TableCell>
-                            <TableCell className="text-right tabular-nums">{formatPrice(product.purchasePrice)}</TableCell>
-                            <TableCell className="text-right tabular-nums">{formatPrice(product.sellingPrice)}</TableCell>
+                         <TableCell>{product.category?.name || '-'}</TableCell>
+                         {/* <TableCell className="text-right tabular-nums">{formatPrice(product.purchasePrice)}</TableCell> */}
+                         <TableCell className="text-right tabular-nums">{formatPrice(product.sellingPrice)}</TableCell>
                             <TableCell className="text-right tabular-nums">
                               {product.currentStock.toLocaleString('en-IN')} {product.unit}
                             </TableCell>
@@ -766,15 +768,16 @@ export default function ProductsPage() {
                   <p className="text-xs text-muted-foreground">Category</p>
                   <p className="text-sm">{viewingProduct.category?.name || '-'}</p>
                 </div>
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">Unit</p>
-                  <p className="text-sm">{viewingProduct.unit}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">Purchase Price</p>
-                  <p className="text-sm font-medium tabular-nums">{formatPrice(viewingProduct.purchasePrice)}</p>
-                </div>
-                <div className="space-y-1">
+                 <div className="space-y-1">
+                   <p className="text-xs text-muted-foreground">Unit</p>
+                   <p className="text-sm">{viewingProduct.unit}</p>
+                 </div>
+                 {/* Purchase Price hidden — actual cost tracked at BatchReceipt level */}
+                 {/* <div className="space-y-1">
+                   <p className="text-xs text-muted-foreground">Purchase Price</p>
+                   <p className="text-sm font-medium tabular-nums">{formatPrice(viewingProduct.purchasePrice)}</p>
+                 </div> */}
+                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">Selling Price</p>
                   <p className="text-sm font-medium tabular-nums">{formatPrice(viewingProduct.sellingPrice)}</p>
                 </div>

@@ -318,9 +318,10 @@ describe('Products Page UI', () => {
     act(() => {
       fireEvent.change(screen.getByPlaceholderText('e.g., pcs, strip, bottle'), { target: { value: 'pcs' } })
     })
-    act(() => {
-      fireEvent.change(screen.getByLabelText('Purchase Price *').closest('div')?.querySelector('input')!, { target: { value: '100' } })
-    })
+    // Purchase Price field hidden in UI
+    // act(() => {
+    //   fireEvent.change(screen.getByLabelText('Purchase Price *').closest('div')?.querySelector('input')!, { target: { value: '100' } })
+    // })
 
     const categoryTrigger = screen.getByText('Select category').closest('button')
     act(() => {
@@ -390,9 +391,10 @@ describe('Products Page UI', () => {
     act(() => {
       fireEvent.change(screen.getByPlaceholderText('e.g., pcs, strip, bottle'), { target: { value: 'pcs' } })
     })
-    act(() => {
-      fireEvent.change(screen.getByLabelText('Purchase Price *').closest('div')?.querySelector('input')!, { target: { value: '100' } })
-    })
+    // Purchase Price field hidden in UI
+    // act(() => {
+    //   fireEvent.change(screen.getByLabelText('Purchase Price *').closest('div')?.querySelector('input')!, { target: { value: '100' } })
+    // })
 
     const categoryTrigger = screen.getByText('Select category').closest('button')
     act(() => {
@@ -455,9 +457,10 @@ describe('Products Page UI', () => {
     act(() => {
       fireEvent.change(screen.getByPlaceholderText('e.g., pcs, strip, bottle'), { target: { value: 'pcs' } })
     })
-    act(() => {
-      fireEvent.change(screen.getByLabelText('Purchase Price *').closest('div')?.querySelector('input')!, { target: { value: '50' } })
-    })
+    // Purchase Price field hidden in UI — no longer interacts with it
+    // act(() => {
+    //   fireEvent.change(screen.getByLabelText('Purchase Price *').closest('div')?.querySelector('input')!, { target: { value: '100' } })
+    // })
 
     const categoryTrigger = screen.getByText('Select category').closest('button')
     act(() => {
