@@ -48,7 +48,7 @@ export async function POST(request: Request) {
       data: {
         name: name.trim(),
         description: description?.trim() || null,
-        active: active ?? true,
+        active: true,
       },
     });
 

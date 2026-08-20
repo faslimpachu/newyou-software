@@ -78,4 +78,48 @@ describe('Product Categories API', () => {
     const deleted = await prisma.productCategory.findUnique({ where: { id: category.id } })
     expect(deleted?.active).toBe(false)
   })
+
+  it('PATCH rejects update of deactivated category', async () => {
+    const category = await prisma.productCategory.create({
+      data: { name: 'Inactive Category', active: false },
+    })
+
+    const req = new Request(`http://localhost/api/product-categories/${category.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'Updated Name' }),
+    })
+    const res = await PATCH(req, { params: { id: category.id } })
+    expect(res.status).toBe(400)
+    const data = await res.json()
+    expect(data.error).toBe('Cannot update a deactivated category.')
+  })
+
+  it('PATCH rejects toggling active status', async () => {
+    const category = await prisma.productCategory.create({
+      data: { name: 'Active Category', active: true },
+    })
+
+    const req = new Request(`http://localhost/api/product-categories/${category.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ active: false }),
+    })
+    const res = await PATCH(req, { params: { id: category.id } })
+    expect(res.status).toBe(400)
+    const data = await res.json()
+    expect(data.error).toBe('Category activation status cannot be changed here. Use delete to deactivate.')
+  })
+
+  it('POST creates category with active=true regardless of request body', async () => {
+    const req = new Request('http://localhost/api/product-categories', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'Force Active', description: 'Test', active: false }),
+    })
+    const res = await POST(req)
+    expect(res.status).toBe(201)
+    const data = await res.json()
+    expect(data.category.active).toBe(true)
+  })
 })

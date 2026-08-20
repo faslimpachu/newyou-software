@@ -33,12 +33,23 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const body = await request.json();
     const { name, description, active } = body;
 
+    const existing = await prisma.productCategory.findUnique({ where: { id }, select: { active: true } })
+    if (!existing) {
+      return NextResponse.json({ error: 'Category not found' }, { status: 404 })
+    }
+    if (!existing.active) {
+      return NextResponse.json({ error: 'Cannot update a deactivated category.' }, { status: 400 })
+    }
+
+    if (active !== undefined) {
+      return NextResponse.json({ error: 'Category activation status cannot be changed here. Use delete to deactivate.' }, { status: 400 })
+    }
+
     const category = await prisma.productCategory.update({
       where: { id },
       data: {
         ...(name !== undefined && { name: name.trim() }),
         ...(description !== undefined && { description: description?.trim() || null }),
-        ...(active !== undefined && { active }),
       },
     });
 

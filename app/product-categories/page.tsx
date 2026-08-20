@@ -36,7 +36,6 @@ interface Category {
 const emptyCategory = {
   name: '',
   description: '',
-  active: true,
 }
 
 export default function ProductCategoriesPage() {
@@ -72,7 +71,10 @@ export default function ProductCategoriesPage() {
     try {
       const url = editingId ? `/api/product-categories/${editingId}` : '/api/product-categories'
       const method = editingId ? 'PATCH' : 'POST'
-      const body = editingId ? { ...form, name: form.name } : form
+      const { active: _active, ...rest } = form
+      const body = editingId
+        ? { ...rest, name: form.name }
+        : rest
 
       const res = await fetch(url, {
         method,
@@ -101,7 +103,6 @@ export default function ProductCategoriesPage() {
     setForm({
       name: category.name,
       description: category.description || '',
-      active: category.active,
     })
   }
 
@@ -110,6 +111,9 @@ export default function ProductCategoriesPage() {
     const res = await fetch(`/api/product-categories/${id}`, { method: 'DELETE' })
     if (res.ok) {
       await loadCategories()
+      if (editingId === id) {
+        handleCancel()
+      }
     }
   }
 
@@ -206,7 +210,7 @@ export default function ProductCategoriesPage() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
-                          <Button size="icon-sm" variant="ghost" onClick={() => handleEdit(category)}>
+                          <Button size="icon-sm" variant="ghost" onClick={() => handleEdit(category)} disabled={!category.active}>
                             Edit
                           </Button>
                           {category.active && (
