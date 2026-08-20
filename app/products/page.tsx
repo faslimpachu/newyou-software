@@ -22,6 +22,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Pagination } from '@/components/ui/pagination'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { DashboardShell } from '@/components/dashboard/dashboard-shell'
 import { Plus, Trash2, Eye, ChevronLeft, ChevronRight } from 'lucide-react'
 
@@ -91,6 +92,7 @@ export default function ProductsPage() {
   const [form, setForm] = useState(emptyProduct)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [viewingProduct, setViewingProduct] = useState<Product | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<Product | null>(null)
   const [search, setSearch] = useState('')
   const [filterCategory, setFilterCategory] = useState<string>('')
   const [lowStockCount, setLowStockCount] = useState(0)
@@ -284,13 +286,22 @@ export default function ProductsPage() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Deactivate this product?')) return
+    const product = products.find((p) => p.id === id)
+    if (!product) return
+    setDeleteTarget(product)
+  }
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return
+    const id = deleteTarget.id
+    setDeleteTarget(null)
     const res = await fetch(`/api/products/${id}`, { method: 'DELETE' })
     if (res.ok) {
       await loadProducts(page)
       await loadLowStockCount()
       if (editingId === id || viewingProduct?.id === id) {
         handleCancel()
+        setViewingProduct(null)
       }
     }
   }
@@ -800,6 +811,17 @@ export default function ProductsPage() {
           </Card>
         )}
       </div>
+
+      {deleteTarget && (
+        <ConfirmDialog
+          title="Deactivate this product?"
+          description={`This will mark ${deleteTarget.name} as inactive. This action can be reversed later.`}
+          confirmLabel="Deactivate"
+          confirmVariant="destructive"
+          onCancel={() => setDeleteTarget(null)}
+          onConfirm={confirmDelete}
+        />
+      )}
     </DashboardShell>
   )
 }

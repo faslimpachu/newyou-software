@@ -506,9 +506,6 @@ describe('Products Page UI', () => {
   })
 
   it('closes edit form when the product being edited is deactivated', async () => {
-    const originalConfirm = window.confirm
-    ;(window as any).confirm = () => true
-
     await waitFor(() => {
       const editButtons = screen.getAllByText('Edit')
       expect(editButtons.length).toBeGreaterThan(0)
@@ -549,6 +546,14 @@ describe('Products Page UI', () => {
     })
 
     await waitFor(() => {
+      expect(screen.getByText('Deactivate this product?')).toBeDefined()
+    })
+    const confirmButton = screen.getByRole('button', { name: 'Deactivate' })
+    act(() => {
+      fireEvent.click(confirmButton)
+    })
+
+    await waitFor(() => {
       expect(deleteCalled).toBe(true)
     })
 
@@ -558,6 +563,44 @@ describe('Products Page UI', () => {
     expect(screen.queryByDisplayValue('Paracetamol')).toBeNull()
 
     ;(global as any).fetch = originalFetch
-    ;(window as any).confirm = originalConfirm
+  })
+
+  it('shows confirm dialog when delete is clicked', async () => {
+    await waitFor(() => {
+      expect(screen.getByText('Paracetamol')).toBeDefined()
+    })
+    const row = screen.getByText('Paracetamol').closest('tr')
+    expect(row).not.toBeNull()
+    const deleteButton = within(row!).getByRole('button', { name: 'Delete' })
+    act(() => {
+      fireEvent.click(deleteButton)
+    })
+    await waitFor(() => {
+      expect(screen.getByText('Deactivate this product?')).toBeDefined()
+    })
+    expect(screen.getByText(/This will mark Paracetamol as inactive/)).toBeDefined()
+  })
+
+  it('cancels delete and keeps product when Cancel is clicked', async () => {
+    await waitFor(() => {
+      expect(screen.getByText('Paracetamol')).toBeDefined()
+    })
+    const row = screen.getByText('Paracetamol').closest('tr')
+    expect(row).not.toBeNull()
+    const deleteButton = within(row!).getByRole('button', { name: 'Delete' })
+    act(() => {
+      fireEvent.click(deleteButton)
+    })
+    await waitFor(() => {
+      expect(screen.getByText('Deactivate this product?')).toBeDefined()
+    })
+    const cancelButton = screen.getByRole('button', { name: 'Cancel' })
+    act(() => {
+      fireEvent.click(cancelButton)
+    })
+    await waitFor(() => {
+      expect(screen.queryByText('Deactivate this product?')).toBeNull()
+    })
+    expect(screen.getByText('Paracetamol')).toBeDefined()
   })
 })
