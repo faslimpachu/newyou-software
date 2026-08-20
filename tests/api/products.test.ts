@@ -438,4 +438,80 @@ describe('Products API', () => {
     expect(batchData.batches).toHaveLength(1)
     expect(batchData.batches[0].receipts[0].supplierName).toBe('Batch Supplier')
   })
+
+  it('POST returns specific error for duplicate SKU', async () => {
+    const category = await prisma.productCategory.create({
+      data: { name: 'Medicines', active: true },
+    })
+    await prisma.product.create({
+      data: {
+        name: 'Product A',
+        code: 'PRD-SKU-A',
+        sku: 'SKU-DUP-001',
+        categoryId: category.id,
+        unit: 'pcs',
+        purchasePrice: 10,
+        sellingPrice: 15,
+        gstPercent: 5,
+      },
+    })
+
+    const req = new Request('http://localhost/api/products', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Product B',
+        sku: 'SKU-DUP-001',
+        categoryId: category.id,
+        unit: 'pcs',
+        purchasePrice: 10,
+        sellingPrice: 15,
+        gstPercent: 5,
+      }),
+    })
+    const res = await POST(req)
+    expect(res.status).toBe(409)
+    const data = await res.json()
+    expect(data.error).toBe('SKU already exists')
+  })
+
+  it('PATCH returns specific error for duplicate SKU', async () => {
+    const category = await prisma.productCategory.create({
+      data: { name: 'Medicines', active: true },
+    })
+    const productA = await prisma.product.create({
+      data: {
+        name: 'Product A',
+        code: 'PRD-PATCH-SKU-A',
+        sku: 'SKU-PATCH-DUP',
+        categoryId: category.id,
+        unit: 'pcs',
+        purchasePrice: 10,
+        sellingPrice: 15,
+        gstPercent: 5,
+      },
+    })
+    const productB = await prisma.product.create({
+      data: {
+        name: 'Product B',
+        code: 'PRD-PATCH-SKU-B',
+        sku: 'SKU-PATCH-B',
+        categoryId: category.id,
+        unit: 'pcs',
+        purchasePrice: 10,
+        sellingPrice: 15,
+        gstPercent: 5,
+      },
+    })
+
+    const req = new Request(`http://localhost/api/products/${productB.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sku: 'SKU-PATCH-DUP' }),
+    })
+    const res = await PATCH(req, { params: { id: productB.id } })
+    expect(res.status).toBe(409)
+    const data = await res.json()
+    expect(data.error).toBe('SKU already exists')
+  })
 })

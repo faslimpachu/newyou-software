@@ -99,7 +99,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   } catch (e: unknown) {
     console.error('Product PATCH error', e);
     if ((e as { code?: string }).code === 'P2002') {
-      return NextResponse.json({ error: 'SKU or Product Code already exists' }, { status: 409 });
+      const target = (e as { meta?: { target?: string } })?.meta?.target
+      if (target === 'products_sku_key') {
+        return NextResponse.json({ error: 'SKU already exists' }, { status: 409 });
+      }
+      return NextResponse.json({ error: 'Product Code already exists' }, { status: 409 });
     }
     if ((e as { code?: string }).code === 'P2025') {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 });

@@ -287,7 +287,7 @@ describe('Products Page UI', () => {
         capturedBody = JSON.parse(options.body)
         return {
           ok: false,
-          json: async () => ({ error: 'SKU or Product Code already exists' }),
+          json: async () => ({ error: 'SKU already exists' }),
         } as Response
       }
       return originalFetch(url, options)
@@ -298,7 +298,7 @@ describe('Products Page UI', () => {
     })
 
     await waitFor(() => {
-      expect(screen.getByText('SKU or Product Code already exists')).toBeDefined()
+      expect(screen.getByText('SKU already exists')).toBeDefined()
     })
 
     expect(capturedBody.sku).toBe('MED001')
