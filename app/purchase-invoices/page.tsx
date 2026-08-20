@@ -295,7 +295,7 @@ export default function PurchaseInvoicesPage() {
                       ))}
                     </SearchableSelect>
                   </div>
-                  <div className="space-y-2">
+                  {/* <div className="space-y-2">
                     <Label htmlFor="paymentMode">Payment Mode</Label>
                     <Select value={form.paymentMode || ''} onValueChange={(value) => setForm({ ...form, paymentMode: value || '' })}>
                       <SelectTrigger>
@@ -308,7 +308,7 @@ export default function PurchaseInvoicesPage() {
                         <SelectItem value="CREDIT">Credit</SelectItem>
                       </SelectContent>
                     </Select>
-                  </div>
+                  </div> */}
                   <div className="space-y-2">
                     <Label htmlFor="dueDate">Due Date</Label>
                     <Input
@@ -340,7 +340,7 @@ export default function PurchaseInvoicesPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Product</TableHead>
+                        <TableHead className="w-[300px]">Product</TableHead>
                         <TableHead>Quantity</TableHead>
                         <TableHead>Purchase Rate</TableHead>
                         <TableHead>Batch Number</TableHead>
@@ -352,7 +352,7 @@ export default function PurchaseInvoicesPage() {
                     <TableBody>
                       {form.items.map((item, index) => (
                         <TableRow key={index}>
-                          <TableCell>
+                          <TableCell className="w-[300px]">
                             <SearchableSelect
                               value={item.productId || ''}
                               onValueChange={(value) => handleItemChange(index, 'productId', value || '')}
