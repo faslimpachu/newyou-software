@@ -118,6 +118,9 @@ export async function POST(request: Request) {
 
         const amountDecimal = new Prisma.Decimal(amount)
 
+        const oldPaid = new Prisma.Decimal(invoice.paid)
+        const oldBalance = new Prisma.Decimal(invoice.balance)
+
         const updated = await tx.purchaseInvoice.updateMany({
           where: {
             id: invoiceId,
@@ -133,17 +136,9 @@ export async function POST(request: Request) {
           throw new ValidationError(`Payment amount exceeds outstanding balance`)
         }
 
-        const updatedInvoice = await tx.purchaseInvoice.findUnique({
-          where: { id: invoiceId },
-        })
-
-        if (!updatedInvoice) {
-          throw new ValidationError('Purchase invoice not found after update')
-        }
-
-        const newPaid = new Prisma.Decimal(updatedInvoice.paid)
-        const newBalance = new Prisma.Decimal(updatedInvoice.balance)
-        const status = computePaymentStatus(newBalance, newPaid, updatedInvoice.dueDate)
+        const newPaid = oldPaid.plus(amountDecimal)
+        const newBalance = oldBalance.minus(amountDecimal)
+        const status = computePaymentStatus(newBalance, newPaid, invoice.dueDate)
 
         await tx.purchaseInvoice.update({
           where: { id: invoiceId },
