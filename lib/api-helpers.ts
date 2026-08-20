@@ -63,19 +63,53 @@ export class ValidationError extends Error {
   }
 }
 
-export async function generatePurchaseNumber(sequenceName: 'PURCHASE_INVOICE' | 'SUPPLIER_PAYMENT' | 'SALE_INVOICE' | 'PRODUCT'): Promise<string> {
+export async function generateProductCode(): Promise<string> {
+  const date = new Date().toISOString().slice(0, 10).replace(/-/g, '')
+  const prefix = `PRD-${date}-`
+
+  return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    const maxExisting = await tx.product.findFirst({
+      where: { code: { startsWith: prefix } },
+      orderBy: { code: 'desc' },
+      select: { code: true },
+    })
+
+    let nextNum = 1
+    if (maxExisting?.code) {
+      const parts = maxExisting.code.split('-')
+      const num = parseInt(parts[parts.length - 1], 10)
+      if (!isNaN(num) && num >= nextNum) nextNum = num + 1
+    }
+
+    const updated = await tx.productSequence.upsert({
+      where: { id: 'GLOBAL' },
+      update: { lastNumber: { increment: 1 } },
+      create: { id: 'GLOBAL', lastNumber: nextNum },
+    })
+
+    const num = Math.max(updated.lastNumber, nextNum)
+    if (num > updated.lastNumber) {
+      await tx.productSequence.update({
+        where: { id: 'GLOBAL' },
+        data: { lastNumber: num },
+      })
+    }
+
+    return `${prefix}${String(num).padStart(4, '0')}`
+  })
+}
+
+export async function generatePurchaseNumber(sequenceName: 'PURCHASE_INVOICE' | 'SUPPLIER_PAYMENT' | 'SALE_INVOICE'): Promise<string> {
   const prefixMap: Record<string, string> = {
     PURCHASE_INVOICE: 'PINV',
     SUPPLIER_PAYMENT: 'PPAY',
     SALE_INVOICE: 'SINV',
-    PRODUCT: 'PRD',
   }
 
   const nameMap: Record<string, string> = {
     PURCHASE_INVOICE: 'Purchase Invoice',
     SUPPLIER_PAYMENT: 'Supplier Payment',
     SALE_INVOICE: 'Sale Invoice',
-    PRODUCT: 'Product',
   }
 
   const prefix = prefixMap[sequenceName] || 'DOC'

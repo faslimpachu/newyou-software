@@ -258,6 +258,14 @@ model MRSequence {
   @@map("mr_sequences")
 }
 
+model ProductSequence {
+  id         String   @id @default("GLOBAL")
+  lastNumber Int      @default(0)
+  updatedAt  DateTime @default(now())
+
+  @@map("product_sequences")
+}
+
 model VisitSequence {
   id         String   @id
   centerType String   @unique

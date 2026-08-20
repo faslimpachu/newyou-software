@@ -23,6 +23,7 @@ beforeEach(async () => {
   await prisma.supplier.deleteMany()
   await prisma.product.deleteMany()
   await prisma.productCategory.deleteMany()
+  await prisma.productSequence.deleteMany()
   await prisma.sequence.deleteMany()
 })
 

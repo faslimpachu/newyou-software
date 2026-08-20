@@ -93,6 +93,12 @@ async function main() {
     create: { id: 'GLOBAL', lastNumber: 0 },
   })
 
+  await prisma.productSequence.upsert({
+    where: { id: 'GLOBAL' },
+    update: {},
+    create: { id: 'GLOBAL', lastNumber: 0 },
+  })
+
   await prisma.visitSequence.upsert({
     where: { id: 'NUTRITION' },
     update: {},
@@ -109,7 +115,6 @@ async function main() {
     { id: 'PURCHASE_INVOICE', name: 'Purchase Invoice' },
     { id: 'SUPPLIER_PAYMENT', name: 'Supplier Payment' },
     { id: 'SALE_INVOICE', name: 'Sale Invoice' },
-    { id: 'PRODUCT', name: 'Product' },
   ]
 
   for (const seq of sequences) {
@@ -131,6 +136,7 @@ async function main() {
   await prisma.productBatch.deleteMany()
   await prisma.product.deleteMany()
   await prisma.productCategory.deleteMany()
+  await prisma.productSequence.deleteMany()
   await prisma.sequence.deleteMany()
 
   await prisma.document.deleteMany()

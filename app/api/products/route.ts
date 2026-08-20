@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { generatePurchaseNumber } from '@/lib/api-helpers';
+import { generateProductCode } from '@/lib/api-helpers';
 import { Prisma } from '@prisma/client';
 
 function toNumber(value: unknown): number {
@@ -88,7 +88,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Product name is required' }, { status: 400 });
     }
 
-    const code = await generatePurchaseNumber('PRODUCT')
+    const code = await generateProductCode()
 
     const gst = new Prisma.Decimal(body.gstPercent ?? 0)
     if (gst.lessThan(0) || gst.greaterThan(100)) {

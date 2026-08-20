@@ -21,6 +21,11 @@ beforeEach(async () => {
   await prisma.product.deleteMany()
   await prisma.productCategory.deleteMany()
 
+  await prisma.productSequence.upsert({
+    where: { id: 'GLOBAL' },
+    update: {},
+    create: { id: 'GLOBAL', lastNumber: 1000 },
+  })
   await prisma.sequence.upsert({
     where: { id: 'PURCHASE_INVOICE' },
     update: {},
