@@ -1,5 +1,6 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { render, screen, waitFor, cleanup, fireEvent } from '@testing-library/react'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { render, screen, waitFor, cleanup, fireEvent, act } from '@testing-library/react'
+import { within } from '@testing-library/react'
 import SuppliersPage from '@/app/suppliers/page'
 
 const mockSuppliers = [
@@ -235,5 +236,88 @@ describe('Suppliers Page UI', () => {
     await waitFor(() => {
       expect(screen.getByText('Page 2 of 2 (25 total)')).toBeDefined()
     })
+  })
+
+  it('shows confirm dialog when delete is clicked', async () => {
+    await waitFor(() => {
+      expect(screen.getByText('ABC Pharma')).toBeDefined()
+    })
+    const row = screen.getByText('ABC Pharma').closest('tr')
+    expect(row).not.toBeNull()
+    const iconButtons = within(row!).getAllByRole('button', { name: '' })
+    act(() => {
+      fireEvent.click(iconButtons[1])
+    })
+    await waitFor(() => {
+      expect(screen.getByText('Deactivate this supplier?')).toBeDefined()
+    })
+    expect(screen.getByText(/This will mark ABC Pharma as inactive/)).toBeDefined()
+  })
+
+  it('cancels delete and keeps supplier when Cancel is clicked', async () => {
+    await waitFor(() => {
+      expect(screen.getByText('ABC Pharma')).toBeDefined()
+    })
+    const row = screen.getByText('ABC Pharma').closest('tr')
+    expect(row).not.toBeNull()
+    const iconButtons = within(row!).getAllByRole('button', { name: '' })
+    act(() => {
+      fireEvent.click(iconButtons[1])
+    })
+    await waitFor(() => {
+      expect(screen.getByText('Deactivate this supplier?')).toBeDefined()
+    })
+    const cancelButton = screen.getByRole('button', { name: 'Cancel' })
+    act(() => {
+      fireEvent.click(cancelButton)
+    })
+    await waitFor(() => {
+      expect(screen.queryByText('Deactivate this supplier?')).toBeNull()
+    })
+    expect(screen.getByText('ABC Pharma')).toBeDefined()
+  })
+
+  it('deletes supplier when confirm is clicked', async () => {
+    let deleteCalled = false
+    const originalFetch = (global as any).fetch
+    ;(global as any).fetch = async (url: string, options?: any) => {
+      if (url.includes('/api/suppliers/') && options?.method === 'DELETE') {
+        deleteCalled = true
+        return { ok: true, json: async () => ({ success: true }) } as Response
+      }
+      if (url.startsWith('/api/suppliers') && !url.includes('/api/suppliers/')) {
+        return {
+          ok: true,
+          json: async () => ({ suppliers: [], page: 1, pageSize: 20, total: 0, totalPages: 1 }),
+        } as Response
+      }
+      return originalFetch(url, options)
+    }
+
+    await waitFor(() => {
+      expect(screen.getByText('ABC Pharma')).toBeDefined()
+    })
+    const row = screen.getByText('ABC Pharma').closest('tr')
+    expect(row).not.toBeNull()
+    const iconButtons = within(row!).getAllByRole('button', { name: '' })
+    act(() => {
+      fireEvent.click(iconButtons[1])
+    })
+    await waitFor(() => {
+      expect(screen.getByText('Deactivate this supplier?')).toBeDefined()
+    })
+    const confirmButton = screen.getByRole('button', { name: 'Deactivate' })
+    act(() => {
+      fireEvent.click(confirmButton)
+    })
+    await waitFor(() => {
+      expect(deleteCalled).toBe(true)
+    })
+    await waitFor(() => {
+      expect(screen.queryByText('Deactivate this supplier?')).toBeNull()
+    })
+    expect(screen.queryByText('ABC Pharma')).toBeNull()
+
+    ;(global as any).fetch = originalFetch
   })
 })

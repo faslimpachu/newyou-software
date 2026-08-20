@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/table'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { DashboardShell } from '@/components/dashboard/dashboard-shell'
 import { Plus, Trash2, Eye } from 'lucide-react'
 
@@ -92,6 +93,7 @@ export default function SuppliersPage() {
   const [form, setForm] = useState(emptySupplier)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [viewingSupplier, setViewingSupplier] = useState<SupplierLedger | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<Supplier | null>(null)
   const [page, setPage] = useState(1)
   const [pageSize] = useState(20)
   const [totalPages, setTotalPages] = useState(1)
@@ -211,7 +213,15 @@ export default function SuppliersPage() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Deactivate this supplier?')) return
+    const supplier = suppliers.find((s) => s.id === id)
+    if (!supplier) return
+    setDeleteTarget(supplier)
+  }
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return
+    const id = deleteTarget.id
+    setDeleteTarget(null)
     const res = await fetch(`/api/suppliers/${id}`, { method: 'DELETE' })
     if (res.ok) {
       await loadSuppliers()
@@ -596,6 +606,17 @@ export default function SuppliersPage() {
           </Card>
         )}
       </div>
+
+      {deleteTarget && (
+        <ConfirmDialog
+          title="Deactivate this supplier?"
+          description={`This will mark ${deleteTarget.supplierName} as inactive. This action can be reversed later.`}
+          confirmLabel="Deactivate"
+          confirmVariant="destructive"
+          onCancel={() => setDeleteTarget(null)}
+          onConfirm={confirmDelete}
+        />
+      )}
     </DashboardShell>
   )
 }
