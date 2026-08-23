@@ -7,7 +7,9 @@ beforeAll(async () => {
 })
 
 beforeEach(async () => {
+  await prisma.inventoryTransaction.deleteMany()
   await prisma.supplierPayment.deleteMany()
+  await prisma.purchaseInvoiceItem.deleteMany()
   await prisma.purchaseInvoice.deleteMany()
   await prisma.batchReceipt.deleteMany()
   await prisma.productBatch.deleteMany()
@@ -284,5 +286,111 @@ describe('Supplier Payments API', () => {
     const updatedInvoice = await prisma.purchaseInvoice.findUnique({ where: { id: invoice.id } })
     expect(updatedInvoice?.status).toBe('OVERDUE')
     expect(Number(updatedInvoice?.balance)).toBeGreaterThan(0)
+  })
+
+  it('POST returns PAID when payment exactly matches remaining balance after partial payment', async () => {
+    const supplier = await prisma.supplier.create({
+      data: { supplierName: 'Test Supplier', status: 'ACTIVE' },
+    })
+    const invoice = await prisma.purchaseInvoice.create({
+      data: {
+        invoiceNumber: 'PINV-FULL-001',
+        invoiceDate: new Date('2026-08-01'),
+        supplierId: supplier.id,
+        subtotal: 100,
+        tax: 12,
+        grandTotal: 112,
+        paid: 0,
+        balance: 112,
+        status: 'PENDING',
+      },
+    })
+
+    const partialReq = new Request('http://localhost/api/supplier-payments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        supplierId: supplier.id,
+        invoiceId: invoice.id,
+        amount: 50,
+        paymentDate: '2026-08-01',
+        paymentMode: 'CASH',
+      }),
+    })
+    await POST(partialReq)
+
+    const fullReq = new Request('http://localhost/api/supplier-payments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        supplierId: supplier.id,
+        invoiceId: invoice.id,
+        amount: 62,
+        paymentDate: '2026-08-02',
+        paymentMode: 'CASH',
+      }),
+    })
+    const res = await POST(fullReq)
+    expect(res.status).toBe(201)
+
+    const updatedInvoice = await prisma.purchaseInvoice.findUnique({ where: { id: invoice.id } })
+    expect(updatedInvoice?.status).toBe('PAID')
+    expect(Number(updatedInvoice?.balance)).toBeLessThanOrEqual(0)
+  })
+
+  it('POST rejects negative payment amount', async () => {
+    const supplier = await prisma.supplier.create({
+      data: { supplierName: 'Test Supplier', status: 'ACTIVE' },
+    })
+
+    const req = new Request('http://localhost/api/supplier-payments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        supplierId: supplier.id,
+        amount: -50,
+        paymentDate: '2026-08-02',
+        paymentMode: 'CASH',
+      }),
+    })
+    const res = await POST(req)
+    expect(res.status).toBe(400)
+  })
+
+  it('POST returns payment record with supplier and invoice info', async () => {
+    const supplier = await prisma.supplier.create({
+      data: { supplierName: 'Test Supplier', status: 'ACTIVE' },
+    })
+    const invoice = await prisma.purchaseInvoice.create({
+      data: {
+        invoiceNumber: 'PINV-DETAIL-001',
+        invoiceDate: new Date('2026-08-02'),
+        supplierId: supplier.id,
+        subtotal: 100,
+        tax: 12,
+        grandTotal: 112,
+        paid: 0,
+        balance: 112,
+        status: 'PENDING',
+      },
+    })
+
+    const req = new Request('http://localhost/api/supplier-payments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        supplierId: supplier.id,
+        invoiceId: invoice.id,
+        amount: 50,
+        paymentDate: '2026-08-02',
+        paymentMode: 'BANK',
+      }),
+    })
+    const res = await POST(req)
+    expect(res.status).toBe(201)
+    const data = await res.json()
+    expect(data.payment.supplier.supplierName).toBe('Test Supplier')
+    expect(data.payment.invoice?.invoiceNumber).toBe('PINV-DETAIL-001')
+    expect(data.payment.paymentNumber).toContain('PPAY-')
   })
 })

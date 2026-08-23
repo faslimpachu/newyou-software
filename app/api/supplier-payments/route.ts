@@ -3,28 +3,10 @@ import { prisma } from '@/lib/prisma';
 import { generatePurchaseNumber } from '@/lib/api-helpers';
 import { ValidationError } from '@/lib/api-helpers';
 import { Prisma } from '@prisma/client';
+import { computePaymentStatus } from '@/lib/payment-status';
 
 function toNumber(value: unknown): number {
   return Number(value || 0)
-}
-
-function computePaymentStatus(
-  balance: Prisma.Decimal,
-  paid: Prisma.Decimal,
-  dueDate: Date | null
-): 'PENDING' | 'PARTIAL' | 'PAID' | 'OVERDUE' {
-  if (balance.lessThanOrEqualTo(0)) {
-    return 'PAID'
-  }
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  if (dueDate && new Date(dueDate) < today) {
-    return 'OVERDUE'
-  }
-  if (paid.greaterThan(0)) {
-    return 'PARTIAL'
-  }
-  return 'PENDING'
 }
 
 export async function GET(request: Request) {

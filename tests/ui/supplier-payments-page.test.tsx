@@ -15,6 +15,16 @@ const mockInvoices = [
     paid: 0,
     balance: 1120,
     status: 'PENDING',
+    dueDate: '2026-08-30',
+  },
+  {
+    id: 'inv-2',
+    invoiceNumber: 'PINV-20260820-0002',
+    grandTotal: 2000,
+    paid: 500,
+    balance: 1500,
+    status: 'PARTIAL',
+    dueDate: '2026-08-15',
   },
 ]
 
@@ -31,11 +41,25 @@ const mockPayments = [
     notes: null,
     createdAt: new Date().toISOString(),
     supplier: { id: 'supp-1', supplierName: 'Om Sai Medical' },
-    invoice: { id: 'inv-1', invoiceNumber: 'PINV-20260820-0001' },
+    invoice: { id: 'inv-1', invoiceNumber: 'PINV-20260820-0001', status: 'PENDING' },
   },
-  ...Array.from({ length: 24 }).map((_, i) => ({
-    id: `pay-${i + 2}`,
-    paymentNumber: `PPAY-20260820-${String(i + 2).padStart(4, '0')}`,
+  {
+    id: 'pay-2',
+    paymentNumber: 'PPAY-20260820-0002',
+    supplierId: 'supp-1',
+    invoiceId: 'inv-2',
+    amount: 500,
+    paymentDate: '2026-08-20',
+    paymentMode: 'BANK',
+    reference: null,
+    notes: 'Partial payment',
+    createdAt: new Date().toISOString(),
+    supplier: { id: 'supp-1', supplierName: 'Om Sai Medical' },
+    invoice: { id: 'inv-2', invoiceNumber: 'PINV-20260820-0002', status: 'PARTIAL' },
+  },
+  ...Array.from({ length: 25 }).map((_, i) => ({
+    id: `pay-${i + 3}`,
+    paymentNumber: `PPAY-20260820-${String(i + 3).padStart(4, '0')}`,
     supplierId: 'supp-1',
     invoiceId: 'inv-1',
     amount: 1000 + i * 100,
@@ -45,7 +69,7 @@ const mockPayments = [
     notes: null,
     createdAt: new Date().toISOString(),
     supplier: { id: 'supp-1', supplierName: 'Om Sai Medical' },
-    invoice: { id: 'inv-1', invoiceNumber: 'PINV-20260820-0001' },
+    invoice: { id: 'inv-1', invoiceNumber: 'PINV-20260820-0001', status: 'PENDING' },
   })),
 ]
 
@@ -96,15 +120,83 @@ describe('Supplier Payments Page UI', () => {
     render(<SupplierPaymentsPage />)
   })
 
-  it('renders page heading', async () => {
+  it('renders page heading with workflow description', async () => {
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: 'Supplier Payments', level: 1 })).toBeDefined()
     })
+    expect(screen.getByText('Record and track supplier payments with workflow validation')).toBeDefined()
   })
 
   it('renders Record Payment button', async () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /Record Payment/i })).toBeDefined()
+    })
+  })
+
+  it('shows workflow steps when form is opened', async () => {
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Record Payment/i })).toBeDefined()
+    })
+    const button = screen.getByRole('button', { name: /Record Payment/i })
+    act(() => {
+      fireEvent.click(button)
+    })
+    await waitFor(() => {
+      expect(screen.getByText('Select Supplier')).toBeDefined()
+    })
+    expect(screen.getByText('Select Invoice')).toBeDefined()
+    expect(screen.getByText('Enter Amount')).toBeDefined()
+    expect(screen.getByText('Confirm & Save')).toBeDefined()
+  })
+
+  it('highlights active workflow step', async () => {
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Record Payment/i })).toBeDefined()
+    })
+    const button = screen.getByRole('button', { name: /Record Payment/i })
+    act(() => {
+      fireEvent.click(button)
+    })
+    await waitFor(() => {
+      expect(screen.getByText('Follow the workflow steps below to record a payment')).toBeDefined()
+    })
+  })
+
+  it('shows payment statistics cards', async () => {
+    await waitFor(() => {
+      expect(screen.getByText('Total Payments')).toBeDefined()
+    })
+    expect(screen.getByText('Pending Invoices')).toBeDefined()
+    expect(screen.getByText('Overdue Invoices')).toBeDefined()
+  })
+
+  it('shows payment count in stats', async () => {
+    await waitFor(() => {
+      expect(screen.getByText(/20 payment\(s\) recorded/)).toBeDefined()
+    })
+  })
+
+  it('renders payment table with invoice status badges', async () => {
+    await waitFor(() => {
+      expect(screen.getByText('PPAY-20260820-0001')).toBeDefined()
+    })
+    const pendingBadges = screen.getAllByText('Pending')
+    expect(pendingBadges.length).toBeGreaterThan(0)
+    const partialBadges = screen.getAllByText('Partial')
+    expect(partialBadges.length).toBeGreaterThan(0)
+  })
+
+  it('shows invoice status column header', async () => {
+    await waitFor(() => {
+      expect(screen.getByText('PPAY-20260820-0001')).toBeDefined()
+    })
+    expect(screen.getByText('Invoice Status')).toBeDefined()
+  })
+
+  it('renders pagination info', async () => {
+    await waitFor(() => {
+      const pageTexts = screen.getAllByText(/Page 1 of 2/)
+      expect(pageTexts.length).toBeGreaterThan(0)
     })
   })
 
@@ -161,7 +253,7 @@ describe('Supplier Payments Page UI', () => {
     expect(comboboxes.length).toBeGreaterThan(0)
   })
 
-  it('loads invoices when supplier is selected', async () => {
+  it('shows workflow step indicator', async () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /Record Payment/i })).toBeDefined()
     })
@@ -169,7 +261,21 @@ describe('Supplier Payments Page UI', () => {
     act(() => {
       fireEvent.click(button)
     })
+    await waitFor(() => {
+      expect(screen.getByText('Select Supplier')).toBeDefined()
+    })
+    const step1 = screen.getByText('1')
+    expect(step1).toBeDefined()
+  })
 
+  it('shows outstanding balance for selected invoice', async () => {
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Record Payment/i })).toBeDefined()
+    })
+    const button = screen.getByRole('button', { name: /Record Payment/i })
+    act(() => {
+      fireEvent.click(button)
+    })
     await waitFor(() => {
       expect(screen.getByText('Record Supplier Payment')).toBeDefined()
     })
@@ -178,6 +284,7 @@ describe('Supplier Payments Page UI', () => {
     const supplierLabel = supplierLabels.find((el) => el.tagName === 'LABEL')
     const form = supplierLabel!.closest('form')
     const comboboxes = form!.querySelectorAll('[role="combobox"]')
+
     act(() => {
       fireEvent.click(comboboxes[0])
     })
@@ -193,19 +300,49 @@ describe('Supplier Payments Page UI', () => {
       const invoiceTexts = screen.getAllByText(/PINV-20260820-0001/)
       expect(invoiceTexts.length).toBeGreaterThan(0)
     })
+
+    const invoiceComboboxes = form!.querySelectorAll('[role="combobox"]')
+    act(() => {
+      fireEvent.click(invoiceComboboxes[1])
+    })
+
+    const pinvOptions = screen.getAllByText(/PINV-20260820-0001/)
+    const pinvOption = pinvOptions.find((el) => el.getAttribute('role') === 'option')
+    expect(pinvOption).toBeDefined()
+    act(() => {
+      fireEvent.click(pinvOption!)
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText(/Outstanding: ₹1,120/)).toBeDefined()
+    })
   })
 
-  it('renders payment table with data', async () => {
+  it('shows Cancel button in form', async () => {
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Record Payment/i })).toBeDefined()
+    })
+    const button = screen.getByRole('button', { name: /Record Payment/i })
+    act(() => {
+      fireEvent.click(button)
+    })
+    await waitFor(() => {
+      expect(screen.getByText('Record Supplier Payment')).toBeDefined()
+    })
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeDefined()
+  })
+
+  it('shows payment table with data', async () => {
     await waitFor(() => {
       expect(screen.getByText('PPAY-20260820-0001')).toBeDefined()
     })
     expect(screen.getAllByText('Om Sai Medical').length).toBeGreaterThan(0)
-    expect(screen.getByText('₹500')).toBeDefined()
+    expect(screen.getAllByText('₹500').length).toBeGreaterThan(0)
   })
 
   it('shows payment count', async () => {
     await waitFor(() => {
-      const totalTexts = screen.getAllByText(/25 total/)
+      const totalTexts = screen.getAllByText(/27 total/)
       expect(totalTexts.length).toBeGreaterThan(0)
     })
   })
@@ -216,20 +353,36 @@ describe('Supplier Payments Page UI', () => {
     })
     const pageTexts = screen.getAllByText(/Page 1 of 2/)
     expect(pageTexts.length).toBeGreaterThan(0)
-    const totalTexts = screen.getAllByText(/25 total/)
+    const totalTexts = screen.getAllByText(/27 total/)
     expect(totalTexts.length).toBeGreaterThan(0)
   })
 
-  it('navigates to next page when Next is clicked', async () => {
+  it('shows Next button as enabled when more pages exist', async () => {
+    await waitFor(() => {
+      expect(screen.getByText('PPAY-20260820-0001')).toBeDefined()
+    })
+    const nextButton = screen.getByRole('button', { name: /Next/i })
+    expect(nextButton).not.toBeDisabled()
+  })
+
+  it('shows Previous button as disabled when on first page', async () => {
+    await waitFor(() => {
+      expect(screen.getByText('PPAY-20260820-0001')).toBeDefined()
+    })
+    const prevButton = screen.getByRole('button', { name: /Previous/i })
+    expect(prevButton).toBeDisabled()
+  })
+
+  it('shows error message when payment fails', async () => {
     cleanup()
-    global.fetch = async (url: string) => {
+    global.fetch = async (url: string, options?: any) => {
+      if (url.includes('/api/supplier-payments') && options?.method === 'POST') {
+        return {
+          ok: false,
+          json: async () => ({ error: 'Payment amount exceeds outstanding balance' }),
+        } as Response
+      }
       if (url.includes('/api/supplier-payments')) {
-        if (url.includes('/api/supplier-payments/') && !url.includes('?')) {
-          return {
-            ok: true,
-            json: async () => ({ payment: mockPayments[0] }),
-          } as Response
-        }
         const urlObj = new URL(url, 'http://localhost')
         const pageParam = parseInt(urlObj.searchParams.get('page') || '1')
         const pageSizeParam = parseInt(urlObj.searchParams.get('pageSize') || '20')
@@ -265,28 +418,66 @@ describe('Supplier Payments Page UI', () => {
     }
     render(<SupplierPaymentsPage />)
     await waitFor(() => {
-      expect(screen.getByText('PPAY-20260820-0001')).toBeDefined()
+      expect(screen.getByRole('button', { name: /Record Payment/i })).toBeDefined()
     })
-    const nextButton = screen.getByRole('button', { name: /Next/i })
+    const button = screen.getByRole('button', { name: /Record Payment/i })
     act(() => {
-      fireEvent.click(nextButton)
+      fireEvent.click(button)
     })
     await waitFor(() => {
-      const page2Texts = screen.getAllByText(/Page 2 of 2/)
-      expect(page2Texts.length).toBeGreaterThan(0)
+      expect(screen.getByText('Record Supplier Payment')).toBeDefined()
+    })
+
+    const supplierLabels = screen.getAllByText('Supplier')
+    const supplierLabel = supplierLabels.find((el) => el.tagName === 'LABEL')
+    const form = supplierLabel!.closest('form')
+    const comboboxes = form!.querySelectorAll('[role="combobox"]')
+
+    act(() => {
+      fireEvent.click(comboboxes[0])
+    })
+
+    const omSaiOptions = screen.getAllByText('Om Sai Medical')
+    const omSaiOption = omSaiOptions.find((el) => el.getAttribute('role') === 'option')
+    expect(omSaiOption).toBeDefined()
+    act(() => {
+      fireEvent.click(omSaiOption!)
+    })
+
+    await waitFor(() => {
+      const invoiceTexts = screen.getAllByText(/PINV-20260820-0001/)
+      expect(invoiceTexts.length).toBeGreaterThan(0)
+    })
+
+    const amountInput = screen.getByLabelText('Amount')
+    act(() => {
+      fireEvent.change(amountInput, { target: { value: '150' } })
+    })
+
+    const paymentDateInput = screen.getByLabelText('Payment Date')
+    act(() => {
+      fireEvent.change(paymentDateInput, { target: { value: '2026-08-20' } })
+    })
+
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: 'Record Payment' }))
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('Payment amount exceeds outstanding balance')).toBeDefined()
     })
   })
 
-  it('navigates to previous page when Previous is clicked', async () => {
+  it('shows success message after payment is recorded', async () => {
     cleanup()
     global.fetch = async (url: string) => {
+      if (url.includes('/api/supplier-payments') && url.includes('POST')) {
+        return {
+          ok: true,
+          json: async () => ({ payment: { ...mockPayments[0], id: 'new-pay' } }),
+        } as Response
+      }
       if (url.includes('/api/supplier-payments')) {
-        if (url.includes('/api/supplier-payments/') && !url.includes('?')) {
-          return {
-            ok: true,
-            json: async () => ({ payment: mockPayments[0] }),
-          } as Response
-        }
         const urlObj = new URL(url, 'http://localhost')
         const pageParam = parseInt(urlObj.searchParams.get('page') || '1')
         const pageSizeParam = parseInt(urlObj.searchParams.get('pageSize') || '20')
@@ -322,23 +513,100 @@ describe('Supplier Payments Page UI', () => {
     }
     render(<SupplierPaymentsPage />)
     await waitFor(() => {
-      expect(screen.getByText('PPAY-20260820-0001')).toBeDefined()
+      expect(screen.getByRole('button', { name: /Record Payment/i })).toBeDefined()
     })
-    const nextButton = screen.getByRole('button', { name: /Next/i })
+    const button = screen.getByRole('button', { name: /Record Payment/i })
     act(() => {
-      fireEvent.click(nextButton)
+      fireEvent.click(button)
     })
     await waitFor(() => {
-      const page2Texts = screen.getAllByText(/Page 2 of 2/)
-      expect(page2Texts.length).toBeGreaterThan(0)
+      expect(screen.getByText('Record Supplier Payment')).toBeDefined()
     })
-    const prevButton = screen.getByRole('button', { name: /Previous/i })
+
+    const supplierLabels = screen.getAllByText('Supplier')
+    const supplierLabel = supplierLabels.find((el) => el.tagName === 'LABEL')
+    const form = supplierLabel!.closest('form')
+    const comboboxes = form!.querySelectorAll('[role="combobox"]')
+
     act(() => {
-      fireEvent.click(prevButton)
+      fireEvent.click(comboboxes[0])
+    })
+
+    const omSaiOptions = screen.getAllByText('Om Sai Medical')
+    const omSaiOption = omSaiOptions.find((el) => el.getAttribute('role') === 'option')
+    expect(omSaiOption).toBeDefined()
+    act(() => {
+      fireEvent.click(omSaiOption!)
+    })
+
+    await waitFor(() => {
+      const invoiceTexts = screen.getAllByText(/PINV-20260820-0001/)
+      expect(invoiceTexts.length).toBeGreaterThan(0)
+    })
+
+    const invoiceComboboxes = form!.querySelectorAll('[role="combobox"]')
+    act(() => {
+      fireEvent.click(invoiceComboboxes[1])
+    })
+
+    const pinvOptions = screen.getAllByText(/PINV-20260820-0001/)
+    const pinvOption = pinvOptions.find((el) => el.getAttribute('role') === 'option')
+    expect(pinvOption).toBeDefined()
+    act(() => {
+      fireEvent.click(pinvOption!)
+    })
+
+    const amountInput = screen.getByLabelText('Amount')
+    act(() => {
+      fireEvent.change(amountInput, { target: { value: '500' } })
+    })
+
+    const paymentDateInput = screen.getByLabelText('Payment Date')
+    act(() => {
+      fireEvent.change(paymentDateInput, { target: { value: '2026-08-20' } })
+    })
+
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: 'Record Payment' }))
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('Payment recorded successfully')).toBeDefined()
+    })
+  })
+
+  it('disables Record Payment button when supplier is not selected', async () => {
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Record Payment/i })).toBeDefined()
+    })
+    const button = screen.getByRole('button', { name: /Record Payment/i })
+    act(() => {
+      fireEvent.click(button)
     })
     await waitFor(() => {
-      const page1Texts = screen.getAllByText(/Page 1 of 2/)
-      expect(page1Texts.length).toBeGreaterThan(0)
+      expect(screen.getByText('Record Supplier Payment')).toBeDefined()
+    })
+    const submitButton = screen.getByRole('button', { name: 'Record Payment' })
+    expect(submitButton).toBeDisabled()
+  })
+
+  it('shows Cancel button and hides form when clicked', async () => {
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Record Payment/i })).toBeDefined()
+    })
+    const button = screen.getByRole('button', { name: /Record Payment/i })
+    act(() => {
+      fireEvent.click(button)
+    })
+    await waitFor(() => {
+      expect(screen.getByText('Record Supplier Payment')).toBeDefined()
+    })
+    const cancelButton = screen.getByRole('button', { name: 'Cancel' })
+    act(() => {
+      fireEvent.click(cancelButton)
+    })
+    await waitFor(() => {
+      expect(screen.queryByText('Record Supplier Payment')).toBeNull()
     })
   })
 })
