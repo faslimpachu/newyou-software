@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { render, screen, waitFor, fireEvent, act } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent, act, cleanup } from '@testing-library/react'
 import SupplierPaymentsPage from '@/app/supplier-payments/page'
 
 const mockSuppliers = [
@@ -33,6 +33,20 @@ const mockPayments = [
     supplier: { id: 'supp-1', supplierName: 'Om Sai Medical' },
     invoice: { id: 'inv-1', invoiceNumber: 'PINV-20260820-0001' },
   },
+  ...Array.from({ length: 24 }).map((_, i) => ({
+    id: `pay-${i + 2}`,
+    paymentNumber: `PPAY-20260820-${String(i + 2).padStart(4, '0')}`,
+    supplierId: 'supp-1',
+    invoiceId: 'inv-1',
+    amount: 1000 + i * 100,
+    paymentDate: '2026-08-20',
+    paymentMode: 'BANK',
+    reference: null,
+    notes: null,
+    createdAt: new Date().toISOString(),
+    supplier: { id: 'supp-1', supplierName: 'Om Sai Medical' },
+    invoice: { id: 'inv-1', invoiceNumber: 'PINV-20260820-0001' },
+  })),
 ]
 
 global.fetch = async (url: string) => {
@@ -43,9 +57,20 @@ global.fetch = async (url: string) => {
         json: async () => ({ payment: mockPayments[0] }),
       } as Response
     }
+    const urlObj = new URL(url, 'http://localhost')
+    const pageParam = parseInt(urlObj.searchParams.get('page') || '1')
+    const pageSizeParam = parseInt(urlObj.searchParams.get('pageSize') || '20')
+    const start = (pageParam - 1) * pageSizeParam
+    const pagedPayments = mockPayments.slice(start, start + pageSizeParam)
     return {
       ok: true,
-      json: async () => ({ payments: mockPayments }),
+      json: async () => ({
+        payments: pagedPayments,
+        page: pageParam,
+        pageSize: pageSizeParam,
+        total: mockPayments.length,
+        totalPages: Math.ceil(mockPayments.length / pageSizeParam),
+      }),
     } as Response
   }
   if (url.includes('/api/suppliers')) {
@@ -165,7 +190,8 @@ describe('Supplier Payments Page UI', () => {
     })
 
     await waitFor(() => {
-      expect(screen.getByText(/PINV-20260820-0001/)).toBeDefined()
+      const invoiceTexts = screen.getAllByText(/PINV-20260820-0001/)
+      expect(invoiceTexts.length).toBeGreaterThan(0)
     })
   })
 
@@ -173,13 +199,146 @@ describe('Supplier Payments Page UI', () => {
     await waitFor(() => {
       expect(screen.getByText('PPAY-20260820-0001')).toBeDefined()
     })
-    expect(screen.getByText('Om Sai Medical')).toBeDefined()
+    expect(screen.getAllByText('Om Sai Medical').length).toBeGreaterThan(0)
     expect(screen.getByText('₹500')).toBeDefined()
   })
 
   it('shows payment count', async () => {
     await waitFor(() => {
-      expect(screen.getByText(/1 payment\(s\) recorded/)).toBeDefined()
+      const totalTexts = screen.getAllByText(/25 total/)
+      expect(totalTexts.length).toBeGreaterThan(0)
+    })
+  })
+
+  it('shows pagination info when there are multiple pages', async () => {
+    await waitFor(() => {
+      expect(screen.getByText('PPAY-20260820-0001')).toBeDefined()
+    })
+    const pageTexts = screen.getAllByText(/Page 1 of 2/)
+    expect(pageTexts.length).toBeGreaterThan(0)
+    const totalTexts = screen.getAllByText(/25 total/)
+    expect(totalTexts.length).toBeGreaterThan(0)
+  })
+
+  it('navigates to next page when Next is clicked', async () => {
+    cleanup()
+    global.fetch = async (url: string) => {
+      if (url.includes('/api/supplier-payments')) {
+        if (url.includes('/api/supplier-payments/') && !url.includes('?')) {
+          return {
+            ok: true,
+            json: async () => ({ payment: mockPayments[0] }),
+          } as Response
+        }
+        const urlObj = new URL(url, 'http://localhost')
+        const pageParam = parseInt(urlObj.searchParams.get('page') || '1')
+        const pageSizeParam = parseInt(urlObj.searchParams.get('pageSize') || '20')
+        const start = (pageParam - 1) * pageSizeParam
+        const pagedPayments = mockPayments.slice(start, start + pageSizeParam)
+        return {
+          ok: true,
+          json: async () => ({
+            payments: pagedPayments,
+            page: pageParam,
+            pageSize: pageSizeParam,
+            total: mockPayments.length,
+            totalPages: Math.ceil(mockPayments.length / pageSizeParam),
+          }),
+        } as Response
+      }
+      if (url.includes('/api/suppliers')) {
+        return {
+          ok: true,
+          json: async () => ({ suppliers: mockSuppliers }),
+        } as Response
+      }
+      if (url.includes('/api/purchase-invoices')) {
+        return {
+          ok: true,
+          json: async () => ({ invoices: mockInvoices }),
+        } as Response
+      }
+      return {
+        ok: true,
+        json: async () => ({}),
+      } as Response
+    }
+    render(<SupplierPaymentsPage />)
+    await waitFor(() => {
+      expect(screen.getByText('PPAY-20260820-0001')).toBeDefined()
+    })
+    const nextButton = screen.getByRole('button', { name: /Next/i })
+    act(() => {
+      fireEvent.click(nextButton)
+    })
+    await waitFor(() => {
+      const page2Texts = screen.getAllByText(/Page 2 of 2/)
+      expect(page2Texts.length).toBeGreaterThan(0)
+    })
+  })
+
+  it('navigates to previous page when Previous is clicked', async () => {
+    cleanup()
+    global.fetch = async (url: string) => {
+      if (url.includes('/api/supplier-payments')) {
+        if (url.includes('/api/supplier-payments/') && !url.includes('?')) {
+          return {
+            ok: true,
+            json: async () => ({ payment: mockPayments[0] }),
+          } as Response
+        }
+        const urlObj = new URL(url, 'http://localhost')
+        const pageParam = parseInt(urlObj.searchParams.get('page') || '1')
+        const pageSizeParam = parseInt(urlObj.searchParams.get('pageSize') || '20')
+        const start = (pageParam - 1) * pageSizeParam
+        const pagedPayments = mockPayments.slice(start, start + pageSizeParam)
+        return {
+          ok: true,
+          json: async () => ({
+            payments: pagedPayments,
+            page: pageParam,
+            pageSize: pageSizeParam,
+            total: mockPayments.length,
+            totalPages: Math.ceil(mockPayments.length / pageSizeParam),
+          }),
+        } as Response
+      }
+      if (url.includes('/api/suppliers')) {
+        return {
+          ok: true,
+          json: async () => ({ suppliers: mockSuppliers }),
+        } as Response
+      }
+      if (url.includes('/api/purchase-invoices')) {
+        return {
+          ok: true,
+          json: async () => ({ invoices: mockInvoices }),
+        } as Response
+      }
+      return {
+        ok: true,
+        json: async () => ({}),
+      } as Response
+    }
+    render(<SupplierPaymentsPage />)
+    await waitFor(() => {
+      expect(screen.getByText('PPAY-20260820-0001')).toBeDefined()
+    })
+    const nextButton = screen.getByRole('button', { name: /Next/i })
+    act(() => {
+      fireEvent.click(nextButton)
+    })
+    await waitFor(() => {
+      const page2Texts = screen.getAllByText(/Page 2 of 2/)
+      expect(page2Texts.length).toBeGreaterThan(0)
+    })
+    const prevButton = screen.getByRole('button', { name: /Previous/i })
+    act(() => {
+      fireEvent.click(prevButton)
+    })
+    await waitFor(() => {
+      const page1Texts = screen.getAllByText(/Page 1 of 2/)
+      expect(page1Texts.length).toBeGreaterThan(0)
     })
   })
 })

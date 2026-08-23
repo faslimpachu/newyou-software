@@ -72,6 +72,66 @@ function randomDate(start: Date, end: Date): Date {
   return new Date(start.getTime() + Math.random() * (end.getTime() - start.getTime()))
 }
 
+async function buildExtraSupplierPayments(
+  supplierMap: Map<string, string>,
+  extraInvoices: Awaited<ReturnType<typeof prisma.purchaseInvoice.create>>[],
+  invoice1: Awaited<ReturnType<typeof prisma.purchaseInvoice.create>>,
+  invoice2: Awaited<ReturnType<typeof prisma.purchaseInvoice.create>>,
+  invoice3: Awaited<ReturnType<typeof prisma.purchaseInvoice.create>>,
+  invoice4: Awaited<ReturnType<typeof prisma.purchaseInvoice.create>>,
+  invoice5: Awaited<ReturnType<typeof prisma.purchaseInvoice.create>>,
+) {
+  const paymentModes = ['BANK', 'CASH', 'UPI', 'CREDIT'] as const
+  const references = ['NEFT', 'IMPS', 'RTGS', 'CHQ', 'CASH', 'UPI']
+  const notes = [
+    'Advance against upcoming delivery',
+    'Settlement for this month',
+    'Balance clearance',
+    'Routine payment',
+    'Top-up payment',
+    'Discount adjusted payment',
+    'Quality deduction waived',
+    'Freight included payment',
+    'Tax paid at source adjusted',
+    'Part settlement for pending dues',
+  ]
+
+  const allInvoices = [invoice1, invoice2, invoice3, invoice4, invoice5, ...extraInvoices]
+  const payments: Array<{
+    paymentNumber: string
+    supplierId: string
+    invoiceId: string
+    amount: number
+    paymentDate: Date
+    paymentMode: string
+    reference: string | null
+    notes: string | null
+  }> = []
+
+  for (let i = 0; i < 22; i++) {
+    const invoice = allInvoices[i % allInvoices.length]
+    const supplierId = invoice.supplierId
+    const mode = paymentModes[i % paymentModes.length]
+    const baseAmount = Math.round(Number(invoice.balance) / 3) || 500
+    const amount = baseAmount + randomInt(100, 2000)
+    const paymentDate = new Date(invoice.invoiceDate)
+    paymentDate.setDate(paymentDate.getDate() + randomInt(1, 20))
+
+    payments.push({
+      paymentNumber: `PPAY-2026080${i + 3}-${String(i + 1).padStart(4, '0')}`,
+      supplierId,
+      invoiceId: invoice.id,
+      amount: Math.min(amount, Number(invoice.balance) || amount),
+      paymentDate,
+      paymentMode: mode,
+      reference: `${references[i % references.length]}-${randomInt(10000, 99999)}`,
+      notes: notes[i % notes.length],
+    })
+  }
+
+  return payments
+}
+
 async function main() {
   const passwordHash = await bcrypt.hash('change-me-immediately', 10)
 
@@ -1002,6 +1062,7 @@ async function main() {
       reference: 'NEFT-12347',
       notes: 'Partial payment for PINV-20260802-0002',
     },
+    ...(await buildExtraSupplierPayments(supplierMap, extraInvoices, invoice1, invoice2, invoice3, invoice4, invoice5)),
   ]
 
   for (const payment of supplierPayments) {

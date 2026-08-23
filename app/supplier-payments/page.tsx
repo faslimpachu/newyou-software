@@ -72,14 +72,21 @@ export default function SupplierPaymentsPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [showForm, setShowForm] = useState(false)
+  const [page, setPage] = useState(1)
+  const [pageSize] = useState(20)
+  const [totalPages, setTotalPages] = useState(1)
+  const [total, setTotal] = useState(0)
   const [form, setForm] = useState(emptyPayment)
 
-  const loadPayments = async () => {
+  const loadPayments = async (pageNum = 1) => {
     try {
-      const res = await fetch('/api/supplier-payments')
+      const res = await fetch(`/api/supplier-payments?page=${pageNum}&pageSize=${pageSize}`)
       if (!res.ok) throw new Error('Failed to load payments')
       const data = await res.json()
       setPayments(data.payments)
+      setTotalPages(data.totalPages || 1)
+      setTotal(data.total || 0)
+      setPage(data.page || pageNum)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load payments')
     } finally {
@@ -116,9 +123,21 @@ export default function SupplierPaymentsPage() {
   }
 
   useEffect(() => {
-    loadPayments()
+    loadPayments(1)
     loadSuppliers()
   }, [])
+
+  const handlePrevPage = () => {
+    if (page > 1) {
+      loadPayments(page - 1)
+    }
+  }
+
+  const handleNextPage = () => {
+    if (page < totalPages) {
+      loadPayments(page + 1)
+    }
+  }
 
   useEffect(() => {
     loadInvoices(form.supplierId)
@@ -303,7 +322,9 @@ export default function SupplierPaymentsPage() {
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Payment History</CardTitle>
-            <CardDescription>{payments.length} payment(s) recorded</CardDescription>
+            <CardDescription>
+              {total > 0 ? `Page ${page} of ${totalPages} (${total} total)` : `${payments.length} payment(s) recorded`}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             {loading ? (
@@ -349,6 +370,32 @@ export default function SupplierPaymentsPage() {
             )}
           </CardContent>
         </Card>
+
+        {!loading && totalPages > 1 && (
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">
+              Page {page} of {totalPages} ({total} total)
+            </p>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handlePrevPage}
+                disabled={page <= 1}
+              >
+                Previous
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleNextPage}
+                disabled={page >= totalPages}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </DashboardShell>
   )
