@@ -789,4 +789,269 @@ describe('Products API', () => {
     const data = await res.json()
     expect(data.error).toBe('GST percent must be between 0 and 100')
   })
+
+  it('GET filters by stockStatus=out_of_stock', async () => {
+    const category = await prisma.productCategory.create({
+      data: { name: 'Medicines', active: true },
+    })
+    await prisma.product.create({
+      data: {
+        name: 'Out of Stock Product',
+        code: 'PRD-OOS-001',
+        categoryId: category.id,
+        unit: 'pcs',
+        purchasePrice: 10,
+        sellingPrice: 15,
+        gstPercent: 5,
+        currentStock: 0,
+        minimumStock: 10,
+        maximumStock: 200,
+        active: true,
+      },
+    })
+    await prisma.product.create({
+      data: {
+        name: 'In Stock Product',
+        code: 'PRD-IS-001',
+        categoryId: category.id,
+        unit: 'pcs',
+        purchasePrice: 10,
+        sellingPrice: 15,
+        gstPercent: 5,
+        currentStock: 50,
+        minimumStock: 10,
+        maximumStock: 200,
+        active: true,
+      },
+    })
+
+    const req = new Request('http://localhost/api/products?stockStatus=out_of_stock', { method: 'GET' })
+    const res = await GET(req)
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.products).toHaveLength(1)
+    expect(data.products[0].name).toBe('Out of Stock Product')
+  })
+
+  it('GET filters by stockStatus=low_stock', async () => {
+    const category = await prisma.productCategory.create({
+      data: { name: 'Medicines', active: true },
+    })
+    await prisma.product.create({
+      data: {
+        name: 'Low Stock Product',
+        code: 'PRD-LS-001',
+        categoryId: category.id,
+        unit: 'pcs',
+        purchasePrice: 10,
+        sellingPrice: 15,
+        gstPercent: 5,
+        currentStock: 3,
+        minimumStock: 10,
+        maximumStock: 200,
+        active: true,
+      },
+    })
+    await prisma.product.create({
+      data: {
+        name: 'In Stock Product',
+        code: 'PRD-IS-002',
+        categoryId: category.id,
+        unit: 'pcs',
+        purchasePrice: 10,
+        sellingPrice: 15,
+        gstPercent: 5,
+        currentStock: 50,
+        minimumStock: 10,
+        maximumStock: 200,
+        active: true,
+      },
+    })
+
+    const req = new Request('http://localhost/api/products?stockStatus=low_stock', { method: 'GET' })
+    const res = await GET(req)
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.products).toHaveLength(1)
+    expect(data.products[0].name).toBe('Low Stock Product')
+  })
+
+  it('GET filters by stockStatus=overstock', async () => {
+    const category = await prisma.productCategory.create({
+      data: { name: 'Medicines', active: true },
+    })
+    await prisma.product.create({
+      data: {
+        name: 'Overstock Product',
+        code: 'PRD-OS-001',
+        categoryId: category.id,
+        unit: 'pcs',
+        purchasePrice: 10,
+        sellingPrice: 15,
+        gstPercent: 5,
+        currentStock: 300,
+        minimumStock: 10,
+        maximumStock: 200,
+        active: true,
+      },
+    })
+    await prisma.product.create({
+      data: {
+        name: 'In Stock Product',
+        code: 'PRD-IS-003',
+        categoryId: category.id,
+        unit: 'pcs',
+        purchasePrice: 10,
+        sellingPrice: 15,
+        gstPercent: 5,
+        currentStock: 50,
+        minimumStock: 10,
+        maximumStock: 200,
+        active: true,
+      },
+    })
+
+    const req = new Request('http://localhost/api/products?stockStatus=overstock', { method: 'GET' })
+    const res = await GET(req)
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.products).toHaveLength(1)
+    expect(data.products[0].name).toBe('Overstock Product')
+  })
+
+  it('GET filters by stockStatus=in_stock', async () => {
+    const category = await prisma.productCategory.create({
+      data: { name: 'Medicines', active: true },
+    })
+    await prisma.product.create({
+      data: {
+        name: 'In Stock Product',
+        code: 'PRD-IS-004',
+        categoryId: category.id,
+        unit: 'pcs',
+        purchasePrice: 10,
+        sellingPrice: 15,
+        gstPercent: 5,
+        currentStock: 50,
+        minimumStock: 10,
+        maximumStock: 200,
+        active: true,
+      },
+    })
+    await prisma.product.create({
+      data: {
+        name: 'Low Stock Product',
+        code: 'PRD-LS-002',
+        categoryId: category.id,
+        unit: 'pcs',
+        purchasePrice: 10,
+        sellingPrice: 15,
+        gstPercent: 5,
+        currentStock: 3,
+        minimumStock: 10,
+        maximumStock: 200,
+        active: true,
+      },
+    })
+
+    const req = new Request('http://localhost/api/products?stockStatus=in_stock', { method: 'GET' })
+    const res = await GET(req)
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.products).toHaveLength(1)
+    expect(data.products[0].name).toBe('In Stock Product')
+  })
+
+  it('GET with stockStatus=in_stock respects pagination', async () => {
+    const category = await prisma.productCategory.create({
+      data: { name: 'Medicines', active: true },
+    })
+    for (let i = 0; i < 5; i++) {
+      await prisma.product.create({
+        data: {
+          name: `In Stock Product ${i}`,
+          code: `PRD-ISP-${i}`,
+          categoryId: category.id,
+          unit: 'pcs',
+          purchasePrice: 10,
+          sellingPrice: 15,
+          gstPercent: 5,
+          currentStock: 50,
+          minimumStock: 10,
+          maximumStock: 200,
+          active: true,
+        },
+      })
+    }
+
+    const req = new Request('http://localhost/api/products?stockStatus=in_stock&page=1&pageSize=2', { method: 'GET' })
+    const res = await GET(req)
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.products).toHaveLength(2)
+    expect(data.total).toBe(5)
+    expect(data.totalPages).toBe(3)
+    expect(data.page).toBe(1)
+  })
+
+  it('GET with stockStatus combines with search and category filters', async () => {
+    const catA = await prisma.productCategory.create({
+      data: { name: 'Medicines', active: true },
+    })
+    const catB = await prisma.productCategory.create({
+      data: { name: 'Supplements', active: true },
+    })
+    await prisma.product.create({
+      data: {
+        name: 'Paracetamol',
+        code: 'PRD-SEARCH-001',
+        categoryId: catA.id,
+        unit: 'pcs',
+        purchasePrice: 10,
+        sellingPrice: 15,
+        gstPercent: 5,
+        currentStock: 0,
+        minimumStock: 10,
+        maximumStock: 200,
+        active: true,
+      },
+    })
+    await prisma.product.create({
+      data: {
+        name: 'Vitamin D',
+        code: 'PRD-SEARCH-002',
+        categoryId: catB.id,
+        unit: 'bottle',
+        purchasePrice: 50,
+        sellingPrice: 80,
+        gstPercent: 5,
+        currentStock: 0,
+        minimumStock: 10,
+        maximumStock: 200,
+        active: true,
+      },
+    })
+    await prisma.product.create({
+      data: {
+        name: 'In Stock Item',
+        code: 'PRD-SEARCH-003',
+        categoryId: catA.id,
+        unit: 'pcs',
+        purchasePrice: 10,
+        sellingPrice: 15,
+        gstPercent: 5,
+        currentStock: 50,
+        minimumStock: 10,
+        maximumStock: 200,
+        active: true,
+      },
+    })
+
+    const req = new Request('http://localhost/api/products?stockStatus=out_of_stock&categoryId=' + catA.id, { method: 'GET' })
+    const res = await GET(req)
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.products).toHaveLength(1)
+    expect(data.products[0].name).toBe('Paracetamol')
+  })
 })

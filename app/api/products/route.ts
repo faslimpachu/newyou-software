@@ -13,23 +13,93 @@ export async function GET(request: Request) {
     const search = url.searchParams.get('search') || '';
     const categoryId = url.searchParams.get('categoryId') || '';
     const active = url.searchParams.get('active');
+    const stockStatus = url.searchParams.get('stockStatus') || '';
     const page = Math.max(1, Number(url.searchParams.get('page')) || 1);
     const pageSize = Math.min(100, Math.max(1, Number(url.searchParams.get('pageSize')) || 20));
     const skip = (page - 1) * pageSize;
 
-    const where: Record<string, unknown> = {};
+    const useRaw = Boolean(stockStatus)
+
+    if (useRaw) {
+      const conditions: string[] = []
+      const params: (string | number | boolean)[] = []
+
+      if (search) {
+        conditions.push('(name LIKE ? OR code LIKE ? OR sku LIKE ?)')
+        const pattern = `%${search}%`
+        params.push(pattern, pattern, pattern)
+      }
+      if (categoryId) {
+        conditions.push('categoryId = ?')
+        params.push(categoryId)
+      }
+      if (active !== null && active !== '') {
+        conditions.push('active = ?')
+        params.push(active === 'true')
+      }
+
+      switch (stockStatus) {
+        case 'out_of_stock':
+          conditions.push('currentStock = 0')
+          break
+        case 'low_stock':
+          conditions.push('currentStock > 0 AND currentStock < minimumStock')
+          break
+        case 'overstock':
+          conditions.push('currentStock > maximumStock')
+          break
+        case 'in_stock':
+          conditions.push('currentStock > 0 AND currentStock >= minimumStock AND currentStock <= maximumStock')
+          break
+      }
+
+      const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
+
+      const [productsRaw, countRaw] = await Promise.all([
+        prisma.$queryRawUnsafe<any[]>(
+          `SELECT id, name, code, sku, categoryId, unit, purchasePrice, sellingPrice, gstPercent, minimumStock, maximumStock, currentStock, imageUrl, active, createdAt FROM products ${whereClause} ORDER BY createdAt DESC LIMIT ? OFFSET ?`,
+          ...params,
+          pageSize,
+          skip,
+        ),
+        prisma.$queryRawUnsafe<{ count: bigint }[]>(
+          `SELECT COUNT(*) as count FROM products ${whereClause}`,
+          ...params,
+        ),
+      ])
+
+      const total = Number(countRaw[0]?.count || 0)
+
+      return NextResponse.json({
+        products: productsRaw.map((p) => ({
+          ...p,
+          purchasePrice: toNumber(p.purchasePrice),
+          sellingPrice: toNumber(p.sellingPrice),
+          gstPercent: toNumber(p.gstPercent),
+          currentStock: toNumber(p.currentStock),
+          minimumStock: p.minimumStock,
+          maximumStock: p.maximumStock,
+        })),
+        page,
+        pageSize,
+        total,
+        totalPages: Math.ceil(total / pageSize),
+      })
+    }
+
+    const where: Record<string, unknown> = {}
     if (search) {
       where.OR = [
         { name: { contains: search } },
         { code: { contains: search } },
         { sku: { contains: search } },
-      ];
+      ]
     }
     if (categoryId) {
-      where.categoryId = categoryId;
+      where.categoryId = categoryId
     }
     if (active !== null && active !== '') {
-      where.active = active === 'true';
+      where.active = active === 'true'
     }
 
     const [products, total] = await Promise.all([
@@ -43,7 +113,7 @@ export async function GET(request: Request) {
         },
       }),
       prisma.product.count({ where }),
-    ]);
+    ])
 
     return NextResponse.json({
       products: products.map((p) => ({
@@ -59,10 +129,10 @@ export async function GET(request: Request) {
       pageSize,
       total,
       totalPages: Math.ceil(total / pageSize),
-    });
+    })
   } catch (e) {
-    console.error('Products GET error', e);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error('Products GET error', e)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
 
@@ -85,7 +155,7 @@ export async function POST(request: Request) {
     } = body;
 
     if (!name || !name.trim()) {
-      return NextResponse.json({ error: 'Product name is required' }, { status: 400 });
+      return NextResponse.json({ error: 'Product name is required' }, { status: 400 })
     }
 
     const code = await generateProductCode()
@@ -114,7 +184,7 @@ export async function POST(request: Request) {
       include: {
         category: { select: { id: true, name: true } },
       },
-    });
+    })
 
     return NextResponse.json({
       product: {
@@ -126,16 +196,16 @@ export async function POST(request: Request) {
         minimumStock: product.minimumStock,
         maximumStock: product.maximumStock,
       },
-    }, { status: 201 });
+    }, { status: 201 })
   } catch (e: unknown) {
-    console.error('Products POST error', e);
+    console.error('Products POST error', e)
     if ((e as { code?: string }).code === 'P2002') {
-      const target = (e as { meta?: { target?: string } })?.meta?.target
+      const target = (e as { meta?: { target?: string } }).meta?.target
       if (target === 'products_sku_key') {
-        return NextResponse.json({ error: 'SKU already exists' }, { status: 409 });
+        return NextResponse.json({ error: 'SKU already exists' }, { status: 409 })
       }
-      return NextResponse.json({ error: 'Product Code already exists' }, { status: 409 });
+      return NextResponse.json({ error: 'Product Code already exists' }, { status: 409 })
     }
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

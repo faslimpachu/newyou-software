@@ -694,4 +694,22 @@ describe('Products Page UI', () => {
     expect(screen.getByText('Update product details below')).toBeDefined()
     expect(screen.queryByLabelText('Selling Price *')).toBeNull()
   })
+
+  it('shows stock status filter dropdown', async () => {
+    await waitFor(() => {
+      expect(screen.getByText('Paracetamol')).toBeDefined()
+    })
+
+    const selects = screen.getAllByRole('combobox')
+    const stockStatusSelect = selects.find((s) => s.textContent?.includes('All Stock Status'))
+    expect(stockStatusSelect).toBeDefined()
+  })
+
+  it('displays stock status badges in table', async () => {
+    await waitFor(() => {
+      expect(screen.getByText('Paracetamol')).toBeDefined()
+    })
+
+    expect(screen.getByText('Overstock')).toBeDefined()
+  })
 })

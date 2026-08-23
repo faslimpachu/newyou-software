@@ -118,6 +118,7 @@ export default function ProductsPage() {
   const [search, setSearch] = useState('')
   const [showHelp, setShowHelp] = useState(false)
   const [filterCategory, setFilterCategory] = useState<string>('')
+  const [stockStatus, setStockStatus] = useState<string>('')
   const [lowStockCount, setLowStockCount] = useState(0)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(20)
@@ -129,6 +130,7 @@ export default function ProductsPage() {
       const params = new URLSearchParams({
         search,
         categoryId: filterCategory,
+        stockStatus,
         page: String(pageNum),
         pageSize: String(pageSize),
       })
@@ -153,7 +155,7 @@ export default function ProductsPage() {
     } finally {
       setLoading(false)
     }
-  }, [search, filterCategory, pageSize])
+  }, [search, filterCategory, stockStatus, pageSize])
 
   const loadLowStockCount = useCallback(async () => {
     try {
@@ -706,6 +708,39 @@ export default function ProductsPage() {
             </div>
           </CardHeader>
           <CardContent>
+            <div className="mb-4 flex flex-wrap items-center gap-3">
+              <Input
+                placeholder="Search products..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="max-w-xs"
+              />
+              <Select value={filterCategory || undefined} onValueChange={(value) => setFilterCategory(value || '')}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="All Categories" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All Categories</SelectItem>
+                  {categories.map((category) => (
+                    <SelectItem key={category.id} value={category.id}>
+                      {category.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={stockStatus || undefined} onValueChange={(value) => setStockStatus(value || '')}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="All Stock Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All Stock Status</SelectItem>
+                  <SelectItem value="in_stock">In Stock</SelectItem>
+                  <SelectItem value="low_stock">Low Stock</SelectItem>
+                  <SelectItem value="out_of_stock">Out of Stock</SelectItem>
+                  <SelectItem value="overstock">Overstock</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             {loading ? (
               <div className="flex items-center justify-center py-8">
                 <p className="text-sm text-muted-foreground">Loading products...</p>
