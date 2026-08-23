@@ -717,7 +717,13 @@ export default function ProductsPage() {
               />
               <Select value={filterCategory || undefined} onValueChange={(value) => setFilterCategory(value || '')}>
                 <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="All Categories" />
+                  <SelectValue placeholder="All Categories">
+                    {(value) => {
+                      if (!value) return 'All Categories'
+                      const category = categories.find((c) => c.id === value)
+                      return category ? category.name : 'All Categories'
+                    }}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="">All Categories</SelectItem>
@@ -730,7 +736,18 @@ export default function ProductsPage() {
               </Select>
               <Select value={stockStatus || undefined} onValueChange={(value) => setStockStatus(value || '')}>
                 <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="All Stock Status" />
+                  <SelectValue placeholder="All Stock Status">
+                    {(value) => {
+                      const map: Record<string, string> = {
+                        '': 'All Stock Status',
+                        in_stock: 'In Stock',
+                        low_stock: 'Low Stock',
+                        out_of_stock: 'Out of Stock',
+                        overstock: 'Overstock',
+                      }
+                      return map[value || ''] || 'All Stock Status'
+                    }}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="">All Stock Status</SelectItem>
