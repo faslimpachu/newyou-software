@@ -155,6 +155,18 @@ export default function InventoryAdjustmentsPage() {
     loadSuppliers()
   }, [])
 
+  const handlePrevPage = () => {
+    if (page > 1) {
+      loadAdjustments(page - 1)
+    }
+  }
+
+  const handleNextPage = () => {
+    if (page < totalPages) {
+      loadAdjustments(page + 1)
+    }
+  }
+
   useEffect(() => {
     if (form.productId) {
       loadBatches(form.productId)
