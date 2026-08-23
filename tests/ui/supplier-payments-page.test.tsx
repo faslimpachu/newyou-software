@@ -244,7 +244,7 @@ describe('Supplier Payments Page UI', () => {
     await waitFor(() => {
       expect(screen.getByText('Record Supplier Payment')).toBeDefined()
     })
-    const invoiceLabels = screen.getAllByText('Invoice (Optional)')
+    const invoiceLabels = screen.getAllByText('Invoice')
     const invoiceLabel = invoiceLabels.find((el) => el.tagName === 'LABEL')
     expect(invoiceLabel).toBeDefined()
     const form = invoiceLabel!.closest('form')
@@ -449,6 +449,18 @@ describe('Supplier Payments Page UI', () => {
       expect(invoiceTexts.length).toBeGreaterThan(0)
     })
 
+    const invoiceComboboxes = form!.querySelectorAll('[role="combobox"]')
+    act(() => {
+      fireEvent.click(invoiceComboboxes[1])
+    })
+
+    const pinvOptions = screen.getAllByText(/PINV-20260820-0001/)
+    const pinvOption = pinvOptions.find((el) => el.getAttribute('role') === 'option')
+    expect(pinvOption).toBeDefined()
+    act(() => {
+      fireEvent.click(pinvOption!)
+    })
+
     const amountInput = screen.getByLabelText('Amount')
     act(() => {
       fireEvent.change(amountInput, { target: { value: '150' } })
@@ -586,6 +598,63 @@ describe('Supplier Payments Page UI', () => {
     await waitFor(() => {
       expect(screen.getByText('Record Supplier Payment')).toBeDefined()
     })
+    const submitButton = screen.getByRole('button', { name: 'Record Payment' })
+    expect(submitButton).toBeDisabled()
+  })
+
+  it('shows Cancel button and hides form when clicked', async () => {
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Record Payment/i })).toBeDefined()
+    })
+    const button = screen.getByRole('button', { name: /Record Payment/i })
+    act(() => {
+      fireEvent.click(button)
+    })
+    await waitFor(() => {
+      expect(screen.getByText('Record Supplier Payment')).toBeDefined()
+    })
+    const cancelButton = screen.getByRole('button', { name: 'Cancel' })
+    act(() => {
+      fireEvent.click(cancelButton)
+    })
+    await waitFor(() => {
+      expect(screen.queryByText('Record Supplier Payment')).toBeNull()
+    })
+  })
+
+  it('disables Record Payment button when invoice is not selected', async () => {
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Record Payment/i })).toBeDefined()
+    })
+    const button = screen.getByRole('button', { name: /Record Payment/i })
+    act(() => {
+      fireEvent.click(button)
+    })
+    await waitFor(() => {
+      expect(screen.getByText('Record Supplier Payment')).toBeDefined()
+    })
+
+    const supplierLabels = screen.getAllByText('Supplier')
+    const supplierLabel = supplierLabels.find((el) => el.tagName === 'LABEL')
+    const form = supplierLabel!.closest('form')
+    const comboboxes = form!.querySelectorAll('[role="combobox"]')
+
+    act(() => {
+      fireEvent.click(comboboxes[0])
+    })
+
+    const omSaiOptions = screen.getAllByText('Om Sai Medical')
+    const omSaiOption = omSaiOptions.find((el) => el.getAttribute('role') === 'option')
+    expect(omSaiOption).toBeDefined()
+    act(() => {
+      fireEvent.click(omSaiOption!)
+    })
+
+    const amountInput = screen.getByLabelText('Amount')
+    act(() => {
+      fireEvent.change(amountInput, { target: { value: '500' } })
+    })
+
     const submitButton = screen.getByRole('button', { name: 'Record Payment' })
     expect(submitButton).toBeDisabled()
   })

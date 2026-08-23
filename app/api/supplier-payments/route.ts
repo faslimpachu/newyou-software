@@ -73,8 +73,8 @@ export async function POST(request: Request) {
       notes,
     } = body;
 
-    if (!supplierId || amount === undefined || amount === null || !paymentDate) {
-      return NextResponse.json({ error: 'supplierId, amount, and paymentDate are required' }, { status: 400 });
+    if (!supplierId || invoiceId === undefined || invoiceId === null || invoiceId === '' || amount === undefined || amount === null || !paymentDate) {
+      return NextResponse.json({ error: 'supplierId, invoiceId, amount, and paymentDate are required' }, { status: 400 });
     }
 
     const paymentNumber = await generatePurchaseNumber('SUPPLIER_PAYMENT')
@@ -85,69 +85,52 @@ export async function POST(request: Request) {
     }
 
     const payment = await prisma.$transaction(async (tx) => {
-      if (invoiceId) {
-        const invoice = await tx.purchaseInvoice.findUnique({
-          where: { id: invoiceId },
-        })
+      const invoice = await tx.purchaseInvoice.findUnique({
+        where: { id: invoiceId },
+      })
 
-        if (!invoice) {
-          throw new ValidationError('Purchase invoice not found')
-        }
-
-        if (invoice.supplierId !== supplierId) {
-          throw new ValidationError('Payment supplier does not match the invoice supplier')
-        }
-
-        const amountDecimal = new Prisma.Decimal(amount)
-
-        const oldPaid = new Prisma.Decimal(invoice.paid)
-        const oldBalance = new Prisma.Decimal(invoice.balance)
-
-        const updated = await tx.purchaseInvoice.updateMany({
-          where: {
-            id: invoiceId,
-            balance: { gte: amountDecimal },
-          },
-          data: {
-            paid: { increment: amountDecimal },
-            balance: { decrement: amountDecimal },
-          },
-        })
-
-        if (updated.count === 0) {
-          throw new ValidationError(`Payment amount exceeds outstanding balance`)
-        }
-
-        const newPaid = oldPaid.plus(amountDecimal)
-        const newBalance = oldBalance.minus(amountDecimal)
-        const status = computePaymentStatus(newBalance, newPaid, invoice.dueDate)
-
-        await tx.purchaseInvoice.update({
-          where: { id: invoiceId },
-          data: { status },
-        })
-
-        const createdPayment = await tx.supplierPayment.create({
-          data: {
-            paymentNumber,
-            supplierId,
-            invoiceId: invoiceId || null,
-            amount,
-            paymentDate: new Date(paymentDate),
-            paymentMode: paymentMode || null,
-            reference: reference?.trim() || null,
-            notes: notes?.trim() || null,
-          },
-        })
-
-        return createdPayment
+      if (!invoice) {
+        throw new ValidationError('Purchase invoice not found')
       }
+
+      if (invoice.supplierId !== supplierId) {
+        throw new ValidationError('Payment supplier does not match the invoice supplier')
+      }
+
+      const amountDecimal = new Prisma.Decimal(amount)
+
+      const oldPaid = new Prisma.Decimal(invoice.paid)
+      const oldBalance = new Prisma.Decimal(invoice.balance)
+
+      const updated = await tx.purchaseInvoice.updateMany({
+        where: {
+          id: invoiceId,
+          balance: { gte: amountDecimal },
+        },
+        data: {
+          paid: { increment: amountDecimal },
+          balance: { decrement: amountDecimal },
+        },
+      })
+
+      if (updated.count === 0) {
+        throw new ValidationError(`Payment amount exceeds outstanding balance`)
+      }
+
+      const newPaid = oldPaid.plus(amountDecimal)
+      const newBalance = oldBalance.minus(amountDecimal)
+      const status = computePaymentStatus(newBalance, newPaid, invoice.dueDate)
+
+      await tx.purchaseInvoice.update({
+        where: { id: invoiceId },
+        data: { status },
+      })
 
       const createdPayment = await tx.supplierPayment.create({
         data: {
           paymentNumber,
           supplierId,
-          invoiceId: null,
+          invoiceId,
           amount,
           paymentDate: new Date(paymentDate),
           paymentMode: paymentMode || null,

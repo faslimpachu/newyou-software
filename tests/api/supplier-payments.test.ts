@@ -150,12 +150,26 @@ describe('Supplier Payments API', () => {
     const supplier = await prisma.supplier.create({
       data: { supplierName: 'Test Supplier', status: 'ACTIVE' },
     })
+    const invoice = await prisma.purchaseInvoice.create({
+      data: {
+        invoiceNumber: 'PINV-TEST-005',
+        invoiceDate: new Date('2026-08-02'),
+        supplierId: supplier.id,
+        subtotal: 100,
+        tax: 12,
+        grandTotal: 112,
+        paid: 0,
+        balance: 112,
+        status: 'PENDING',
+      },
+    })
 
     const req = new Request('http://localhost/api/supplier-payments', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         supplierId: supplier.id,
+        invoiceId: invoice.id,
         amount: 0,
         paymentDate: '2026-08-02',
         paymentMode: 'CASH',
@@ -227,7 +241,7 @@ describe('Supplier Payments API', () => {
     expect(data.error).toBe('Purchase invoice not found')
   })
 
-  it('POST creates payment without invoice', async () => {
+  it('POST rejects payment without invoiceId', async () => {
     const supplier = await prisma.supplier.create({
       data: { supplierName: 'Test Supplier', status: 'ACTIVE' },
     })
@@ -244,10 +258,31 @@ describe('Supplier Payments API', () => {
       }),
     })
     const res = await POST(req)
-    expect(res.status).toBe(201)
+    expect(res.status).toBe(400)
     const data = await res.json()
-    expect(data.payment.amount).toBe(100)
-    expect(data.payment.notes).toBe('Advance payment')
+    expect(data.error).toBe('supplierId, invoiceId, amount, and paymentDate are required')
+  })
+
+  it('POST rejects payment with empty invoiceId', async () => {
+    const supplier = await prisma.supplier.create({
+      data: { supplierName: 'Test Supplier', status: 'ACTIVE' },
+    })
+
+    const req = new Request('http://localhost/api/supplier-payments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        supplierId: supplier.id,
+        invoiceId: '',
+        amount: 100,
+        paymentDate: '2026-08-02',
+        paymentMode: 'CASH',
+      }),
+    })
+    const res = await POST(req)
+    expect(res.status).toBe(400)
+    const data = await res.json()
+    expect(data.error).toBe('supplierId, invoiceId, amount, and paymentDate are required')
   })
 
   it('POST sets OVERDUE status when dueDate is past and balance > 0', async () => {
@@ -342,12 +377,26 @@ describe('Supplier Payments API', () => {
     const supplier = await prisma.supplier.create({
       data: { supplierName: 'Test Supplier', status: 'ACTIVE' },
     })
+    const invoice = await prisma.purchaseInvoice.create({
+      data: {
+        invoiceNumber: 'PINV-TEST-006',
+        invoiceDate: new Date('2026-08-02'),
+        supplierId: supplier.id,
+        subtotal: 100,
+        tax: 12,
+        grandTotal: 112,
+        paid: 0,
+        balance: 112,
+        status: 'PENDING',
+      },
+    })
 
     const req = new Request('http://localhost/api/supplier-payments', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         supplierId: supplier.id,
+        invoiceId: invoice.id,
         amount: -50,
         paymentDate: '2026-08-02',
         paymentMode: 'CASH',

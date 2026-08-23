@@ -76,7 +76,7 @@ const statusConfig: Record<PaymentStatus, { label: string; variant: 'default' | 
 
 const workflowSteps = [
   { label: 'Select Supplier', description: 'Choose the supplier to pay' },
-  { label: 'Select Invoice', description: 'Pick an unpaid invoice (optional)' },
+  { label: 'Select Invoice', description: 'Pick an unpaid invoice' },
   { label: 'Enter Amount', description: 'Enter payment amount' },
   { label: 'Confirm & Save', description: 'Record the payment' },
 ]
@@ -100,8 +100,8 @@ export default function SupplierPaymentsPage() {
 
   const workflowStep = useMemo(() => {
     if (!form.supplierId) return 0
-    if (!form.invoiceId && form.amount <= 0) return 1
-    if (form.invoiceId && form.amount <= 0) return 2
+    if (!form.invoiceId) return 1
+    if (form.amount <= 0) return 2
     return 3
   }, [form.supplierId, form.invoiceId, form.amount])
 
@@ -302,18 +302,16 @@ export default function SupplierPaymentsPage() {
                   )}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="invoiceId">Invoice (Optional)</Label>
+                  <Label htmlFor="invoiceId">Invoice</Label>
                   <SearchableSelect
                     value={form.invoiceId || ''}
                     onValueChange={(value) => setForm({ ...form, invoiceId: value || '' })}
                     placeholder="Select invoice"
                     renderValue={(id) => {
-                      if (!id) return 'None'
                       const invoice = invoices.find((inv) => inv.id === id)
                       return invoice ? `${invoice.invoiceNumber} (Balance: ₹${invoice.balance.toLocaleString('en-IN')})` : 'Select invoice'
                     }}
                   >
-                    <SearchableSelectItem value="">None</SearchableSelectItem>
                     {invoices.map((invoice) => (
                       <SearchableSelectItem key={invoice.id} value={invoice.id}>
                         {invoice.invoiceNumber} (Balance: ₹{invoice.balance.toLocaleString('en-IN')})
@@ -385,7 +383,7 @@ export default function SupplierPaymentsPage() {
                   />
                 </div>
                 <div className="flex items-end gap-2 md:col-span-2 lg:col-span-3">
-                  <Button type="submit" disabled={saving || !form.supplierId || form.amount <= 0}>
+                  <Button type="submit" disabled={saving || !form.supplierId || !form.invoiceId || form.amount <= 0}>
                     {saving ? 'Recording...' : 'Record Payment'}
                   </Button>
                   <Button type="button" variant="outline" onClick={handleResetForm}>
