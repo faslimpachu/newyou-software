@@ -344,4 +344,52 @@ describe('Suppliers API', () => {
     const deleted = await prisma.supplier.findUnique({ where: { id: supplier.id } })
     expect(deleted?.status).toBe('INACTIVE')
   })
+
+  it('GET paginates results', async () => {
+    await prisma.supplier.createMany({
+      data: Array.from({ length: 5 }).map((_, i) => ({
+        supplierName: `Supplier ${i}`,
+        status: 'ACTIVE',
+      })),
+    })
+
+    const req = new Request('http://localhost/api/suppliers?page=1&pageSize=2', { method: 'GET' })
+    const res = await GET(req)
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.suppliers).toHaveLength(2)
+    expect(data.page).toBe(1)
+    expect(data.pageSize).toBe(2)
+    expect(data.total).toBeGreaterThanOrEqual(5)
+    expect(data.totalPages).toBeGreaterThanOrEqual(3)
+  })
+
+  it('GET respects search filter', async () => {
+    await prisma.supplier.create({
+      data: { supplierName: 'Unique Search Supplier', contactPerson: 'Search Contact', phone: '9876543210', email: 'search@test.com', status: 'ACTIVE' },
+    })
+
+    const req = new Request('http://localhost/api/suppliers?search=Unique Search Supplier', { method: 'GET' })
+    const res = await GET(req)
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.suppliers.some((s: any) => s.supplierName === 'Unique Search Supplier')).toBe(true)
+    expect(data.total).toBeGreaterThanOrEqual(1)
+  })
+
+  it('GET respects status filter', async () => {
+    await prisma.supplier.create({
+      data: { supplierName: 'Active Supplier', status: 'ACTIVE' },
+    })
+    await prisma.supplier.create({
+      data: { supplierName: 'Inactive Supplier', status: 'INACTIVE' },
+    })
+
+    const req = new Request('http://localhost/api/suppliers?status=INACTIVE', { method: 'GET' })
+    const res = await GET(req)
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.suppliers.every((s: any) => s.status === 'INACTIVE')).toBe(true)
+    expect(data.suppliers.some((s: any) => s.supplierName === 'Inactive Supplier')).toBe(true)
+  })
 })

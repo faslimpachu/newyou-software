@@ -320,4 +320,92 @@ describe('Suppliers Page UI', () => {
 
     ;(global as any).fetch = originalFetch
   })
+
+  it('filters suppliers by search term', async () => {
+    cleanup()
+    global.fetch = async (url: string) => {
+      if (url.includes('/api/suppliers')) {
+        const urlObj = new URL(url, 'http://localhost')
+        const search = urlObj.searchParams.get('search') || ''
+        const filtered = mockSuppliers.filter((s) =>
+          search ? s.supplierName.toLowerCase().includes(search.toLowerCase()) : true,
+        )
+        return {
+          ok: true,
+          json: async () => ({ suppliers: filtered, page: 1, pageSize: 20, total: filtered.length, totalPages: 1 }),
+        } as Response
+      }
+      if (url.includes('/api/suppliers/1')) {
+        return {
+          ok: true,
+          json: async () => mockLedger,
+        } as Response
+      }
+      return {
+        ok: true,
+        json: async () => ({}),
+      } as Response
+    }
+    render(<SuppliersPage />)
+    await waitFor(() => {
+      expect(screen.getByText('ABC Pharma')).toBeDefined()
+    })
+
+    const searchInput = screen.getByPlaceholderText('Search suppliers...')
+    act(() => {
+      fireEvent.change(searchInput, { target: { value: 'ABC Pharma' } })
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('ABC Pharma')).toBeDefined()
+    })
+  })
+
+  it('filters suppliers by status', async () => {
+    cleanup()
+    const multiStatusSuppliers = [
+      { ...mockSuppliers[0], status: 'ACTIVE' },
+      { ...mockSuppliers[0], id: '2', supplierName: 'Inactive Supplier', status: 'INACTIVE' },
+    ]
+    global.fetch = async (url: string) => {
+      if (url.includes('/api/suppliers')) {
+        const urlObj = new URL(url, 'http://localhost')
+        const status = urlObj.searchParams.get('status') || ''
+        const filtered = status ? multiStatusSuppliers.filter((s) => s.status === status) : multiStatusSuppliers
+        return {
+          ok: true,
+          json: async () => ({ suppliers: filtered, page: 1, pageSize: 20, total: filtered.length, totalPages: 1 }),
+        } as Response
+      }
+      if (url.includes('/api/suppliers/1')) {
+        return {
+          ok: true,
+          json: async () => mockLedger,
+        } as Response
+      }
+      return {
+        ok: true,
+        json: async () => ({}),
+      } as Response
+    }
+    render(<SuppliersPage />)
+    await waitFor(() => {
+      expect(screen.getByText('ABC Pharma')).toBeDefined()
+    })
+
+    const statusSelect = screen.getByRole('combobox')
+    act(() => {
+      fireEvent.click(statusSelect)
+    })
+    await waitFor(() => {
+      expect(screen.getByText('Inactive')).toBeDefined()
+    })
+    act(() => {
+      fireEvent.click(screen.getByText('Inactive'))
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('Inactive Supplier')).toBeDefined()
+    })
+  })
 })

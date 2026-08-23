@@ -99,10 +99,18 @@ export default function SuppliersPage() {
   const [pageSize] = useState(20)
   const [totalPages, setTotalPages] = useState(1)
   const [total, setTotal] = useState(0)
+  const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
 
   const loadSuppliers = useCallback(async (pageNum = 1) => {
     try {
-      const res = await fetch(`/api/suppliers?page=${pageNum}&pageSize=${pageSize}`)
+      const params = new URLSearchParams()
+      params.set('page', String(pageNum))
+      params.set('pageSize', String(pageSize))
+      if (search) params.set('search', search)
+      if (statusFilter) params.set('status', statusFilter)
+
+      const res = await fetch(`/api/suppliers?${params.toString()}`)
       if (!res.ok) throw new Error('Failed to load suppliers')
       const data = await res.json()
       setSuppliers(data.suppliers)
@@ -114,7 +122,11 @@ export default function SuppliersPage() {
     } finally {
       setLoading(false)
     }
-  }, [pageSize])
+  }, [pageSize, search, statusFilter])
+
+  useEffect(() => {
+    loadSuppliers(1)
+  }, [loadSuppliers])
 
   useEffect(() => {
     loadSuppliers(1)
@@ -460,9 +472,29 @@ export default function SuppliersPage() {
         <Card>
           <CardHeader>
             <CardTitle className="text-base">All Suppliers</CardTitle>
-            <CardDescription>{suppliers.length} supplier(s) in the system</CardDescription>
+            <CardDescription>
+              {total > 0 ? `${total} supplier(s) in the system` : `${suppliers.length} supplier(s) in the system`}
+            </CardDescription>
           </CardHeader>
           <CardContent>
+            <div className="flex items-center gap-2 mb-4">
+              <Input
+                placeholder="Search suppliers..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="max-w-xs"
+              />
+              <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value || '')}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="All statuses" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All statuses</SelectItem>
+                  <SelectItem value="ACTIVE">Active</SelectItem>
+                  <SelectItem value="INACTIVE">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             {loading ? (
               <p className="text-sm text-muted-foreground">Loading...</p>
             ) : (
