@@ -704,4 +704,89 @@ describe('Products API', () => {
     const data = await res.json()
     expect(data.product.active).toBe(true)
   })
+
+  it('GET /api/products/[id] returns product with batches', async () => {
+    const supplier = await prisma.supplier.create({
+      data: { supplierName: 'Batch Supplier', status: 'ACTIVE' },
+    })
+    const category = await prisma.productCategory.create({
+      data: { name: 'Medicines', active: true },
+    })
+    const product = await prisma.product.create({
+      data: {
+        name: 'Batch Product',
+        code: 'PRD-BATCH-GET',
+        categoryId: category.id,
+        unit: 'pcs',
+        purchasePrice: 10,
+        sellingPrice: 15,
+        gstPercent: 5,
+        currentStock: 0,
+        minimumStock: 10,
+        maximumStock: 200,
+      },
+    })
+
+    await prisma.productBatch.create({
+      data: {
+        productId: product.id,
+        batchNumber: 'BATCH-GET-1',
+        expiryDate: new Date('2026-12-31'),
+        quantity: 50,
+      },
+    })
+
+    await prisma.batchReceipt.create({
+      data: {
+        batchId: (await prisma.productBatch.findFirst({ where: { productId: product.id } }))!.id,
+        supplierId: supplier.id,
+        sourceType: 'OPENING',
+        quantity: 50,
+        remainingQuantity: 50,
+        purchaseRate: 10,
+      },
+    })
+
+    const req = new Request(`http://localhost/api/products/${product.id}`, { method: 'GET' })
+    const res = await GETById(req, { params: { id: product.id } })
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.product.name).toBe('Batch Product')
+    expect(data.batches).toHaveLength(1)
+    expect(data.batches[0].batchNumber).toBe('BATCH-GET-1')
+    expect(data.batches[0].status).toBe('OK')
+  })
+
+  it('GET /api/products/[id] returns 404 for missing product', async () => {
+    const req = new Request('http://localhost/api/products/non-existent-id', { method: 'GET' })
+    const res = await GETById(req, { params: { id: 'non-existent-id' } })
+    expect(res.status).toBe(404)
+  })
+
+  it('PATCH validates GST percent range', async () => {
+    const category = await prisma.productCategory.create({
+      data: { name: 'Medicines', active: true },
+    })
+    const product = await prisma.product.create({
+      data: {
+        name: 'GST Product',
+        code: 'PRD-GST-001',
+        categoryId: category.id,
+        unit: 'pcs',
+        purchasePrice: 10,
+        sellingPrice: 15,
+        gstPercent: 5,
+      },
+    })
+
+    const req = new Request(`http://localhost/api/products/${product.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ gstPercent: 150 }),
+    })
+    const res = await PATCH(req, { params: { id: product.id } })
+    expect(res.status).toBe(400)
+    const data = await res.json()
+    expect(data.error).toBe('GST percent must be between 0 and 100')
+  })
 })

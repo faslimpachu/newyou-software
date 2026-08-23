@@ -185,6 +185,61 @@ describe('Inventory Service', () => {
         })
       ).rejects.toThrow('Batch number BATCH-001 already exists with a different expiry date')
     })
+
+    it('updates existing batch quantity when concurrent creation hits unique constraint', async () => {
+      const supplier = await prisma.supplier.create({
+        data: { supplierName: 'Test Supplier', status: 'ACTIVE' },
+      })
+      const category = await prisma.productCategory.create({
+        data: { name: 'Medicines', active: true },
+      })
+      const product = await prisma.product.create({
+        data: {
+          name: 'Test Product',
+          code: 'PRD-20260802-CON',
+          categoryId: category.id,
+          unit: 'pcs',
+          purchasePrice: 10,
+          sellingPrice: 15,
+          currentStock: 0,
+          minimumStock: 10,
+          maximumStock: 200,
+        },
+      })
+
+      await receiveStock({
+        productId: product.id,
+        quantity: 50,
+        batchNumber: 'BATCH-CON',
+        supplierId: supplier.id,
+        purchaseInvoiceId: null as any,
+        expiryDate: new Date('2026-12-31'),
+        purchaseRate: 10,
+      })
+
+      const secondCall = receiveStock({
+        productId: product.id,
+        quantity: 30,
+        batchNumber: 'BATCH-CON',
+        supplierId: supplier.id,
+        purchaseInvoiceId: null as any,
+        expiryDate: new Date('2026-12-31'),
+        purchaseRate: 12,
+      })
+
+      await expect(secondCall).resolves.toBeDefined()
+
+      const batches = await prisma.productBatch.findMany({
+        where: { productId: product.id },
+      })
+      expect(batches).toHaveLength(1)
+      expect(Number(batches[0].quantity)).toBe(80)
+
+      const receipts = await prisma.batchReceipt.findMany({
+        where: { batchId: batches[0].id },
+      })
+      expect(receipts).toHaveLength(2)
+    })
   })
 
   describe('adjustStock', () => {

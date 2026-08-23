@@ -51,6 +51,26 @@ interface Product {
   createdAt: string
 }
 
+interface Batch {
+  id: string
+  batchNumber: string
+  expiryDate: string | null
+  quantity: number
+  totalRemaining: number
+  avgCost: number
+  status: string
+  receipts: {
+    id: string
+    supplierName: string
+    purchaseInvoiceId: string | null
+    invoiceNumber: string | null
+    quantity: number
+    remainingQuantity: number
+    purchaseRate: number
+    createdAt: string
+  }[]
+}
+
 type FieldError = {
   name?: string
   code?: string
@@ -92,6 +112,8 @@ export default function ProductsPage() {
   const [form, setForm] = useState(emptyProduct)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [viewingProduct, setViewingProduct] = useState<Product | null>(null)
+  const [batches, setBatches] = useState<Batch[]>([])
+  const [loadingBatches, setLoadingBatches] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<Product | null>(null)
   const [search, setSearch] = useState('')
   const [filterCategory, setFilterCategory] = useState<string>('')
@@ -285,6 +307,15 @@ export default function ProductsPage() {
 
   const handleView = (product: Product) => {
     setViewingProduct(product)
+    setBatches([])
+    setLoadingBatches(true)
+    fetch(`/api/products/${product.id}`)
+      .then(res => res.ok ? res.json() : Promise.reject())
+      .then(data => {
+        setBatches(data.batches || [])
+        setLoadingBatches(false)
+      })
+      .catch(() => setLoadingBatches(false))
   }
 
   const handleDelete = async (id: string) => {
@@ -771,23 +802,23 @@ export default function ProductsPage() {
                   <p className="text-sm">{viewingProduct.category?.name || '-'}</p>
                 </div>
                  <div className="space-y-1">
-                   <p className="text-xs text-muted-foreground">Unit</p>
-                   <p className="text-sm">{viewingProduct.unit}</p>
-                 </div>
-                  {/* Purchase Price hidden — actual cost tracked at BatchReceipt level */}
-                  {/* <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">Unit</p>
+                    <p className="text-sm">{viewingProduct.unit}</p>
+                  </div>
+                   {/* Purchase Price hidden — actual cost tracked at BatchReceipt level */}
+                   {/* <div className="space-y-1">
                     <p className="text-xs text-muted-foreground">Purchase Price</p>
                     <p className="text-sm font-medium tabular-nums">{formatPrice(viewingProduct.purchasePrice)}</p>
                   </div> */}
-                  {/* Selling Price hidden — actual selling price managed at billing module level */}
-                  {/* <div className="space-y-1">
-                   <p className="text-xs text-muted-foreground">Selling Price</p>
-                   <p className="text-sm font-medium tabular-nums">{formatPrice(viewingProduct.sellingPrice)}</p>
-                 </div> */}
-                 <div className="space-y-1">
-                   <p className="text-xs text-muted-foreground">GST %</p>
-                  <p className="text-sm font-medium">{viewingProduct.gstPercent}%</p>
-                </div>
+                   {/* Selling Price hidden — actual selling price managed at billing module level */}
+                   {/* <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">Selling Price</p>
+                    <p className="text-sm font-medium tabular-nums">{formatPrice(viewingProduct.sellingPrice)}</p>
+                  </div> */}
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">GST %</p>
+                   <p className="text-sm font-medium">{viewingProduct.gstPercent}%</p>
+                 </div>
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">Current Stock</p>
                   <p className="text-sm font-medium tabular-nums">
@@ -812,6 +843,48 @@ export default function ProductsPage() {
                   <p className="text-xs text-muted-foreground">Image URL</p>
                   <p className="text-sm break-all">{viewingProduct.imageUrl || '-'}</p>
                 </div>
+              </div>
+
+              <div className="mt-6">
+                <h3 className="text-sm font-medium mb-2">Batches</h3>
+                {loadingBatches ? (
+                  <p className="text-sm text-muted-foreground">Loading batches...</p>
+                ) : batches.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No batches found</p>
+                ) : (
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Batch Number</TableHead>
+                          <TableHead>Qty</TableHead>
+                          <TableHead>Avg Cost</TableHead>
+                          <TableHead>Expiry</TableHead>
+                          <TableHead>Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {batches.map((batch) => (
+                          <TableRow key={batch.id}>
+                            <TableCell className="font-medium">{batch.batchNumber}</TableCell>
+                            <TableCell className="tabular-nums">{batch.quantity} {viewingProduct.unit}</TableCell>
+                            <TableCell className="tabular-nums">₹{batch.avgCost.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
+                            <TableCell>{batch.expiryDate ? new Date(batch.expiryDate).toLocaleDateString('en-IN') : '-'}</TableCell>
+                            <TableCell>
+                              <Badge variant={
+                                batch.status === 'EXPIRED' ? 'destructive' :
+                                batch.status === 'EXPIRING_SOON' ? 'secondary' :
+                                batch.status === 'OK' ? 'default' : 'outline'
+                              }>
+                                {batch.status}
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

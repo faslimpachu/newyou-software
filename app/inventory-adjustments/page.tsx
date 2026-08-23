@@ -123,7 +123,7 @@ export default function InventoryAdjustmentsPage() {
       return
     }
     try {
-      const res = await fetch(`/api/products/${productId}/batches`)
+      const res = await fetch(`/api/batches?productId=${productId}`)
       if (res.ok) {
         const data = await res.json()
         setBatches(data.batches || [])
@@ -132,6 +132,15 @@ export default function InventoryAdjustmentsPage() {
       // ignore
     }
   }
+
+  const [allowManualSale, setAllowManualSale] = useState(true)
+
+  useEffect(() => {
+    fetch('/api/config')
+      .then(res => res.ok ? res.json() : { allowManualSale: true })
+      .then(data => setAllowManualSale(data.allowManualSale))
+      .catch(() => setAllowManualSale(true))
+  }, [])
 
   useEffect(() => {
     loadAdjustments(1)
@@ -288,7 +297,7 @@ export default function InventoryAdjustmentsPage() {
                     <SelectContent>
                       <SelectItem value="ADJUSTMENT_IN">Increase</SelectItem>
                       <SelectItem value="ADJUSTMENT_OUT">Decrease</SelectItem>
-                      <SelectItem value="SALE">Sale</SelectItem>
+                      {allowManualSale && <SelectItem value="SALE">Sale</SelectItem>}
                       <SelectItem value="EXPIRED">Expired</SelectItem>
                       <SelectItem value="DAMAGED">Damaged</SelectItem>
                       <SelectItem value="LOST">Lost</SelectItem>

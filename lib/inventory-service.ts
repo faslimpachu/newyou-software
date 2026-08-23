@@ -149,7 +149,32 @@ export async function receiveStock(params: ReceiveStockParams, tx?: Prisma.Trans
         if (!retryBatch) {
           throw e
         }
-        batchId = retryBatch.id
+        if (retryBatch.expiryDate && expiryDate) {
+          const existingExpiry = new Date(retryBatch.expiryDate)
+          const newExpiry = new Date(expiryDate)
+          existingExpiry.setHours(0, 0, 0, 0)
+          newExpiry.setHours(0, 0, 0, 0)
+          if (existingExpiry.getTime() !== newExpiry.getTime()) {
+            throw new ValidationError(
+              `Batch number ${batchNumber} already exists with a different expiry date`
+            )
+          }
+        } else if (retryBatch.expiryDate && !expiryDate) {
+          throw new ValidationError(
+            `Batch number ${batchNumber} already exists with an expiry date`
+          )
+        } else if (!retryBatch.expiryDate && expiryDate) {
+          throw new ValidationError(
+            `Batch number ${batchNumber} exists without an expiry date`
+          )
+        }
+        const updatedBatch = await client.productBatch.update({
+          where: { id: retryBatch.id },
+          data: {
+            quantity: { increment: qty.toNumber() },
+          },
+        })
+        batchId = updatedBatch.id
       } else {
         throw e
       }

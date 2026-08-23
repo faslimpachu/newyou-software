@@ -13,12 +13,67 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       where: { id },
       include: {
         category: { select: { id: true, name: true } },
+        batches: {
+          orderBy: { createdAt: 'asc' },
+          include: {
+            receipts: {
+              where: {
+                remainingQuantity: { gt: 0 },
+              },
+              include: {
+                supplier: { select: { id: true, supplierName: true } },
+                purchaseInvoice: { select: { id: true, invoiceNumber: true } },
+              },
+            },
+          },
+        },
       },
     });
 
     if (!product) {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 });
     }
+
+    const batches = product.batches.map((batch) => {
+      const totalRemaining = batch.receipts.reduce(
+        (sum, r) => sum + Number(r.remainingQuantity),
+        0
+      )
+      const avgCost =
+        totalRemaining > 0
+          ? batch.receipts.reduce(
+              (sum, r) => sum + Number(r.remainingQuantity) * Number(r.purchaseRate),
+              0
+            ) / totalRemaining
+          : 0
+
+      return {
+        id: batch.id,
+        batchNumber: batch.batchNumber,
+        expiryDate: batch.expiryDate,
+        quantity: toNumber(batch.quantity),
+        totalRemaining,
+        avgCost: Math.round(avgCost * 100) / 100,
+        status: batch.expiryDate
+          ? batch.expiryDate < new Date()
+            ? 'EXPIRED'
+            : batch.expiryDate < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+              ? 'EXPIRING_SOON'
+              : 'OK'
+          : 'NO_EXPIRY',
+        receipts: batch.receipts.map((r) => ({
+          id: r.id,
+          supplierId: r.supplierId,
+          supplierName: r.supplier.supplierName,
+          purchaseInvoiceId: r.purchaseInvoiceId,
+          invoiceNumber: r.purchaseInvoice?.invoiceNumber,
+          quantity: toNumber(r.quantity),
+          remainingQuantity: toNumber(r.remainingQuantity),
+          purchaseRate: toNumber(r.purchaseRate),
+          createdAt: r.createdAt,
+        })),
+      }
+    })
 
     return NextResponse.json({
       product: {
@@ -27,7 +82,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         sellingPrice: toNumber(product.sellingPrice),
         gstPercent: toNumber(product.gstPercent),
         currentStock: toNumber(product.currentStock),
+        minimumStock: product.minimumStock,
+        maximumStock: product.maximumStock,
       },
+      batches,
     });
   } catch (e) {
     console.error('Product GET error', e);

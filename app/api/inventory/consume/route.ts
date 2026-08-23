@@ -22,12 +22,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'productId and quantity are required' }, { status: 400 });
     }
 
-    const transactions = await consumeStock({
-      productId,
-      quantity,
-      referenceType: referenceType || 'SALE_INVOICE',
-      referenceId,
-      notes,
+    const transactions = await prisma.$transaction(async (tx) => {
+      return await consumeStock({
+        productId,
+        quantity,
+        referenceType: referenceType || 'SALE_INVOICE',
+        referenceId,
+        notes,
+      }, tx)
     })
 
     return NextResponse.json({

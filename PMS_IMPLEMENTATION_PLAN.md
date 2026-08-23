@@ -886,6 +886,16 @@ The Inventory Adjustment module lets staff manually increase or decrease stock w
 - Creates `InventoryTransaction` record internally
 - Returns created transaction
 
+### Manual SALE Adjustment Transition Plan
+
+Manual `SALE` adjustments are available in Phase 1 because the existing Patient Invoice/Billing system will never connect to PMS inventory. However, when a separate PMS Product Billing module is implemented in Phase 2, automatic `SALE` transactions will be created from that module's invoices. To prevent double-deducting stock, manual `SALE` adjustments must be disabled before the billing module activates.
+
+**Transition steps:**
+1. **Phase 1 (current):** `SALE` adjustment type is available for manual stock deduction via `adjustStock()`. Controlled by `ALLOW_MANUAL_SALE_ADJUSTMENT` environment variable (defaults to `true`).
+2. **Phase 2 step 1:** Disable/remove manual `SALE` adjustment type from `inventory-adjustments/route.ts` and UI by setting `ALLOW_MANUAL_SALE_ADJUSTMENT=false`.
+3. **Phase 2 step 2:** Activate automatic SALE deduction from the PMS Product Billing module via `consumeStock()`.
+4. **Critical:** Manual SALE must be disabled BEFORE the PMS Product Billing module activates automatic deduction. Never allow both simultaneously.
+
 ---
 
 ## Success Criteria
