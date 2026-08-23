@@ -24,7 +24,7 @@ import { Badge } from '@/components/ui/badge'
 import { Pagination } from '@/components/ui/pagination'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { DashboardShell } from '@/components/dashboard/dashboard-shell'
-import { Plus, Trash2, Eye, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Plus, Trash2, Eye, ChevronLeft, ChevronRight, HelpCircle, Info } from 'lucide-react'
 
 interface Category {
   id: string
@@ -116,6 +116,7 @@ export default function ProductsPage() {
   const [loadingBatches, setLoadingBatches] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<Product | null>(null)
   const [search, setSearch] = useState('')
+  const [showHelp, setShowHelp] = useState(false)
   const [filterCategory, setFilterCategory] = useState<string>('')
   const [lowStockCount, setLowStockCount] = useState(0)
   const [page, setPage] = useState(1)
@@ -406,13 +407,65 @@ export default function ProductsPage() {
               Manage products and inventory
             </p>
           </div>
-          {!showForm && !editingId && (
-            <Button onClick={handleNewProduct}>
-              <Plus className="mr-2 size-4" />
-              Create Product
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowHelp(!showHelp)}
+            >
+              <HelpCircle className="mr-2 size-4" />
+              How to Use
             </Button>
-          )}
+            {!showForm && !editingId && (
+              <Button onClick={handleNewProduct}>
+                <Plus className="mr-2 size-4" />
+                Create Product
+              </Button>
+            )}
+          </div>
         </div>
+
+        {showHelp && (
+          <Card className="border-blue-200 bg-blue-50/50">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Info className="size-4 text-blue-600" />
+                How Products &amp; Inventory Work
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <h3 className="text-sm font-medium text-blue-900">Creating Products</h3>
+                <ul className="text-xs text-blue-800 space-y-1 list-disc list-inside">
+                  <li>Product code is auto-generated and cannot be changed</li>
+                  <li>SKU is optional but recommended for scanning</li>
+                  <li>Category is required to organize inventory</li>
+                  <li>Unit can be pcs, strip, box, etc.</li>
+                  <li>GST percent applies to billing calculations</li>
+                </ul>
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-sm font-medium text-blue-900">Stock &amp; Pricing</h3>
+                <ul className="text-xs text-blue-800 space-y-1 list-disc list-inside">
+                  <li>Current stock is auto-managed from batch receipts</li>
+                  <li>Minimum/maximum stock triggers low-stock alerts</li>
+                  <li>Actual purchase cost is tracked per batch receipt</li>
+                  <li>Average cost updates automatically on purchase</li>
+                  <li>Selling price is managed at billing module level</li>
+                </ul>
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <h3 className="text-sm font-medium text-blue-900">Important Rules</h3>
+                <ul className="text-xs text-blue-800 space-y-1 list-disc list-inside">
+                  <li>Stock can only be changed through purchase invoices or inventory adjustments</li>
+                  <li>Deleting a product does not delete its batch history</li>
+                  <li>Low stock count is calculated from minimum stock threshold</li>
+                  <li>Use <strong>Inventory Adjustment</strong> for manual stock corrections</li>
+                </ul>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {showForm && (
           <Card>

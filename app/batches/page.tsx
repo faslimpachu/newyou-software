@@ -15,7 +15,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { DashboardShell } from '@/components/dashboard/dashboard-shell'
-import { History } from 'lucide-react'
+import { History, HelpCircle, Info } from 'lucide-react'
 
 type Batch = {
   id: string
@@ -62,6 +62,7 @@ export default function BatchesPage() {
   const [pageSize] = useState(20)
   const [totalPages, setTotalPages] = useState(1)
   const [total, setTotal] = useState(0)
+  const [showHelp, setShowHelp] = useState(false)
 
   const loadBatches = useCallback(async (pageNum = 1) => {
     setLoading(true)
@@ -121,14 +122,66 @@ export default function BatchesPage() {
   return (
     <DashboardShell>
       <div className="mx-auto flex max-w-[1600px] flex-col gap-6">
-        <div>
-          <h1 className="font-display text-2xl font-semibold tracking-tight text-foreground">
-            Batches
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Batch-level inventory tracking and expiry monitoring
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="font-display text-2xl font-semibold tracking-tight text-foreground">
+              Batches
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Batch-level inventory tracking and expiry monitoring
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowHelp(!showHelp)}
+            >
+              <HelpCircle className="mr-2 size-4" />
+              How to Use
+            </Button>
+          </div>
         </div>
+
+        {showHelp && (
+          <Card className="border-blue-200 bg-blue-50/50">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Info className="size-4 text-blue-600" />
+                How Batches &amp; Expiry Work
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <h3 className="text-sm font-medium text-blue-900">Batch Creation</h3>
+                <ul className="text-xs text-blue-800 space-y-1 list-disc list-inside">
+                  <li>Batches are created automatically from purchase invoices</li>
+                  <li>Each batch tracks quantity, expiry, and supplier</li>
+                  <li>Batch number is optional but useful for medicines</li>
+                  <li>Receipt layers preserve actual purchase cost per batch</li>
+                </ul>
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-sm font-medium text-blue-900">Expiry Monitoring</h3>
+                <ul className="text-xs text-blue-800 space-y-1 list-disc list-inside">
+                  <li>EXPIRED: past expiry date — should be written off</li>
+                  <li>EXPIRING_SOON: within 30 days — consider sale or write-off</li>
+                  <li>OK: valid and not expiring soon</li>
+                  <li>NO_EXPIRY: no expiry tracking needed</li>
+                </ul>
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <h3 className="text-sm font-medium text-blue-900">Stock &amp; Cost Behavior</h3>
+                <ul className="text-xs text-blue-800 space-y-1 list-disc list-inside">
+                  <li>Batch quantity decreases only through sales or adjustments</li>
+                  <li>Average cost is weighted by receipt quantities</li>
+                  <li>Use <strong>Inventory Adjustment &gt; Decrease</strong> to write off expired stock</li>
+                  <li>FIFO is used when reducing stock from multiple receipts</li>
+                </ul>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader>

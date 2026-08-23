@@ -23,7 +23,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { DashboardShell } from '@/components/dashboard/dashboard-shell'
-import { Plus, Trash2, Eye } from 'lucide-react'
+import { Plus, Trash2, Eye, HelpCircle, Info } from 'lucide-react'
 
 interface Supplier {
   id: string
@@ -94,6 +94,7 @@ export default function SuppliersPage() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [viewingSupplier, setViewingSupplier] = useState<SupplierLedger | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Supplier | null>(null)
+  const [showHelp, setShowHelp] = useState(false)
   const [page, setPage] = useState(1)
   const [pageSize] = useState(20)
   const [totalPages, setTotalPages] = useState(1)
@@ -271,13 +272,64 @@ export default function SuppliersPage() {
               Manage suppliers and view supplier ledger
             </p>
           </div>
-          {!showForm && !editingId && (
-            <Button onClick={() => setShowForm(true)}>
-              <Plus className="mr-2 size-4" />
-              Create Supplier
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowHelp(!showHelp)}
+            >
+              <HelpCircle className="mr-2 size-4" />
+              How to Use
             </Button>
-          )}
+            {!showForm && !editingId && (
+              <Button onClick={() => setShowForm(true)}>
+                <Plus className="mr-2 size-4" />
+                Create Supplier
+              </Button>
+            )}
+          </div>
         </div>
+
+        {showHelp && (
+          <Card className="border-blue-200 bg-blue-50/50">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Info className="size-4 text-blue-600" />
+                How Suppliers Work
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <h3 className="text-sm font-medium text-blue-900">Creating Suppliers</h3>
+                <ul className="text-xs text-blue-800 space-y-1 list-disc list-inside">
+                  <li>Supplier name is required</li>
+                  <li>Phone must be a valid 10-digit Indian mobile number</li>
+                  <li>Email and address are optional but recommended</li>
+                  <li>GST number must be 15 alphanumeric characters</li>
+                  <li>Opening balance carries forward from previous accounts</li>
+                </ul>
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-sm font-medium text-blue-900">Supplier Ledger</h3>
+                <ul className="text-xs text-blue-800 space-y-1 list-disc list-inside">
+                  <li>View supplier details and recent purchases</li>
+                  <li>Outstanding balance = total purchases - total payments</li>
+                  <li>Payments reduce the outstanding balance</li>
+                  <li>Ledger helps track payment history</li>
+                </ul>
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <h3 className="text-sm font-medium text-blue-900">Important Rules</h3>
+                <ul className="text-xs text-blue-800 space-y-1 list-disc list-inside">
+                  <li>Suppliers cannot be deleted if they have transactions — deactivate instead</li>
+                  <li>Opening balance affects initial ledger calculations</li>
+                  <li>GST number is validated against Indian GST format</li>
+                  <li>Use <strong>Purchase Invoices</strong> to record purchases from suppliers</li>
+                </ul>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {showForm && (
           <Card>

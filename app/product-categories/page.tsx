@@ -23,7 +23,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { DashboardShell } from '@/components/dashboard/dashboard-shell'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2, HelpCircle, Info } from 'lucide-react'
 
 interface Category {
   id: string
@@ -47,6 +47,7 @@ export default function ProductCategoriesPage() {
   const [form, setForm] = useState(emptyCategory)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Category | null>(null)
+  const [showHelp, setShowHelp] = useState(false)
 
   const loadCategories = async () => {
     try {
@@ -135,14 +136,66 @@ export default function ProductCategoriesPage() {
   return (
     <DashboardShell>
       <div className="mx-auto flex max-w-[1600px] flex-col gap-6">
-        <div>
-          <h1 className="font-display text-2xl font-semibold tracking-tight text-foreground">
-            Product Categories
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Manage product categories for inventory
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="font-display text-2xl font-semibold tracking-tight text-foreground">
+              Product Categories
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Manage product categories for inventory
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowHelp(!showHelp)}
+            >
+              <HelpCircle className="mr-2 size-4" />
+              How to Use
+            </Button>
+          </div>
         </div>
+
+        {showHelp && (
+          <Card className="border-blue-200 bg-blue-50/50">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Info className="size-4 text-blue-600" />
+                How Product Categories Work
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <h3 className="text-sm font-medium text-blue-900">Creating Categories</h3>
+                <ul className="text-xs text-blue-800 space-y-1 list-disc list-inside">
+                  <li>Enter a clear category name</li>
+                  <li>Add an optional description for clarity</li>
+                  <li>Click Create Category to save</li>
+                  <li>Categories are active by default</li>
+                </ul>
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-sm font-medium text-blue-900">Managing Categories</h3>
+                <ul className="text-xs text-blue-800 space-y-1 list-disc list-inside">
+                  <li>Edit allows updating name and description</li>
+                  <li>Deactivate removes the category from active use</li>
+                  <li>Products in a deactivated category remain intact</li>
+                  <li>Categories with products cannot be deleted, only deactivated</li>
+                </ul>
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <h3 className="text-sm font-medium text-blue-900">Best Practices</h3>
+                <ul className="text-xs text-blue-800 space-y-1 list-disc list-inside">
+                  <li>Keep category names short and consistent</li>
+                  <li>Use categories to group similar products for reporting</li>
+                  <li>Avoid duplicate categories — check the list before creating</li>
+                  <li>Deactivate unused categories rather than deleting them</li>
+                </ul>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader>

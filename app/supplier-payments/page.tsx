@@ -23,7 +23,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { SearchableSelect, SearchableSelectItem } from '@/components/ui/searchable-select'
 import { DashboardShell } from '@/components/dashboard/dashboard-shell'
-import { Plus, IndianRupee, AlertCircle, CheckCircle2, Clock, TrendingUp } from 'lucide-react'
+import { Plus, IndianRupee, AlertCircle, CheckCircle2, Clock, TrendingUp, HelpCircle, Info } from 'lucide-react'
 
 interface Supplier {
   id: string
@@ -95,6 +95,7 @@ export default function SupplierPaymentsPage() {
   const [totalPages, setTotalPages] = useState(1)
   const [total, setTotal] = useState(0)
   const [form, setForm] = useState(emptyPayment)
+  const [showHelp, setShowHelp] = useState(false)
 
   const selectedInvoice = invoices.find((inv) => inv.id === form.invoiceId)
 
@@ -236,13 +237,64 @@ export default function SupplierPaymentsPage() {
               Record and track supplier payments with workflow validation
             </p>
           </div>
-          {!showForm && (
-            <Button onClick={() => setShowForm(true)}>
-              <Plus className="mr-2 size-4" />
-              Record Payment
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowHelp(!showHelp)}
+            >
+              <HelpCircle className="mr-2 size-4" />
+              How to Use
             </Button>
-          )}
+            {!showForm && (
+              <Button onClick={() => setShowForm(true)}>
+                <Plus className="mr-2 size-4" />
+                Record Payment
+              </Button>
+            )}
+          </div>
         </div>
+
+        {showHelp && (
+          <Card className="border-blue-200 bg-blue-50/50">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Info className="size-4 text-blue-600" />
+                How Supplier Payments Work
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <h3 className="text-sm font-medium text-blue-900">Payment Workflow</h3>
+                <ul className="text-xs text-blue-800 space-y-1 list-disc list-inside">
+                  <li>Step 1: Select a supplier</li>
+                  <li>Step 2: Pick an unpaid invoice for that supplier</li>
+                  <li>Step 3: Enter payment amount (up to outstanding balance)</li>
+                  <li>Step 4: Choose payment mode and confirm</li>
+                </ul>
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-sm font-medium text-blue-900">Payment Modes</h3>
+                <ul className="text-xs text-blue-800 space-y-1 list-disc list-inside">
+                  <li>Cash: immediate physical payment</li>
+                  <li>Bank: NEFT/RTGS/transfer</li>
+                  <li>UPI: digital payment</li>
+                  <li>Credit: recorded as payable, not yet paid</li>
+                </ul>
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <h3 className="text-sm font-medium text-blue-900">Important Rules</h3>
+                <ul className="text-xs text-blue-800 space-y-1 list-disc list-inside">
+                  <li>Only invoices with balance &gt; 0 are available for payment</li>
+                  <li>Payment amount cannot exceed invoice balance</li>
+                  <li>Recording a payment updates the invoice status automatically</li>
+                  <li>Partial payments are allowed — status becomes PARTIAL</li>
+                  <li>Use <strong>Purchase Invoices</strong> to view and manage invoice balances</li>
+                </ul>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {showForm && (
           <Card>

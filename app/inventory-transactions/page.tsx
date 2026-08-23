@@ -22,7 +22,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { DashboardShell } from '@/components/dashboard/dashboard-shell'
-import { History } from 'lucide-react'
+import { History, HelpCircle, Info } from 'lucide-react'
 
 interface Product {
   id: string
@@ -57,6 +57,7 @@ export default function InventoryTransactionsPage() {
   const [pageSize] = useState(20)
   const [totalPages, setTotalPages] = useState(1)
   const [total, setTotal] = useState(0)
+  const [showHelp, setShowHelp] = useState(false)
 
   const loadTransactions = async (pageNum = 1) => {
     setLoading(true)
@@ -145,14 +146,66 @@ export default function InventoryTransactionsPage() {
   return (
     <DashboardShell>
       <div className="mx-auto flex max-w-[1600px] flex-col gap-6">
-        <div>
-          <h1 className="font-display text-2xl font-semibold tracking-tight text-foreground">
-            Stock History
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            View all inventory transactions and stock movements
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="font-display text-2xl font-semibold tracking-tight text-foreground">
+              Stock History
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              View all inventory transactions and stock movements
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowHelp(!showHelp)}
+            >
+              <HelpCircle className="mr-2 size-4" />
+              How to Use
+            </Button>
+          </div>
         </div>
+
+        {showHelp && (
+          <Card className="border-blue-200 bg-blue-50/50">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Info className="size-4 text-blue-600" />
+                How Stock History Works
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <h3 className="text-sm font-medium text-blue-900">Reading Transactions</h3>
+                <ul className="text-xs text-blue-800 space-y-1 list-disc list-inside">
+                  <li>Every stock change creates a transaction record</li>
+                  <li>Positive quantity = stock increase</li>
+                  <li>Negative quantity = stock decrease</li>
+                  <li>Reference shows source document or manual note</li>
+                </ul>
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-sm font-medium text-blue-900">Transaction Types</h3>
+                <ul className="text-xs text-blue-800 space-y-1 list-disc list-inside">
+                  <li>Purchase: from purchase invoices</li>
+                  <li>Sale: from billing invoices</li>
+                  <li>Adjustment In/Out: manual corrections</li>
+                  <li>Return/Expired/Damaged/Lost: other movements</li>
+                </ul>
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <h3 className="text-sm font-medium text-blue-900">Filtering Tips</h3>
+                <ul className="text-xs text-blue-800 space-y-1 list-disc list-inside">
+                  <li>Filter by product to see all movements for one item</li>
+                  <li>Use date range to reconcile monthly stock</li>
+                  <li>Type filter helps isolate purchases vs sales</li>
+                  <li>This page is read-only — use the appropriate module to create transactions</li>
+                </ul>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader>

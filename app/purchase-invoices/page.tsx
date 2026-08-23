@@ -23,7 +23,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { SearchableSelect, SearchableSelectItem } from '@/components/ui/searchable-select'
 import { DashboardShell } from '@/components/dashboard/dashboard-shell'
-import { Plus, Trash2, Eye } from 'lucide-react'
+import { Plus, Trash2, Eye, HelpCircle, Info } from 'lucide-react'
 
 interface Supplier {
   id: string
@@ -95,6 +95,7 @@ export default function PurchaseInvoicesPage() {
   const [error, setError] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [viewingInvoice, setViewingInvoice] = useState<PurchaseInvoice | null>(null)
+  const [showHelp, setShowHelp] = useState(false)
   const [page, setPage] = useState(1)
   const [pageSize] = useState(20)
   const [totalPages, setTotalPages] = useState(1)
@@ -277,13 +278,67 @@ export default function PurchaseInvoicesPage() {
               Record purchases from suppliers
             </p>
           </div>
-          {!showForm && (
-            <Button onClick={() => setShowForm(true)}>
-              <Plus className="mr-2 size-4" />
-              New Purchase Invoice
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowHelp(!showHelp)}
+            >
+              <HelpCircle className="mr-2 size-4" />
+              How to Use
             </Button>
-          )}
+            {!showForm && (
+              <Button onClick={() => setShowForm(true)}>
+                <Plus className="mr-2 size-4" />
+                New Purchase Invoice
+              </Button>
+            )}
+          </div>
         </div>
+
+        {showHelp && (
+          <Card className="border-blue-200 bg-blue-50/50">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Info className="size-4 text-blue-600" />
+                How Purchase Invoices Work
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <h3 className="text-sm font-medium text-blue-900">Creating an Invoice</h3>
+                <ul className="text-xs text-blue-800 space-y-1 list-disc list-inside">
+                  <li>Select a supplier from the dropdown</li>
+                  <li>Set invoice date, payment mode, and due date</li>
+                  <li>Add one or more products with quantity and purchase rate</li>
+                  <li>Batch number and expiry date are optional but recommended for medicines</li>
+                  <li>GST is auto-calculated from product settings</li>
+                  <li>Submit creates the invoice and stock entries atomically</li>
+                </ul>
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-sm font-medium text-blue-900">Stock &amp; Batch Behavior</h3>
+                <ul className="text-xs text-blue-800 space-y-1 list-disc list-inside">
+                  <li>Each line item can create or update a batch</li>
+                  <li>If batch number exists, quantity is added to existing batch</li>
+                  <li>If new, a batch is created with expiry tracking</li>
+                  <li>Batch receipt layers preserve the actual purchase cost</li>
+                  <li>Average cost is updated automatically</li>
+                </ul>
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <h3 className="text-sm font-medium text-blue-900">Important Rules</h3>
+                <ul className="text-xs text-blue-800 space-y-1 list-disc list-inside">
+                  <li>Invoice number must be unique per supplier</li>
+                  <li>Balance = grand total - paid amount</li>
+                  <li>Payment mode can be updated later from supplier payments</li>
+                  <li>You cannot delete an invoice with payments; mark it void instead</li>
+                  <li>Use <strong>Inventory Adjustment</strong> for stock corrections, not invoices</li>
+                </ul>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {showForm && (
           <Card>
