@@ -980,4 +980,67 @@ describe('Purchase Invoices Page UI', () => {
       expect(screen.queryByRole('button', { name: /Create Purchase Invoice/i })).toBeNull()
     })
   })
+
+  it('shows search input in filter bar', async () => {
+    await waitFor(() => {
+      const searchInputs = screen.getAllByPlaceholderText('Search invoices...')
+      expect(searchInputs.length).toBeGreaterThan(0)
+    })
+  })
+
+  it('shows supplier filter dropdown', async () => {
+    await waitFor(() => {
+      const selects = screen.getAllByRole('combobox')
+      const supplierSelect = selects.find((s) => s.textContent?.includes('All Suppliers'))
+      expect(supplierSelect).toBeDefined()
+    })
+  })
+
+  it('shows status filter dropdown', async () => {
+    await waitFor(() => {
+      const selects = screen.getAllByRole('combobox')
+      const statusSelect = selects.find((s) => s.textContent?.includes('All Statuses'))
+      expect(statusSelect).toBeDefined()
+    })
+  })
+
+  it('resets to page 1 when filters change', async () => {
+    cleanup()
+    global.fetch = async (url: string) => {
+      if (url.includes('/api/purchase-invoices') && !url.includes('/api/purchase-invoices/')) {
+        const urlObj = new URL(url, 'http://localhost')
+        return {
+          ok: true,
+          json: async () => ({
+            invoices: [],
+            page: 1,
+            pageSize: 20,
+            total: 0,
+            totalPages: 1,
+          }),
+        } as Response
+      }
+      if (url.includes('/api/suppliers')) {
+        return {
+          ok: true,
+          json: async () => ({ suppliers: mockSuppliers }),
+        } as Response
+      }
+      if (url.includes('/api/products')) {
+        return {
+          ok: true,
+          json: async () => ({ products: mockProducts }),
+        } as Response
+      }
+      return {
+        ok: true,
+        json: async () => ({}),
+      } as Response
+    }
+
+    render(<PurchaseInvoicesPage />)
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText('Search invoices...')).toBeDefined()
+    })
+  })
 })

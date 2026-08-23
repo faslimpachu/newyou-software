@@ -800,4 +800,213 @@ describe('Purchase Invoices API', () => {
     const data = await res.json()
     expect(data.error).toBe('Purchase invoice must contain at least one item')
   })
+
+  it('GET filters by search term', async () => {
+    const supplier = await prisma.supplier.create({
+      data: { supplierName: 'Test Supplier', status: 'ACTIVE' },
+    })
+    await prisma.purchaseInvoice.create({
+      data: {
+        invoiceNumber: 'PINV-SEARCH-001',
+        invoiceDate: new Date('2026-08-02'),
+        supplierId: supplier.id,
+        subtotal: 100,
+        tax: 12,
+        grandTotal: 112,
+        paid: 0,
+        balance: 112,
+        status: 'PENDING',
+      },
+    })
+    await prisma.purchaseInvoice.create({
+      data: {
+        invoiceNumber: 'PINV-OTHER-001',
+        invoiceDate: new Date('2026-08-02'),
+        supplierId: supplier.id,
+        subtotal: 100,
+        tax: 12,
+        grandTotal: 112,
+        paid: 0,
+        balance: 112,
+        status: 'PENDING',
+      },
+    })
+
+    const req = new Request('http://localhost/api/purchase-invoices?search=PINV-SEARCH', { method: 'GET' })
+    const res = await GET(req)
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.invoices).toHaveLength(1)
+    expect(data.invoices[0].invoiceNumber).toBe('PINV-SEARCH-001')
+  })
+
+  it('GET filters by supplierId', async () => {
+    const supplierA = await prisma.supplier.create({
+      data: { supplierName: 'Supplier A', status: 'ACTIVE' },
+    })
+    const supplierB = await prisma.supplier.create({
+      data: { supplierName: 'Supplier B', status: 'ACTIVE' },
+    })
+    await prisma.purchaseInvoice.create({
+      data: {
+        invoiceNumber: 'PINV-SUP-A-001',
+        invoiceDate: new Date('2026-08-02'),
+        supplierId: supplierA.id,
+        subtotal: 100,
+        tax: 12,
+        grandTotal: 112,
+        paid: 0,
+        balance: 112,
+        status: 'PENDING',
+      },
+    })
+    await prisma.purchaseInvoice.create({
+      data: {
+        invoiceNumber: 'PINV-SUP-B-001',
+        invoiceDate: new Date('2026-08-02'),
+        supplierId: supplierB.id,
+        subtotal: 100,
+        tax: 12,
+        grandTotal: 112,
+        paid: 0,
+        balance: 112,
+        status: 'PENDING',
+      },
+    })
+
+    const req = new Request(`http://localhost/api/purchase-invoices?supplierId=${supplierA.id}`, { method: 'GET' })
+    const res = await GET(req)
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.invoices).toHaveLength(1)
+    expect(data.invoices[0].invoiceNumber).toBe('PINV-SUP-A-001')
+  })
+
+  it('GET filters by status', async () => {
+    const supplier = await prisma.supplier.create({
+      data: { supplierName: 'Test Supplier', status: 'ACTIVE' },
+    })
+    await prisma.purchaseInvoice.create({
+      data: {
+        invoiceNumber: 'PINV-PAID-001',
+        invoiceDate: new Date('2026-08-02'),
+        supplierId: supplier.id,
+        subtotal: 100,
+        tax: 12,
+        grandTotal: 112,
+        paid: 112,
+        balance: 0,
+        status: 'PAID',
+      },
+    })
+    await prisma.purchaseInvoice.create({
+      data: {
+        invoiceNumber: 'PINV-PENDING-001',
+        invoiceDate: new Date('2026-08-02'),
+        supplierId: supplier.id,
+        subtotal: 100,
+        tax: 12,
+        grandTotal: 112,
+        paid: 0,
+        balance: 112,
+        status: 'PENDING',
+      },
+    })
+
+    const req = new Request('http://localhost/api/purchase-invoices?status=PAID', { method: 'GET' })
+    const res = await GET(req)
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.invoices).toHaveLength(1)
+    expect(data.invoices[0].invoiceNumber).toBe('PINV-PAID-001')
+    expect(data.invoices[0].status).toBe('PAID')
+  })
+
+  it('GET with status filter respects pagination', async () => {
+    const supplier = await prisma.supplier.create({
+      data: { supplierName: 'Test Supplier', status: 'ACTIVE' },
+    })
+    for (let i = 0; i < 5; i++) {
+      await prisma.purchaseInvoice.create({
+        data: {
+          invoiceNumber: `PINV-PAGE-${String(i + 1).padStart(3, '0')}`,
+          invoiceDate: new Date('2026-08-02'),
+          supplierId: supplier.id,
+          subtotal: 100,
+          tax: 12,
+          grandTotal: 112,
+          paid: 0,
+          balance: 112,
+          status: 'PENDING',
+        },
+      })
+    }
+
+    const req = new Request('http://localhost/api/purchase-invoices?status=PENDING&page=1&pageSize=2', { method: 'GET' })
+    const res = await GET(req)
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.invoices).toHaveLength(2)
+    expect(data.total).toBe(5)
+    expect(data.totalPages).toBe(3)
+    expect(data.page).toBe(1)
+  })
+
+  it('GET combines search, supplier, and status filters', async () => {
+    const supplierA = await prisma.supplier.create({
+      data: { supplierName: 'Supplier A', status: 'ACTIVE' },
+    })
+    const supplierB = await prisma.supplier.create({
+      data: { supplierName: 'Supplier B', status: 'ACTIVE' },
+    })
+    await prisma.purchaseInvoice.create({
+      data: {
+        invoiceNumber: 'PINV-COMBINED-001',
+        invoiceDate: new Date('2026-08-02'),
+        supplierId: supplierA.id,
+        subtotal: 100,
+        tax: 12,
+        grandTotal: 112,
+        paid: 0,
+        balance: 112,
+        status: 'PAID',
+        notes: 'Combined test',
+      },
+    })
+    await prisma.purchaseInvoice.create({
+      data: {
+        invoiceNumber: 'PINV-COMBINED-002',
+        invoiceDate: new Date('2026-08-02'),
+        supplierId: supplierB.id,
+        subtotal: 100,
+        tax: 12,
+        grandTotal: 112,
+        paid: 0,
+        balance: 112,
+        status: 'PAID',
+        notes: 'Combined test',
+      },
+    })
+    await prisma.purchaseInvoice.create({
+      data: {
+        invoiceNumber: 'PINV-COMBINED-003',
+        invoiceDate: new Date('2026-08-02'),
+        supplierId: supplierA.id,
+        subtotal: 100,
+        tax: 12,
+        grandTotal: 112,
+        paid: 0,
+        balance: 112,
+        status: 'PENDING',
+        notes: 'Combined test',
+      },
+    })
+
+    const req = new Request(`http://localhost/api/purchase-invoices?status=PAID&supplierId=${supplierA.id}&search=COMBINED`, { method: 'GET' })
+    const res = await GET(req)
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.invoices).toHaveLength(1)
+    expect(data.invoices[0].invoiceNumber).toBe('PINV-COMBINED-001')
+  })
 })

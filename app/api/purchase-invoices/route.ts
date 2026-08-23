@@ -14,6 +14,7 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const search = url.searchParams.get('search') || '';
     const supplierId = url.searchParams.get('supplierId') || '';
+    const status = url.searchParams.get('status') || '';
     const page = Math.max(1, Number(url.searchParams.get('page')) || 1);
     const pageSize = Math.min(100, Math.max(1, Number(url.searchParams.get('pageSize')) || 20));
     const skip = (page - 1) * pageSize;
@@ -27,6 +28,9 @@ export async function GET(request: Request) {
     }
     if (supplierId) {
       where.supplierId = supplierId;
+    }
+    if (status) {
+      where.status = status;
     }
 
     const [invoices, total] = await Promise.all([

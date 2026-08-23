@@ -108,9 +108,12 @@ export default function PurchaseInvoicesPage() {
   const [viewingInvoice, setViewingInvoice] = useState<PurchaseInvoice | null>(null)
   const [showHelp, setShowHelp] = useState(false)
   const [page, setPage] = useState(1)
-  const [pageSize] = useState(20)
+  const [pageSize, setPageSize] = useState(20)
   const [totalPages, setTotalPages] = useState(1)
   const [total, setTotal] = useState(0)
+  const [search, setSearch] = useState('')
+  const [filterSupplierId, setFilterSupplierId] = useState<string>('')
+  const [filterStatus, setFilterStatus] = useState<string>('')
 
   const [form, setForm] = useState({
     invoiceDate: new Date().toISOString().split('T')[0],
@@ -123,7 +126,14 @@ export default function PurchaseInvoicesPage() {
 
   const loadInvoices = async (pageNum = 1) => {
     try {
-      const res = await fetch(`/api/purchase-invoices?page=${pageNum}&pageSize=${pageSize}`)
+      const params = new URLSearchParams({
+        search,
+        supplierId: filterSupplierId,
+        status: filterStatus,
+        page: String(pageNum),
+        pageSize: String(pageSize),
+      })
+      const res = await fetch(`/api/purchase-invoices?${params}`)
       if (!res.ok) throw new Error('Failed to load invoices')
       const data = await res.json()
       setInvoices(data.invoices)
@@ -162,10 +172,12 @@ export default function PurchaseInvoicesPage() {
   }
 
   useEffect(() => {
+    setPage(1)
+    setLoading(true)
     loadInvoices(1)
     loadSuppliers()
     loadProducts()
-  }, [])
+  }, [search, filterSupplierId, filterStatus])
 
   const handlePrevPage = () => {
     if (page > 1) {
@@ -628,6 +640,56 @@ export default function PurchaseInvoicesPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            <div className="mb-4 flex flex-wrap items-center gap-3">
+              <Input
+                placeholder="Search invoices..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="max-w-xs"
+              />
+              <Select value={filterSupplierId || undefined} onValueChange={(value) => setFilterSupplierId(value || '')}>
+                <SelectTrigger className="w-[220px]">
+                  <SelectValue placeholder="All Suppliers">
+                    {(value) => {
+                      if (!value) return 'All Suppliers'
+                      const supplier = suppliers.find((s) => s.id === value)
+                      return supplier ? supplier.supplierName : 'All Suppliers'
+                    }}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All Suppliers</SelectItem>
+                  {suppliers.map((supplier) => (
+                    <SelectItem key={supplier.id} value={supplier.id}>
+                      {supplier.supplierName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={filterStatus || undefined} onValueChange={(value) => setFilterStatus(value || '')}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="All Statuses">
+                    {(value) => {
+                      const map: Record<string, string> = {
+                        '': 'All Statuses',
+                        PENDING: 'Pending',
+                        PARTIAL: 'Partial',
+                        PAID: 'Paid',
+                        OVERDUE: 'Overdue',
+                      }
+                      return map[value || ''] || 'All Statuses'
+                    }}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All Statuses</SelectItem>
+                  <SelectItem value="PENDING">Pending</SelectItem>
+                  <SelectItem value="PARTIAL">Partial</SelectItem>
+                  <SelectItem value="PAID">Paid</SelectItem>
+                  <SelectItem value="OVERDUE">Overdue</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             {loading ? (
               <p className="text-sm text-muted-foreground">Loading...</p>
             ) : (
