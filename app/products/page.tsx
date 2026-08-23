@@ -40,7 +40,7 @@ interface Product {
   categoryId: string | null
   category: { id: string; name: string } | null
   unit: string
-  // purchasePrice: number  // hidden per inventory architecture — actual cost lives in BatchReceipt.purchaseRate
+  purchasePrice: number
   sellingPrice: number
   gstPercent: number
   minimumStock: number
@@ -72,7 +72,7 @@ const emptyProduct = {
   sku: '',
   categoryId: '',
   unit: 'pcs',
-  // purchasePrice: 0,  // hidden in UI
+  purchasePrice: 0,
   sellingPrice: 0,
   gstPercent: 0,
   minimumStock: 10,
@@ -175,9 +175,10 @@ export default function ProductsPage() {
     //   errors.purchasePrice = 'Purchase price cannot be negative'
     // }
 
-    if (form.sellingPrice < 0) {
-      errors.sellingPrice = 'Selling price cannot be negative'
-    }
+    // sellingPrice validation removed from UI — actual selling price managed at billing module level
+    // if (form.sellingPrice < 0) {
+    //   errors.sellingPrice = 'Selling price cannot be negative'
+    // }
 
     // if (form.sellingPrice > 0 && form.purchasePrice > 0 && form.sellingPrice < form.purchasePrice) {
     //   errors.sellingPrice = 'Selling price should be at least equal to purchase price'
@@ -231,7 +232,7 @@ export default function ProductsPage() {
     try {
       const url = editingId ? `/api/products/${editingId}` : '/api/products'
       const method = editingId ? 'PATCH' : 'POST'
-      const { code: _code, currentStock: _currentStock, active: _active, ...rest } = form
+      const { code: _code, currentStock: _currentStock, active: _active, purchasePrice: _purchasePrice, sellingPrice: _sellingPrice, ...rest } = form
       const body = editingId
         ? { ...rest, categoryId: form.categoryId || null, code: form.code }
         : { ...rest, categoryId: form.categoryId || null }
@@ -494,7 +495,8 @@ export default function ProductsPage() {
                     <p className="text-xs text-destructive">{fieldErrors.purchasePrice}</p>
                   )}
                 </div> */}
-                <div className="space-y-2">
+                {/* Selling Price field hidden — actual selling price managed at billing module level */}
+                {/* <div className="space-y-2">
                   <Label htmlFor="sellingPrice">Selling Price *</Label>
                   <Input
                     id="sellingPrice"
@@ -508,7 +510,7 @@ export default function ProductsPage() {
                   {fieldErrors.sellingPrice && (
                     <p className="text-xs text-destructive">{fieldErrors.sellingPrice}</p>
                   )}
-                </div>
+                </div> */}
                 <div className="space-y-2">
                   <Label htmlFor="gstPercent">GST % *</Label>
                   <Input
@@ -630,13 +632,13 @@ export default function ProductsPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Product Name</TableHead>
-                        <TableHead>Code</TableHead>
-                        <TableHead>SKU</TableHead>
-                         <TableHead>Category</TableHead>
-                         {/* <TableHead className="text-right">Purchase Price</TableHead> */}
-                         <TableHead className="text-right">Selling Price</TableHead>
-                        <TableHead className="text-right">Stock</TableHead>
+                         <TableHead>Product Name</TableHead>
+                         <TableHead>Code</TableHead>
+                         <TableHead>SKU</TableHead>
+                          <TableHead>Category</TableHead>
+                          {/* <TableHead className="text-right">Purchase Price</TableHead> */}
+                          {/* <TableHead className="text-right">Selling Price</TableHead> */}
+                         <TableHead className="text-right">Stock</TableHead>
                         <TableHead>Min / Max</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
@@ -649,11 +651,11 @@ export default function ProductsPage() {
                           <TableRow key={product.id}>
                             <TableCell className="font-medium">{product.name}</TableCell>
                             <TableCell className="font-mono text-xs">{product.code}</TableCell>
-                            <TableCell>{product.sku || '-'}</TableCell>
-                         <TableCell>{product.category?.name || '-'}</TableCell>
-                         {/* <TableCell className="text-right tabular-nums">{formatPrice(product.purchasePrice)}</TableCell> */}
-                         <TableCell className="text-right tabular-nums">{formatPrice(product.sellingPrice)}</TableCell>
-                            <TableCell className="text-right tabular-nums">
+                         <TableCell>{product.sku || '-'}</TableCell>
+                          <TableCell>{product.category?.name || '-'}</TableCell>
+                          {/* <TableCell className="text-right tabular-nums">{formatPrice(product.purchasePrice)}</TableCell> */}
+                          {/* <TableCell className="text-right tabular-nums">{formatPrice(product.sellingPrice)}</TableCell> */}
+                             <TableCell className="text-right tabular-nums">
                               {product.currentStock.toLocaleString('en-IN')} {product.unit}
                             </TableCell>
                             <TableCell>
@@ -772,17 +774,18 @@ export default function ProductsPage() {
                    <p className="text-xs text-muted-foreground">Unit</p>
                    <p className="text-sm">{viewingProduct.unit}</p>
                  </div>
-                 {/* Purchase Price hidden — actual cost tracked at BatchReceipt level */}
-                 {/* <div className="space-y-1">
-                   <p className="text-xs text-muted-foreground">Purchase Price</p>
-                   <p className="text-sm font-medium tabular-nums">{formatPrice(viewingProduct.purchasePrice)}</p>
+                  {/* Purchase Price hidden — actual cost tracked at BatchReceipt level */}
+                  {/* <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">Purchase Price</p>
+                    <p className="text-sm font-medium tabular-nums">{formatPrice(viewingProduct.purchasePrice)}</p>
+                  </div> */}
+                  {/* Selling Price hidden — actual selling price managed at billing module level */}
+                  {/* <div className="space-y-1">
+                   <p className="text-xs text-muted-foreground">Selling Price</p>
+                   <p className="text-sm font-medium tabular-nums">{formatPrice(viewingProduct.sellingPrice)}</p>
                  </div> */}
                  <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">Selling Price</p>
-                  <p className="text-sm font-medium tabular-nums">{formatPrice(viewingProduct.sellingPrice)}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">GST %</p>
+                   <p className="text-xs text-muted-foreground">GST %</p>
                   <p className="text-sm font-medium">{viewingProduct.gstPercent}%</p>
                 </div>
                 <div className="space-y-1">

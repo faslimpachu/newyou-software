@@ -124,6 +124,9 @@ describe('Products Page UI', () => {
     expect(screen.getByPlaceholderText('Auto-generated on create')).toBeDefined()
     expect(screen.getByPlaceholderText('Enter product name').closest('input')).not.toBeDisabled()
     expect(screen.getByPlaceholderText('Auto-generated on create').closest('input')).toBeDisabled()
+    // Selling Price and Purchase Price fields are hidden in UI
+    expect(screen.queryByLabelText('Selling Price *')).toBeNull()
+    expect(screen.queryByLabelText('Purchase Price *')).toBeNull()
   })
 
   it('opens edit form with product values and disabled code field', async () => {
@@ -204,6 +207,51 @@ describe('Products Page UI', () => {
 
     expect(capturedBody.name).toBe('Paracetamol Updated')
     expect(capturedBody).not.toHaveProperty('currentStock')
+    expect(capturedBody.code).toBe('PRD-001')
+
+    ;(global as any).fetch = originalFetch
+  })
+
+  it('does not send sellingPrice or purchasePrice in PATCH body when editing', async () => {
+    await waitFor(() => {
+      const editButtons = screen.getAllByText('Edit')
+      expect(editButtons.length).toBeGreaterThan(0)
+    })
+    const editButtons = screen.getAllByText('Edit')
+    act(() => {
+      fireEvent.click(editButtons[0])
+    })
+
+    let capturedBody: any = null
+    const originalFetch = (global as any).fetch
+    ;(global as any).fetch = async (url: string, options?: any) => {
+      if (url.includes('/api/products/') && options?.method === 'PATCH') {
+        capturedBody = JSON.parse(options.body)
+        return {
+          ok: true,
+          json: async () => ({
+            product: { ...mockProducts[0], currentStock: 500 },
+          }),
+        } as Response
+      }
+      return originalFetch(url, options)
+    }
+
+    act(() => {
+      fireEvent.change(screen.getByDisplayValue('Paracetamol'), { target: { value: 'Paracetamol Updated' } })
+    })
+
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: 'Update Product' }))
+    })
+
+    await waitFor(() => {
+      expect(capturedBody).not.toBeNull()
+    })
+
+    expect(capturedBody.name).toBe('Paracetamol Updated')
+    expect(capturedBody).not.toHaveProperty('sellingPrice')
+    expect(capturedBody).not.toHaveProperty('purchasePrice')
     expect(capturedBody.code).toBe('PRD-001')
 
     ;(global as any).fetch = originalFetch
@@ -369,6 +417,8 @@ describe('Products Page UI', () => {
     expect(capturedBody.sku).toBe('UNIQUE-SKU-123')
     expect(capturedBody.code).toBeUndefined()
     expect(capturedBody.categoryId).toBe('cat-1')
+    expect(capturedBody).not.toHaveProperty('sellingPrice')
+    expect(capturedBody).not.toHaveProperty('purchasePrice')
 
     ;(global as any).fetch = originalFetch
   })
@@ -605,5 +655,43 @@ describe('Products Page UI', () => {
       expect(screen.queryByText('Deactivate this product?')).toBeNull()
     })
     expect(screen.getByText('Paracetamol')).toBeDefined()
+  })
+
+  it('does not show Selling Price column in products table', async () => {
+    await waitFor(() => {
+      expect(screen.getByText('Paracetamol')).toBeDefined()
+    })
+    expect(screen.queryByText('Selling Price')).toBeNull()
+  })
+
+  it('does not show Selling Price in product view dialog', async () => {
+    await waitFor(() => {
+      expect(screen.getByText('Paracetamol')).toBeDefined()
+    })
+    const row = screen.getByText('Paracetamol').closest('tr')
+    expect(row).not.toBeNull()
+    const viewButton = within(row!).getByRole('button', { name: 'View' })
+    act(() => {
+      fireEvent.click(viewButton)
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('Product Details: Paracetamol')).toBeDefined()
+    })
+    expect(screen.queryByText('Selling Price')).toBeNull()
+  })
+
+  it('does not show Selling Price field in edit form', async () => {
+    await waitFor(() => {
+      const editButtons = screen.getAllByText('Edit')
+      expect(editButtons.length).toBeGreaterThan(0)
+    })
+    const editButtons = screen.getAllByText('Edit')
+    act(() => {
+      fireEvent.click(editButtons[0])
+    })
+
+    expect(screen.getByText('Update product details below')).toBeDefined()
+    expect(screen.queryByLabelText('Selling Price *')).toBeNull()
   })
 })
