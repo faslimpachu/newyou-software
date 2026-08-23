@@ -40,6 +40,7 @@ interface InventoryTransaction {
   notes: string | null
   createdAt: string
   product: { id: string; name: string; sku: string | null }
+  reference: string | null
 }
 
 export default function InventoryTransactionsPage() {
@@ -52,8 +53,12 @@ export default function InventoryTransactionsPage() {
     startDate: '',
     endDate: '',
   })
+  const [page, setPage] = useState(1)
+  const [pageSize] = useState(20)
+  const [totalPages, setTotalPages] = useState(1)
+  const [total, setTotal] = useState(0)
 
-  const loadTransactions = async () => {
+  const loadTransactions = async (pageNum = 1) => {
     setLoading(true)
     try {
       const params = new URLSearchParams()
@@ -61,11 +66,16 @@ export default function InventoryTransactionsPage() {
       if (filters.type) params.set('type', filters.type)
       if (filters.startDate) params.set('startDate', filters.startDate)
       if (filters.endDate) params.set('endDate', filters.endDate)
+      params.set('page', String(pageNum))
+      params.set('pageSize', String(pageSize))
 
       const res = await fetch(`/api/inventory-transactions?${params.toString()}`)
       if (!res.ok) throw new Error('Failed to load transactions')
       const data = await res.json()
       setTransactions(data.transactions)
+      setTotalPages(data.totalPages || 1)
+      setTotal(data.total || 0)
+      setPage(data.page || pageNum)
     } catch (e) {
       console.error(e)
     } finally {
@@ -90,8 +100,20 @@ export default function InventoryTransactionsPage() {
   }, [])
 
   useEffect(() => {
-    loadTransactions()
+    loadTransactions(1)
   }, [filters])
+
+  const handlePrevPage = () => {
+    if (page > 1) {
+      loadTransactions(page - 1)
+    }
+  }
+
+  const handleNextPage = () => {
+    if (page < totalPages) {
+      loadTransactions(page + 1)
+    }
+  }
 
   const getTypeBadge = (type: string) => {
     switch (type) {
@@ -141,7 +163,7 @@ export default function InventoryTransactionsPage() {
               <div className="space-y-2">
                 <Label htmlFor="productId">Product</Label>
                 <Select value={filters.productId || ''} onValueChange={(value) => setFilters({ ...filters, productId: value || '' })}>
-                  <SelectTrigger>
+                  <SelectTrigger id="productId">
                     <SelectValue placeholder="All Products" />
                   </SelectTrigger>
                   <SelectContent>
@@ -157,7 +179,7 @@ export default function InventoryTransactionsPage() {
               <div className="space-y-2">
                 <Label htmlFor="type">Type</Label>
                 <Select value={filters.type || ''} onValueChange={(value) => setFilters({ ...filters, type: value || '' })}>
-                  <SelectTrigger>
+                  <SelectTrigger id="type">
                     <SelectValue placeholder="All Types" />
                   </SelectTrigger>
                   <SelectContent>
@@ -203,7 +225,9 @@ export default function InventoryTransactionsPage() {
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Inventory Transactions</CardTitle>
-            <CardDescription>{transactions.length} transaction(s) found</CardDescription>
+            <CardDescription>
+              {total > 0 ? `Page ${page} of ${totalPages} (${total} total)` : `${transactions.length} transaction(s) found`}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             {loading ? (
@@ -257,6 +281,32 @@ export default function InventoryTransactionsPage() {
             )}
           </CardContent>
         </Card>
+
+        {!loading && totalPages > 1 && (
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">
+              Page {page} of {totalPages} ({total} total)
+            </p>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handlePrevPage}
+                disabled={page <= 1}
+              >
+                Previous
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleNextPage}
+                disabled={page >= totalPages}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </DashboardShell>
   )
