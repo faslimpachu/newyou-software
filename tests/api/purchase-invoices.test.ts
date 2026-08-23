@@ -654,8 +654,8 @@ describe('Purchase Invoices API', () => {
         invoiceDate: '2026-08-02',
         supplierId: supplier.id,
         items: [
-          { productId: productA.id, quantity: 10, purchaseRate: 10 },
-          { productId: productB.id, quantity: 5, purchaseRate: 20 },
+          { productId: productA.id, quantity: 10, purchaseRate: 10, batchNumber: 'BATCH-A5' },
+          { productId: productB.id, quantity: 5, purchaseRate: 20, batchNumber: 'BATCH-B5' },
         ],
       }),
     })
@@ -686,8 +686,8 @@ describe('Purchase Invoices API', () => {
         invoiceDate: '2026-08-02',
         supplierId: supplier.id,
         items: [
-          { productId: productA.id, quantity: 2, purchaseRate: 100 },
-          { productId: productB.id, quantity: 1, purchaseRate: 500 },
+          { productId: productA.id, quantity: 2, purchaseRate: 100, batchNumber: 'BATCH-A18' },
+          { productId: productB.id, quantity: 1, purchaseRate: 500, batchNumber: 'BATCH-B18' },
         ],
       }),
     })
@@ -723,6 +723,62 @@ describe('Purchase Invoices API', () => {
     expect(data.invoice.subtotal).toBeCloseTo(100)
     expect(data.invoice.tax).toBeCloseTo(12.5)
     expect(data.invoice.grandTotal).toBeCloseTo(112.5)
+  })
+
+  it('POST rejects missing batch number', async () => {
+    const supplier = await prisma.supplier.create({
+      data: { supplierName: 'Test Supplier', status: 'ACTIVE' },
+    })
+    const category = await prisma.productCategory.create({
+      data: { name: 'Medicines', active: true },
+    })
+    const product = await prisma.product.create({
+      data: {
+        name: 'Test Product',
+        code: 'PRD-20260802-0001',
+        categoryId: category.id,
+        unit: 'pcs',
+        purchasePrice: 10,
+        sellingPrice: 15,
+        currentStock: 0,
+        minimumStock: 10,
+        maximumStock: 200,
+      },
+    })
+
+    const req = new Request('http://localhost/api/purchase-invoices', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        invoiceDate: '2026-08-02',
+        supplierId: supplier.id,
+        items: [{ productId: product.id, quantity: 10, purchaseRate: 10 }],
+      }),
+    })
+    const res = await POST(req)
+    expect(res.status).toBe(400)
+    const data = await res.json()
+    expect(data.error).toBe('Batch number is required for all items')
+  })
+
+  it('POST rejects missing product id', async () => {
+    const supplier = await prisma.supplier.create({
+      data: { supplierName: 'Test Supplier', status: 'ACTIVE' },
+    })
+
+    const req = new Request('http://localhost/api/purchase-invoices', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        invoiceDate: '2026-08-02',
+        supplierId: supplier.id,
+        items: [{ productId: '', quantity: 10, purchaseRate: 10, batchNumber: 'BATCH-001' }],
+      }),
+    })
+    const res = await POST(req)
+    expect(res.status).toBe(400)
+    const data = await res.json()
+    expect(data.error).toBe('Product is required for all items')
   })
 
   it('POST rejects empty items array', async () => {

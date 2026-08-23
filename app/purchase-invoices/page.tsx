@@ -48,6 +48,16 @@ interface InvoiceItem {
   gstPercent: number
 }
 
+type FormFieldError = {
+  supplierId?: string
+  items?: {
+    productId?: string
+    quantity?: string
+    purchaseRate?: string
+    batchNumber?: string
+  }[]
+}
+
 interface PurchaseInvoice {
   id: string
   invoiceNumber: string
@@ -93,6 +103,7 @@ export default function PurchaseInvoicesPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [fieldErrors, setFieldErrors] = useState<FormFieldError>({})
   const [showForm, setShowForm] = useState(false)
   const [viewingInvoice, setViewingInvoice] = useState<PurchaseInvoice | null>(null)
   const [showHelp, setShowHelp] = useState(false)
@@ -182,6 +193,23 @@ export default function PurchaseInvoicesPage() {
     }
 
     setForm({ ...form, items: newItems })
+
+    const clearableFields: (keyof InvoiceItem)[] = ['productId', 'batchNumber', 'quantity', 'purchaseRate']
+    if (clearableFields.includes(field)) {
+      setFieldErrors((prev) => {
+        const updated = { ...prev }
+        if (!updated.items) updated.items = form.items.map(() => ({}))
+        if (updated.items[index]) {
+          const itemErr = { ...updated.items[index] }
+          delete itemErr.productId
+          delete itemErr.batchNumber
+          if (field === 'quantity') delete itemErr.quantity
+          if (field === 'purchaseRate') delete itemErr.purchaseRate
+          updated.items[index] = itemErr
+        }
+        return updated
+      })
+    }
   }
 
   const addItem = () => {
@@ -200,9 +228,46 @@ export default function PurchaseInvoicesPage() {
     return { subtotal, tax, grandTotal }
   }
 
+  const validate = (): boolean => {
+    const errors: FormFieldError = {}
+
+    if (!form.supplierId) {
+      errors.supplierId = 'Supplier is required'
+    }
+
+    const itemErrors = form.items.map((item) => {
+      const itemError: { productId?: string; quantity?: string; purchaseRate?: string; batchNumber?: string } = {}
+      if (!item.productId) {
+        itemError.productId = 'Product is required'
+      }
+      if (!item.quantity || item.quantity <= 0) {
+        itemError.quantity = 'Quantity must be greater than zero'
+      }
+      if (!item.purchaseRate || item.purchaseRate <= 0) {
+        itemError.purchaseRate = 'Purchase rate must be greater than zero'
+      }
+      if (!item.batchNumber || !item.batchNumber.trim()) {
+        itemError.batchNumber = 'Batch number is required'
+      }
+      return itemError
+    })
+
+    const hasItemErrors = itemErrors.some((err) => Object.keys(err).length > 0)
+    if (hasItemErrors) {
+      errors.items = itemErrors
+    }
+
+    setFieldErrors(errors)
+    return Object.keys(errors).length === 0
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    setFieldErrors({})
+
+    if (!validate()) return
+
     setSaving(true)
 
     try {
@@ -246,6 +311,7 @@ export default function PurchaseInvoicesPage() {
         notes: '',
         items: [emptyItem],
       })
+      setFieldErrors({})
     } catch {
       setError('Something went wrong')
     } finally {
@@ -305,17 +371,20 @@ export default function PurchaseInvoicesPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <h3 className="text-sm font-medium text-blue-900">Creating an Invoice</h3>
-                <ul className="text-xs text-blue-800 space-y-1 list-disc list-inside">
-                  <li>Select a supplier from the dropdown</li>
-                  <li>Set invoice date, payment mode, and due date</li>
-                  <li>Add one or more products with quantity and purchase rate</li>
-                  <li>Batch number and expiry date are optional but recommended for medicines</li>
-                  <li>GST is auto-calculated from product settings</li>
-                  <li>Submit creates the invoice and stock entries atomically</li>
-                </ul>
-              </div>
+                <div className="space-y-2">
+                  <h3 className="text-sm font-medium text-blue-900">Creating an Invoice</h3>
+                  <ul className="text-xs text-blue-800 space-y-1 list-disc list-inside">
+                    <li>Select a supplier from the dropdown (required)</li>
+                    <li>Set invoice date (required)</li>
+                    <li>Add one or more products (required)</li>
+                    <li>Enter quantity greater than zero (required)</li>
+                    <li>Enter purchase rate greater than zero (required)</li>
+                    <li>Batch number is required for each item</li>
+                    <li>Expiry date is optional but recommended for medicines</li>
+                    <li>GST is auto-calculated from product settings</li>
+                    <li>Submit creates the invoice and stock entries atomically</li>
+                  </ul>
+                </div>
               <div className="space-y-2">
                 <h3 className="text-sm font-medium text-blue-900">Stock &amp; Batch Behavior</h3>
                 <ul className="text-xs text-blue-800 space-y-1 list-disc list-inside">
@@ -376,6 +445,9 @@ export default function PurchaseInvoicesPage() {
                         </SearchableSelectItem>
                       ))}
                     </SearchableSelect>
+                    {fieldErrors.supplierId && (
+                      <p className="text-sm text-destructive">{fieldErrors.supplierId}</p>
+                    )}
                   </div>
                   {/* <div className="space-y-2">
                     <Label htmlFor="paymentMode">Payment Mode</Label>
@@ -450,33 +522,45 @@ export default function PurchaseInvoicesPage() {
                                 </SearchableSelectItem>
                               ))}
                             </SearchableSelect>
+                            {fieldErrors.items?.[index]?.productId && (
+                              <p className="text-sm text-destructive mt-1">{fieldErrors.items[index]!.productId}</p>
+                            )}
                           </TableCell>
-                          <TableCell>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              value={item.quantity || ''}
-                              onChange={(e) => handleItemChange(index, 'quantity', parseFloat(e.target.value) || 0)}
-                              className="w-24"
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              value={item.purchaseRate || ''}
-                              onChange={(e) => handleItemChange(index, 'purchaseRate', parseFloat(e.target.value) || 0)}
-                              className="w-32"
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Input
-                              value={item.batchNumber || ''}
-                              onChange={(e) => handleItemChange(index, 'batchNumber', e.target.value)}
-                              placeholder="Batch No."
-                              className="w-32"
-                            />
-                          </TableCell>
+                           <TableCell>
+                             <Input
+                               type="number"
+                               step="0.01"
+                               value={item.quantity || ''}
+                               onChange={(e) => handleItemChange(index, 'quantity', parseFloat(e.target.value) || 0)}
+                               className="w-24"
+                             />
+                             {fieldErrors.items?.[index]?.quantity && (
+                               <p className="text-sm text-destructive mt-1">{fieldErrors.items[index]!.quantity}</p>
+                             )}
+                           </TableCell>
+                           <TableCell>
+                             <Input
+                               type="number"
+                               step="0.01"
+                               value={item.purchaseRate || ''}
+                               onChange={(e) => handleItemChange(index, 'purchaseRate', parseFloat(e.target.value) || 0)}
+                               className="w-32"
+                             />
+                             {fieldErrors.items?.[index]?.purchaseRate && (
+                               <p className="text-sm text-destructive mt-1">{fieldErrors.items[index]!.purchaseRate}</p>
+                             )}
+                           </TableCell>
+                           <TableCell>
+                             <Input
+                               value={item.batchNumber || ''}
+                               onChange={(e) => handleItemChange(index, 'batchNumber', e.target.value)}
+                               placeholder="Batch No."
+                               className="w-32"
+                             />
+                             {fieldErrors.items?.[index]?.batchNumber && (
+                               <p className="text-sm text-destructive mt-1">{fieldErrors.items[index]!.batchNumber}</p>
+                             )}
+                           </TableCell>
                           <TableCell>
                             <Input
                               type="date"

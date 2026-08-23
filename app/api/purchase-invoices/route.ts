@@ -89,6 +89,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Purchase invoice must contain at least one item' }, { status: 400 })
     }
 
+    for (const item of items) {
+      if (!item.productId) {
+        return NextResponse.json({ error: 'Product is required for all items' }, { status: 400 })
+      }
+      if (!item.batchNumber || !item.batchNumber.trim()) {
+        return NextResponse.json({ error: 'Batch number is required for all items' }, { status: 400 })
+      }
+    }
+
     const supplier = await prisma.supplier.findUnique({
       where: { id: supplierId },
     });

@@ -612,4 +612,372 @@ describe('Purchase Invoices Page UI', () => {
     expect(taxLabel).toBeDefined()
     expect(taxLabel.textContent).toContain('0.0%')
   })
+
+  it('shows validation error when supplier is not selected', async () => {
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /New Purchase Invoice/i })).toBeDefined()
+    })
+    const button = screen.getByRole('button', { name: /New Purchase Invoice/i })
+    act(() => {
+      fireEvent.click(button)
+    })
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Create Purchase Invoice/i })).toBeDefined()
+    })
+
+    const productComboboxes = screen.getAllByRole('combobox')
+    act(() => {
+      fireEvent.click(productComboboxes[1])
+    })
+    await waitFor(() => {
+      const options = screen.getAllByRole('option')
+      expect(options.length).toBeGreaterThan(0)
+    })
+    const productOption = screen.getAllByRole('option').find((el) => el.textContent === 'Paracetamol (MED001)')
+    expect(productOption).toBeDefined()
+    act(() => {
+      fireEvent.click(productOption!)
+    })
+
+    const quantityInputs = screen.getAllByRole('spinbutton')
+    act(() => {
+      fireEvent.change(quantityInputs[0], { target: { value: '10' } })
+    })
+    const rateInputs = screen.getAllByRole('spinbutton')
+    act(() => {
+      fireEvent.change(rateInputs[1], { target: { value: '100' } })
+    })
+
+    const batchInput = screen.getByPlaceholderText('Batch No.')
+    act(() => {
+      fireEvent.change(batchInput, { target: { value: 'BATCH-001' } })
+    })
+
+    const submitButton = screen.getByRole('button', { name: /Create Purchase Invoice/i })
+    act(() => {
+      fireEvent.click(submitButton)
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('Supplier is required')).toBeDefined()
+    }, { timeout: 3000 })
+  })
+
+  it('shows validation error when batch number is empty', async () => {
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /New Purchase Invoice/i })).toBeDefined()
+    })
+    const button = screen.getByRole('button', { name: /New Purchase Invoice/i })
+    act(() => {
+      fireEvent.click(button)
+    })
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Create Purchase Invoice/i })).toBeDefined()
+    })
+
+    const supplierComboboxes = screen.getAllByRole('combobox')
+    act(() => {
+      fireEvent.click(supplierComboboxes[0])
+    })
+    await waitFor(() => {
+      const options = screen.getAllByRole('option')
+      expect(options.length).toBeGreaterThan(0)
+    })
+    const supplierOption = screen.getAllByRole('option').find((el) => el.textContent === 'Om Sai Medical')
+    expect(supplierOption).toBeDefined()
+    act(() => {
+      fireEvent.click(supplierOption!)
+    })
+
+    const productComboboxes = screen.getAllByRole('combobox')
+    act(() => {
+      fireEvent.click(productComboboxes[1])
+    })
+    await waitFor(() => {
+      const options = screen.getAllByRole('option')
+      expect(options.length).toBeGreaterThan(0)
+    })
+    const productOption = screen.getAllByRole('option').find((el) => el.textContent === 'Paracetamol (MED001)')
+    expect(productOption).toBeDefined()
+    act(() => {
+      fireEvent.click(productOption!)
+    })
+
+    const quantityInputs = screen.getAllByRole('spinbutton')
+    act(() => {
+      fireEvent.change(quantityInputs[0], { target: { value: '10' } })
+    })
+    const rateInputs = screen.getAllByRole('spinbutton')
+    act(() => {
+      fireEvent.change(rateInputs[1], { target: { value: '100' } })
+    })
+
+    const batchInput = screen.getByPlaceholderText('Batch No.')
+    act(() => {
+      fireEvent.change(batchInput, { target: { value: '' } })
+    })
+
+    const submitButton = screen.getByRole('button', { name: /Create Purchase Invoice/i })
+    act(() => {
+      fireEvent.click(submitButton)
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('Batch number is required')).toBeDefined()
+    }, { timeout: 3000 })
+  })
+
+  it('shows validation error when quantity is zero', async () => {
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /New Purchase Invoice/i })).toBeDefined()
+    })
+    const button = screen.getByRole('button', { name: /New Purchase Invoice/i })
+    act(() => {
+      fireEvent.click(button)
+    })
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Create Purchase Invoice/i })).toBeDefined()
+    })
+
+    const supplierComboboxes = screen.getAllByRole('combobox')
+    act(() => {
+      fireEvent.click(supplierComboboxes[0])
+    })
+    await waitFor(() => {
+      const options = screen.getAllByRole('option')
+      expect(options.length).toBeGreaterThan(0)
+    })
+    const supplierOption = screen.getAllByRole('option').find((el) => el.textContent === 'Om Sai Medical')
+    expect(supplierOption).toBeDefined()
+    act(() => {
+      fireEvent.click(supplierOption!)
+    })
+
+    const productComboboxes = screen.getAllByRole('combobox')
+    act(() => {
+      fireEvent.click(productComboboxes[1])
+    })
+    await waitFor(() => {
+      const options = screen.getAllByRole('option')
+      expect(options.length).toBeGreaterThan(0)
+    })
+    const productOption = screen.getAllByRole('option').find((el) => el.textContent === 'Paracetamol (MED001)')
+    expect(productOption).toBeDefined()
+    act(() => {
+      fireEvent.click(productOption!)
+    })
+
+    const quantityInputs = screen.getAllByRole('spinbutton')
+    act(() => {
+      fireEvent.change(quantityInputs[0], { target: { value: '0' } })
+    })
+    const rateInputs = screen.getAllByRole('spinbutton')
+    act(() => {
+      fireEvent.change(rateInputs[1], { target: { value: '100' } })
+    })
+
+    const batchInput = screen.getByPlaceholderText('Batch No.')
+    act(() => {
+      fireEvent.change(batchInput, { target: { value: 'BATCH-001' } })
+    })
+
+    const submitButton = screen.getByRole('button', { name: /Create Purchase Invoice/i })
+    act(() => {
+      fireEvent.click(submitButton)
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('Quantity must be greater than zero')).toBeDefined()
+    }, { timeout: 3000 })
+  })
+
+  it('shows validation error when purchase rate is zero', async () => {
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /New Purchase Invoice/i })).toBeDefined()
+    })
+    const button = screen.getByRole('button', { name: /New Purchase Invoice/i })
+    act(() => {
+      fireEvent.click(button)
+    })
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Create Purchase Invoice/i })).toBeDefined()
+    })
+
+    const supplierComboboxes = screen.getAllByRole('combobox')
+    act(() => {
+      fireEvent.click(supplierComboboxes[0])
+    })
+    await waitFor(() => {
+      const options = screen.getAllByRole('option')
+      expect(options.length).toBeGreaterThan(0)
+    })
+    const supplierOption = screen.getAllByRole('option').find((el) => el.textContent === 'Om Sai Medical')
+    expect(supplierOption).toBeDefined()
+    act(() => {
+      fireEvent.click(supplierOption!)
+    })
+
+    const productComboboxes = screen.getAllByRole('combobox')
+    act(() => {
+      fireEvent.click(productComboboxes[1])
+    })
+    await waitFor(() => {
+      const options = screen.getAllByRole('option')
+      expect(options.length).toBeGreaterThan(0)
+    })
+    const productOption = screen.getAllByRole('option').find((el) => el.textContent === 'Paracetamol (MED001)')
+    expect(productOption).toBeDefined()
+    act(() => {
+      fireEvent.click(productOption!)
+    })
+
+    const quantityInputs = screen.getAllByRole('spinbutton')
+    act(() => {
+      fireEvent.change(quantityInputs[0], { target: { value: '10' } })
+    })
+    const rateInputs = screen.getAllByRole('spinbutton')
+    act(() => {
+      fireEvent.change(rateInputs[1], { target: { value: '0' } })
+    })
+
+    const batchInput = screen.getByPlaceholderText('Batch No.')
+    act(() => {
+      fireEvent.change(batchInput, { target: { value: 'BATCH-001' } })
+    })
+
+    const submitButton = screen.getByRole('button', { name: /Create Purchase Invoice/i })
+    act(() => {
+      fireEvent.click(submitButton)
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('Purchase rate must be greater than zero')).toBeDefined()
+    }, { timeout: 3000 })
+  })
+
+  it('submits the form successfully when all required fields are valid', async () => {
+    cleanup()
+    const createdInvoice = {
+      id: 'inv-new',
+      invoiceNumber: 'PINV-20260824-0001',
+      invoiceDate: '2026-08-24',
+      supplierId: 'supp-1',
+      paymentMode: null,
+      dueDate: null,
+      notes: null,
+      subtotal: 1000,
+      tax: 50,
+      grandTotal: 1050,
+      paid: 0,
+      balance: 1050,
+      status: 'PENDING',
+      supplier: { id: 'supp-1', supplierName: 'Om Sai Medical' },
+      items: [
+        { id: 'item-new', productId: 'prod-1', quantity: 10, purchaseRate: 100, amount: 1000, batchNumber: 'BATCH-001', expiryDate: null, product: { id: 'prod-1', name: 'Paracetamol', sku: 'MED001', unit: 'strip' } },
+      ],
+    }
+
+    global.fetch = async (url: string) => {
+      if (url.includes('/api/purchase-invoices') && !url.includes('/api/purchase-invoices/')) {
+        const urlObj = new URL(url, 'http://localhost')
+        if (urlObj.searchParams.toString()) {
+          return {
+            ok: true,
+            json: async () => ({
+              invoices: [createdInvoice],
+              page: 1,
+              pageSize: 20,
+              total: 1,
+              totalPages: 1,
+            }),
+          } as Response
+        }
+        return {
+          ok: true,
+          json: async () => ({ invoice: createdInvoice }),
+        } as Response
+      }
+      if (url.includes('/api/suppliers')) {
+        return {
+          ok: true,
+          json: async () => ({ suppliers: mockSuppliers }),
+        } as Response
+      }
+      if (url.includes('/api/products')) {
+        return {
+          ok: true,
+          json: async () => ({ products: mockProducts }),
+        } as Response
+      }
+      return {
+        ok: true,
+        json: async () => ({}),
+      } as Response
+    }
+
+    render(<PurchaseInvoicesPage />)
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /New Purchase Invoice/i })).toBeDefined()
+    })
+
+    const newButton = screen.getByRole('button', { name: /New Purchase Invoice/i })
+    act(() => {
+      fireEvent.click(newButton)
+    })
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Create Purchase Invoice/i })).toBeDefined()
+    })
+
+    const supplierComboboxes = screen.getAllByRole('combobox')
+    act(() => {
+      fireEvent.click(supplierComboboxes[0])
+    })
+    await waitFor(() => {
+      const options = screen.getAllByRole('option')
+      expect(options.length).toBeGreaterThan(0)
+    })
+    const supplierOption = screen.getAllByRole('option').find((el) => el.textContent === 'Om Sai Medical')
+    expect(supplierOption).toBeDefined()
+    act(() => {
+      fireEvent.click(supplierOption!)
+    })
+
+    const productComboboxes = screen.getAllByRole('combobox')
+    act(() => {
+      fireEvent.click(productComboboxes[1])
+    })
+    await waitFor(() => {
+      const options = screen.getAllByRole('option')
+      expect(options.length).toBeGreaterThan(0)
+    })
+    const productOption = screen.getAllByRole('option').find((el) => el.textContent === 'Paracetamol (MED001)')
+    expect(productOption).toBeDefined()
+    act(() => {
+      fireEvent.click(productOption!)
+    })
+
+    const quantityInputs = screen.getAllByRole('spinbutton')
+    act(() => {
+      fireEvent.change(quantityInputs[0], { target: { value: '10' } })
+    })
+
+    const rateInputs = screen.getAllByRole('spinbutton')
+    act(() => {
+      fireEvent.change(rateInputs[1], { target: { value: '100' } })
+    })
+
+    const batchInput = screen.getByPlaceholderText('Batch No.')
+    act(() => {
+      fireEvent.change(batchInput, { target: { value: 'BATCH-001' } })
+    })
+
+    const submitButton = screen.getByRole('button', { name: /Create Purchase Invoice/i })
+    act(() => {
+      fireEvent.click(submitButton)
+    })
+
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: /Create Purchase Invoice/i })).toBeNull()
+    })
+  })
 })
