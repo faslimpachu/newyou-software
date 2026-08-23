@@ -8,10 +8,12 @@ const mockAdjustments = [
     productId: 'prod-1',
     type: 'ADJUSTMENT_IN',
     quantity: 50,
+    batchId: 'batch-1',
     referenceType: 'ADJUSTMENT',
     notes: 'Found stock',
     createdAt: new Date().toISOString(),
     product: { id: 'prod-1', name: 'Paracetamol', sku: 'MED001', unit: 'strip' },
+    batch: { id: 'batch-1', batchNumber: 'BATCH-001' },
   },
 ]
 
@@ -46,7 +48,7 @@ global.fetch = async (url: string) => {
       json: async () => ({ adjustments: mockAdjustments, page: 1, pageSize: 20, total: 1, totalPages: 1 }),
     } as Response
   }
-  if (url.includes('/api/products')) {
+  if (url.includes('/api/products') && !url.includes('/api/products/')) {
     return {
       ok: true,
       json: async () => ({ products: mockProducts }),
@@ -58,10 +60,16 @@ global.fetch = async (url: string) => {
       json: async () => ({ suppliers: mockSuppliers }),
     } as Response
   }
-  if (url.includes('/api/products/') && url.includes('/batches')) {
+  if (url.includes('/api/batches')) {
     return {
       ok: true,
       json: async () => ({ batches: mockBatches }),
+    } as Response
+  }
+  if (url.includes('/api/config')) {
+    return {
+      ok: true,
+      json: async () => ({ allowManualSale: true }),
     } as Response
   }
   return {
@@ -106,7 +114,7 @@ describe('Inventory Adjustments Page UI', () => {
     })
   })
 
-  it('shows product searchable select when New Adjustment is opened', async () => {
+  it('opens adjustment form when New Adjustment is clicked', async () => {
     await waitFor(() => {
       expect(screen.getByText('New Adjustment')).toBeDefined()
     })
@@ -117,50 +125,107 @@ describe('Inventory Adjustments Page UI', () => {
     await waitFor(() => {
       expect(screen.getByText('Create Inventory Adjustment')).toBeDefined()
     })
-    const productLabels = screen.getAllByText('Product')
+  })
+
+  it('shows operation radio buttons in form', async () => {
+    await waitFor(() => {
+      expect(screen.getByText('New Adjustment')).toBeDefined()
+    })
+    const button = screen.getByRole('button', { name: /New Adjustment/i })
+    act(() => {
+      fireEvent.click(button)
+    })
+    await waitFor(() => {
+      expect(screen.getByText('Increase')).toBeDefined()
+      expect(screen.getByText('Decrease')).toBeDefined()
+    })
+  })
+
+  it('shows reason dropdown in form', async () => {
+    await waitFor(() => {
+      expect(screen.getByText('New Adjustment')).toBeDefined()
+    })
+    const button = screen.getByRole('button', { name: /New Adjustment/i })
+    act(() => {
+      fireEvent.click(button)
+    })
+    await waitFor(() => {
+      expect(screen.getByText('Reason *')).toBeDefined()
+    })
+  })
+
+  it('shows batch selector in form', async () => {
+    await waitFor(() => {
+      expect(screen.getByText('New Adjustment')).toBeDefined()
+    })
+    const button = screen.getByRole('button', { name: /New Adjustment/i })
+    act(() => {
+      fireEvent.click(button)
+    })
+    await waitFor(() => {
+      expect(screen.getByText('Batch *')).toBeDefined()
+    })
+  })
+
+  it('shows supplier field for increase operation', async () => {
+    await waitFor(() => {
+      expect(screen.getByText('New Adjustment')).toBeDefined()
+    })
+    const button = screen.getByRole('button', { name: /New Adjustment/i })
+    act(() => {
+      fireEvent.click(button)
+    })
+    await waitFor(() => {
+      expect(screen.getByText('Supplier *')).toBeDefined()
+    })
+  })
+
+  it('shows unit cost field for increase operation', async () => {
+    await waitFor(() => {
+      expect(screen.getByText('New Adjustment')).toBeDefined()
+    })
+    const button = screen.getByRole('button', { name: /New Adjustment/i })
+    act(() => {
+      fireEvent.click(button)
+    })
+    await waitFor(() => {
+      expect(screen.getByText('Unit Cost *')).toBeDefined()
+    })
+  })
+
+  it('shows help section when How to Use is clicked', async () => {
+    await waitFor(() => {
+      expect(screen.getByText('New Adjustment')).toBeDefined()
+    })
+
+    const helpButton = screen.getByRole('button', { name: /How to Use/i })
+    act(() => {
+      fireEvent.click(helpButton)
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('How Inventory Adjustments Work')).toBeDefined()
+    })
+    expect(screen.getByText('Increase Stock')).toBeDefined()
+    expect(screen.getByText('Decrease Stock')).toBeDefined()
+    expect(screen.getByText('Important Rules')).toBeDefined()
+  })
+
+  it('shows product searchable select when form is opened', async () => {
+    await waitFor(() => {
+      expect(screen.getByText('New Adjustment')).toBeDefined()
+    })
+    const button = screen.getByRole('button', { name: /New Adjustment/i })
+    act(() => {
+      fireEvent.click(button)
+    })
+    await waitFor(() => {
+      expect(screen.getByText('Create Inventory Adjustment')).toBeDefined()
+    })
+    const productLabels = screen.getAllByText('Product *')
     const productLabel = productLabels.find((el) => el.tagName === 'LABEL')
     expect(productLabel).toBeDefined()
     const form = productLabel!.closest('form')
-    expect(form).not.toBeNull()
-    const comboboxes = form!.querySelectorAll('[role="combobox"]')
-    expect(comboboxes.length).toBeGreaterThan(0)
-  })
-
-  it('shows batch searchable select when New Adjustment is opened', async () => {
-    await waitFor(() => {
-      expect(screen.getByText('New Adjustment')).toBeDefined()
-    })
-    const button = screen.getByRole('button', { name: /New Adjustment/i })
-    act(() => {
-      fireEvent.click(button)
-    })
-    await waitFor(() => {
-      expect(screen.getByText('Create Inventory Adjustment')).toBeDefined()
-    })
-    const batchLabels = screen.getAllByText('Batch')
-    const batchLabel = batchLabels.find((el) => el.tagName === 'LABEL')
-    expect(batchLabel).toBeDefined()
-    const form = batchLabel!.closest('form')
-    expect(form).not.toBeNull()
-    const comboboxes = form!.querySelectorAll('[role="combobox"]')
-    expect(comboboxes.length).toBeGreaterThan(0)
-  })
-
-  it('shows supplier searchable select when New Adjustment is opened', async () => {
-    await waitFor(() => {
-      expect(screen.getByText('New Adjustment')).toBeDefined()
-    })
-    const button = screen.getByRole('button', { name: /New Adjustment/i })
-    act(() => {
-      fireEvent.click(button)
-    })
-    await waitFor(() => {
-      expect(screen.getByText('Create Inventory Adjustment')).toBeDefined()
-    })
-    const supplierLabels = screen.getAllByText('Supplier')
-    const supplierLabel = supplierLabels.find((el) => el.tagName === 'LABEL')
-    expect(supplierLabel).toBeDefined()
-    const form = supplierLabel!.closest('form')
     expect(form).not.toBeNull()
     const comboboxes = form!.querySelectorAll('[role="combobox"]')
     expect(comboboxes.length).toBeGreaterThan(0)
@@ -177,7 +242,7 @@ describe('Inventory Adjustments Page UI', () => {
     await waitFor(() => {
       expect(screen.getByText('Create Inventory Adjustment')).toBeDefined()
     })
-    const productLabels = screen.getAllByText('Product')
+    const productLabels = screen.getAllByText('Product *')
     const productLabel = productLabels.find((el) => el.tagName === 'LABEL')
     const form = productLabel!.closest('form')
     const comboboxes = form!.querySelectorAll('[role="combobox"]')
@@ -237,7 +302,7 @@ describe('Inventory Adjustments Page UI', () => {
     await waitFor(() => {
       expect(screen.getByText('Create Inventory Adjustment')).toBeDefined()
     })
-    const supplierLabels = screen.getAllByText('Supplier')
+    const supplierLabels = screen.getAllByText('Supplier *')
     const supplierLabel = supplierLabels.find((el) => el.tagName === 'LABEL')
     const form = supplierLabel!.closest('form')
     const comboboxes = form!.querySelectorAll('[role="combobox"]')

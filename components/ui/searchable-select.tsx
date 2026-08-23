@@ -54,7 +54,7 @@ function SearchableSelect({
 
       <Combobox.Portal>
         <Combobox.Positioner className="z-50">
-          <Combobox.Popup className="w-(--anchor-width) rounded-lg bg-popover text-popover-foreground shadow-md ring-1 ring-foreground/10">
+          <Combobox.Popup className="min-w-[var(--anchor-width)] w-80 rounded-lg bg-popover text-popover-foreground shadow-md ring-1 ring-foreground/10">
             <div className="p-1">
               <Combobox.Input
                 placeholder={searchPlaceholder}

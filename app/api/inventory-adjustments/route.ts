@@ -41,21 +41,23 @@ export async function GET(request: Request) {
         take: pageSize,
         include: {
           product: { select: { id: true, name: true, sku: true, unit: true } },
+          batch: { select: { id: true, batchNumber: true } },
         },
       }),
       prisma.inventoryTransaction.count({ where }),
-    ]);
+    ])
 
     return NextResponse.json({
       adjustments: adjustments.map((a) => ({
         ...a,
         quantity: toNumber(a.quantity),
+        batch: a.batch,
       })),
       page,
       pageSize,
       total,
       totalPages: Math.ceil(total / pageSize),
-    });
+    })
   } catch (e) {
     console.error('InventoryAdjustments GET error', e);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -79,7 +81,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'productId, type, quantity, and batchId are required' }, { status: 400 });
     }
 
-    const validTypes = ['SALE', 'ADJUSTMENT_IN', 'ADJUSTMENT_OUT', 'RETURN_OUT', 'EXPIRED', 'DAMAGED', 'LOST']
+    const validTypes = ['SALE', 'ADJUSTMENT_IN', 'ADJUSTMENT_OUT', 'RETURN_OUT', 'EXPIRED', 'DAMAGED', 'LOST', 'OPENING']
     if (!validTypes.includes(type)) {
       return NextResponse.json({ error: 'Invalid transaction type' }, { status: 400 });
     }
@@ -92,10 +94,12 @@ export async function POST(request: Request) {
     const decreaseTypes = ['SALE', 'ADJUSTMENT_OUT', 'RETURN_OUT', 'EXPIRED', 'DAMAGED', 'LOST']
     const isDecrease = decreaseTypes.includes(type)
 
+    const adjustmentType = type === 'OPENING' ? 'ADJUSTMENT_IN' : type
+
     const adjustment = await prisma.$transaction(async (tx) => {
       return await adjustStock({
         productId,
-        type: type as 'SALE' | 'ADJUSTMENT_IN' | 'ADJUSTMENT_OUT' | 'RETURN_OUT' | 'EXPIRED' | 'DAMAGED' | 'LOST',
+        type: adjustmentType as 'SALE' | 'ADJUSTMENT_IN' | 'ADJUSTMENT_OUT' | 'RETURN_OUT' | 'EXPIRED' | 'DAMAGED' | 'LOST',
         quantity,
         batchId,
         unitCost: isDecrease ? undefined : unitCost,

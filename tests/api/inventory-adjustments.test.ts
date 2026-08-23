@@ -459,4 +459,76 @@ describe('Inventory Adjustments API', () => {
     expect(data.total).toBe(3)
     expect(data.totalPages).toBe(2)
   })
+
+  it('POST accepts OPENING type and treats it as ADJUSTMENT_IN', async () => {
+    const supplier = await prisma.supplier.create({
+      data: { supplierName: 'Test Supplier', status: 'ACTIVE' },
+    })
+    const category = await prisma.productCategory.create({
+      data: { name: 'Medicines', active: true },
+    })
+    const product = await prisma.product.create({
+      data: {
+        name: 'Opening Stock Product',
+        code: 'PRD-OPENING-001',
+        categoryId: category.id,
+        unit: 'pcs',
+        purchasePrice: 10,
+        sellingPrice: 15,
+        currentStock: 0,
+        minimumStock: 10,
+        maximumStock: 200,
+      },
+    })
+
+    const batch = await prisma.productBatch.create({
+      data: {
+        productId: product.id,
+        batchNumber: 'BATCH-OPENING',
+        expiryDate: null,
+        quantity: 0,
+      },
+    })
+
+    await prisma.batchReceipt.create({
+      data: {
+        batchId: batch.id,
+        supplierId: supplier.id,
+        sourceType: 'OPENING',
+        quantity: 0,
+        remainingQuantity: 0,
+        purchaseRate: 10,
+      },
+    })
+
+    const req = new Request('http://localhost/api/inventory-adjustments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        productId: product.id,
+        type: 'OPENING',
+        quantity: 100,
+        batchId: batch.id,
+        unitCost: 12,
+        supplierId: supplier.id,
+        notes: 'Opening stock entry',
+      }),
+    })
+    const res = await POST(req)
+    expect(res.status).toBe(201)
+    const data = await res.json()
+    expect(data.transaction).toBeDefined()
+    expect(data.transaction.type).toBe('ADJUSTMENT_IN')
+    expect(data.transaction.quantity).toBe(100)
+
+    const updatedProduct = await prisma.product.findUnique({ where: { id: product.id } })
+    expect(Number(updatedProduct?.currentStock)).toBe(100)
+
+    const receipts = await prisma.batchReceipt.findMany({
+      where: { batchId: batch.id },
+    })
+    expect(receipts).toHaveLength(2)
+    expect(receipts[1].sourceType).toBe('ADJUSTMENT')
+    expect(Number(receipts[1].quantity)).toBe(100)
+  })
 })
