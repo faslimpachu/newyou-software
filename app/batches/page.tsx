@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Table,
@@ -57,29 +58,50 @@ export default function BatchesPage() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<ExpiryFilter>('ALL')
   const [error, setError] = useState('')
+  const [page, setPage] = useState(1)
+  const [pageSize] = useState(20)
+  const [totalPages, setTotalPages] = useState(1)
+  const [total, setTotal] = useState(0)
 
-  const loadBatches = useCallback(async () => {
+  const loadBatches = useCallback(async (pageNum = 1) => {
     setLoading(true)
     setError('')
     try {
       const params = new URLSearchParams()
       if (search) params.set('search', search)
       if (statusFilter !== 'ALL') params.set('expiryStatus', statusFilter.toLowerCase())
+      params.set('page', String(pageNum))
+      params.set('pageSize', String(pageSize))
 
       const res = await fetch(`/api/batches?${params.toString()}`)
       if (!res.ok) throw new Error('Failed to load batches')
       const data = await res.json()
       setBatches(data.batches || [])
+      setTotalPages(data.totalPages || 1)
+      setTotal(data.total || 0)
+      setPage(data.page || pageNum)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load batches')
     } finally {
       setLoading(false)
     }
-  }, [search, statusFilter])
+  }, [search, statusFilter, pageSize])
 
   useEffect(() => {
-    loadBatches()
+    loadBatches(1)
   }, [loadBatches])
+
+  const handlePrevPage = () => {
+    if (page > 1) {
+      loadBatches(page - 1)
+    }
+  }
+
+  const handleNextPage = () => {
+    if (page < totalPages) {
+      loadBatches(page + 1)
+    }
+  }
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -94,14 +116,6 @@ export default function BatchesPage() {
       default:
         return { label: status, variant: 'outline' as const }
     }
-  }
-
-  const filteredCounts = {
-    all: batches.length,
-    expired: batches.filter((b) => b.status === 'EXPIRED').length,
-    expiringSoon: batches.filter((b) => b.status === 'EXPIRING_SOON').length,
-    ok: batches.filter((b) => b.status === 'OK').length,
-    noExpiry: batches.filter((b) => b.status === 'NO_EXPIRY').length,
   }
 
   return (
@@ -134,12 +148,12 @@ export default function BatchesPage() {
               </div>
               <div className="flex flex-wrap gap-2">
                 {([
-                  { key: 'ALL', label: 'All', count: filteredCounts.all },
-                  { key: 'EXPIRED', label: 'Expired', count: filteredCounts.expired },
-                  { key: 'EXPIRING_SOON', label: 'Expiring Soon', count: filteredCounts.expiringSoon },
-                  { key: 'OK', label: 'OK', count: filteredCounts.ok },
-                  { key: 'NO_EXPIRY', label: 'No Expiry', count: filteredCounts.noExpiry },
-                ] as { key: ExpiryFilter; label: string; count: number }[]).map((tab) => (
+                  { key: 'ALL', label: 'All' },
+                  { key: 'EXPIRED', label: 'Expired' },
+                  { key: 'EXPIRING_SOON', label: 'Expiring Soon' },
+                  { key: 'OK', label: 'OK' },
+                  { key: 'NO_EXPIRY', label: 'No Expiry' },
+                ] as { key: ExpiryFilter; label: string }[]).map((tab) => (
                   <button
                     key={tab.key}
                     onClick={() => setStatusFilter(tab.key)}
@@ -151,9 +165,6 @@ export default function BatchesPage() {
                     )}
                   >
                     <span>{tab.label}</span>
-                    <span className="rounded-full bg-muted px-2 py-0.5 text-xs tabular-nums">
-                      {tab.count}
-                    </span>
                   </button>
                 ))}
               </div>
@@ -165,7 +176,7 @@ export default function BatchesPage() {
           <CardHeader>
             <CardTitle className="text-base">All Batches</CardTitle>
             <CardDescription>
-              {batches.length} batch(es) found
+              {total > 0 ? `Page ${page} of ${totalPages} (${total} total)` : `${batches.length} batch(es) found`}
               {statusFilter !== 'ALL' && ` · filtered by ${statusFilter.replace('_', ' ').toLowerCase()}`}
             </CardDescription>
           </CardHeader>
@@ -235,6 +246,32 @@ export default function BatchesPage() {
             )}
           </CardContent>
         </Card>
+
+        {!loading && totalPages > 1 && (
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">
+              Page {page} of {totalPages} ({total} total)
+            </p>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handlePrevPage}
+                disabled={page <= 1}
+              >
+                Previous
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleNextPage}
+                disabled={page >= totalPages}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </DashboardShell>
   )
