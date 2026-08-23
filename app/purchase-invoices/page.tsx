@@ -35,6 +35,7 @@ interface Product {
   name: string
   sku: string | null
   unit: string
+  gstPercent: number
 }
 
 interface InvoiceItem {
@@ -44,6 +45,7 @@ interface InvoiceItem {
   amount: number
   batchNumber: string
   expiryDate: string
+  gstPercent: number
 }
 
 interface PurchaseInvoice {
@@ -81,6 +83,7 @@ const emptyItem: InvoiceItem = {
   amount: 0,
   batchNumber: '',
   expiryDate: '',
+  gstPercent: 0,
 }
 
 export default function PurchaseInvoicesPage() {
@@ -168,6 +171,11 @@ export default function PurchaseInvoicesPage() {
     const newItems = [...form.items]
     newItems[index] = { ...newItems[index], [field]: value }
 
+    if (field === 'productId') {
+      const product = products.find((p) => p.id === (value as string))
+      newItems[index].gstPercent = product ? product.gstPercent : 0
+    }
+
     if (field === 'quantity' || field === 'purchaseRate') {
       newItems[index].amount = (newItems[index].quantity || 0) * (newItems[index].purchaseRate || 0)
     }
@@ -186,7 +194,7 @@ export default function PurchaseInvoicesPage() {
 
   const calculateTotals = () => {
     const subtotal = form.items.reduce((sum, item) => sum + (item.amount || 0), 0)
-    const tax = subtotal * 0.12
+    const tax = form.items.reduce((sum, item) => sum + (item.amount || 0) * (item.gstPercent || 0) / 100, 0)
     const grandTotal = subtotal + tax
     return { subtotal, tax, grandTotal }
   }
@@ -211,6 +219,7 @@ export default function PurchaseInvoicesPage() {
           purchaseRate: item.purchaseRate,
           batchNumber: item.batchNumber?.trim() || null,
           expiryDate: item.expiryDate || null,
+          gstPercent: item.gstPercent,
         })),
       }
 
@@ -447,10 +456,10 @@ export default function PurchaseInvoicesPage() {
                       <span>Subtotal</span>
                       <span className="tabular-nums">₹{subtotal.toLocaleString('en-IN')}</span>
                     </div>
-                    <div className="flex justify-between text-sm">
-                      <span>Tax (12%)</span>
-                      <span className="tabular-nums">₹{tax.toLocaleString('en-IN')}</span>
-                    </div>
+                     <div className="flex justify-between text-sm">
+                       <span>{subtotal > 0 ? `Tax (${(tax / subtotal * 100).toFixed(1)}%)` : 'Tax'}</span>
+                       <span className="tabular-nums">₹{tax.toLocaleString('en-IN')}</span>
+                     </div>
                     <div className="flex justify-between font-semibold">
                       <span>Grand Total</span>
                       <span className="tabular-nums">₹{grandTotal.toLocaleString('en-IN')}</span>

@@ -8,9 +8,9 @@ const mockSuppliers = [
 ]
 
 const mockProducts = [
-  { id: 'prod-1', name: 'Paracetamol', sku: 'MED001', purchasePrice: 10, unit: 'strip' },
-  { id: 'prod-2', name: 'Face Mask', sku: 'MED002', purchasePrice: 5, unit: 'pcs' },
-  { id: 'prod-3', name: 'Weight Loss Tea', sku: 'MED003', purchasePrice: 50, unit: 'packet' },
+  { id: 'prod-1', name: 'Paracetamol', sku: 'MED001', purchasePrice: 10, unit: 'strip', gstPercent: 5 },
+  { id: 'prod-2', name: 'Face Mask', sku: 'MED002', purchasePrice: 5, unit: 'pcs', gstPercent: 12 },
+  { id: 'prod-3', name: 'Weight Loss Tea', sku: 'MED003', purchasePrice: 50, unit: 'packet', gstPercent: 18 },
 ]
 
 const mockInvoices = [
@@ -536,5 +536,80 @@ describe('Purchase Invoices Page UI', () => {
       const page1Texts = screen.getAllByText(/Page 1 of 2/)
       expect(page1Texts.length).toBeGreaterThan(0)
     })
+  })
+
+  it('does not show hardcoded 12% tax label when form is opened', async () => {
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /New Purchase Invoice/i })).toBeDefined()
+    })
+    const button = screen.getByRole('button', { name: /New Purchase Invoice/i })
+    act(() => {
+      fireEvent.click(button)
+    })
+    await waitFor(() => {
+      expect(screen.getByLabelText('Invoice Date')).toBeDefined()
+    })
+
+    const taxLabels = screen.getAllByText('Tax')
+    expect(taxLabels.length).toBeGreaterThan(0)
+    expect(screen.queryByText('Tax (12%)')).toBeNull()
+  })
+
+  it('shows zero tax when no product is selected', async () => {
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /New Purchase Invoice/i })).toBeDefined()
+    })
+    const button = screen.getByRole('button', { name: /New Purchase Invoice/i })
+    act(() => {
+      fireEvent.click(button)
+    })
+    await waitFor(() => {
+      expect(screen.getByLabelText('Invoice Date')).toBeDefined()
+    })
+
+    const quantityInputs = screen.getAllByRole('spinbutton')
+    act(() => {
+      fireEvent.change(quantityInputs[0], { target: { value: '10' } })
+    })
+    const rateInputs = screen.getAllByRole('spinbutton')
+    act(() => {
+      fireEvent.change(rateInputs[1], { target: { value: '100' } })
+    })
+
+    await waitFor(() => {
+      const zeroTaxElements = screen.getAllByText('₹0')
+      expect(zeroTaxElements.length).toBeGreaterThan(0)
+    })
+  })
+
+  it('updates tax label with actual rate when item values change', async () => {
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /New Purchase Invoice/i })).toBeDefined()
+    })
+    const button = screen.getByRole('button', { name: /New Purchase Invoice/i })
+    act(() => {
+      fireEvent.click(button)
+    })
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Add Item/i })).toBeDefined()
+    })
+
+    const quantityInputs = screen.getAllByRole('spinbutton')
+    act(() => {
+      fireEvent.change(quantityInputs[0], { target: { value: '10' } })
+    })
+    const rateInputs = screen.getAllByRole('spinbutton')
+    act(() => {
+      fireEvent.change(rateInputs[1], { target: { value: '100' } })
+    })
+
+    await waitFor(() => {
+      const amountElements = screen.getAllByText(/₹1,000/)
+      expect(amountElements.length).toBeGreaterThan(0)
+    })
+
+    const taxLabel = screen.getByText(/^Tax/)
+    expect(taxLabel).toBeDefined()
+    expect(taxLabel.textContent).toContain('0.0%')
   })
 })
