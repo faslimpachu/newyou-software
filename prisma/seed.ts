@@ -1164,6 +1164,114 @@ async function main() {
   }
 
   // ------------------------------------------------------------------
+  // 12a. Dummy inventory adjustments for pagination testing
+  // ------------------------------------------------------------------
+  const adjustmentNotes = [
+    'Physical count correction',
+    'Stock found during audit',
+    'Damaged items removed',
+    'Expired stock write-off',
+    'Return to supplier',
+    'Lost inventory adjustment',
+    'Found additional stock',
+    'System correction',
+    'Transfer from another store',
+    'Quality check adjustment',
+  ]
+
+  const adjustmentTypes = [
+    'ADJUSTMENT_IN',
+    'ADJUSTMENT_OUT',
+    'ADJUSTMENT_IN',
+    'ADJUSTMENT_OUT',
+    'ADJUSTMENT_IN',
+    'EXPIRED',
+    'ADJUSTMENT_IN',
+    'DAMAGED',
+    'ADJUSTMENT_IN',
+    'SALE',
+    'ADJUSTMENT_IN',
+    'LOST',
+    'ADJUSTMENT_IN',
+    'RETURN_OUT',
+    'ADJUSTMENT_IN',
+  ]
+
+  const allProductIds = Array.from(productMap.values())
+  const allBatchEntries = Array.from(batchMap.entries())
+
+  for (let i = 0; i < 45; i++) {
+    const productId = allProductIds[i % allProductIds.length]
+    const [, batchId] = allBatchEntries[i % allBatchEntries.length]
+    const type = adjustmentTypes[i % adjustmentTypes.length]
+    const quantity = randomInt(1, 20)
+    const notes = adjustmentNotes[i % adjustmentNotes.length]
+    const unitCost = randomInt(5, 500)
+    const supplierId = Array.from(supplierMap.values())[i % Array.from(supplierMap.values()).length]
+
+    if (['ADJUSTMENT_IN'].includes(type)) {
+      await prisma.batchReceipt.create({
+        data: {
+          batchId,
+          supplierId,
+          purchaseInvoiceId: null,
+          sourceType: 'ADJUSTMENT',
+          quantity,
+          remainingQuantity: quantity,
+          purchaseRate: unitCost,
+        },
+      })
+
+      await prisma.productBatch.update({
+        where: { id: batchId },
+        data: { quantity: { increment: quantity } },
+      })
+
+      await prisma.product.update({
+        where: { id: productId },
+        data: { currentStock: { increment: quantity } },
+      })
+    } else if (['ADJUSTMENT_OUT', 'EXPIRED', 'DAMAGED', 'LOST', 'SALE', 'RETURN_OUT'].includes(type)) {
+      const receipts = await prisma.batchReceipt.findMany({
+        where: { batchId, remainingQuantity: { gt: 0 } },
+        orderBy: { createdAt: 'asc' },
+      })
+
+      let remainingToConsume = quantity
+      for (const receipt of receipts) {
+        if (remainingToConsume <= 0) break
+        const consume = Math.min(remainingToConsume, Number(receipt.remainingQuantity))
+        await prisma.batchReceipt.update({
+          where: { id: receipt.id },
+          data: { remainingQuantity: { decrement: consume } },
+        })
+        remainingToConsume -= consume
+      }
+
+      await prisma.productBatch.update({
+        where: { id: batchId },
+        data: { quantity: { decrement: quantity } },
+      })
+
+      await prisma.product.update({
+        where: { id: productId },
+        data: { currentStock: { decrement: quantity } },
+      })
+    }
+
+    await prisma.inventoryTransaction.create({
+      data: {
+        productId,
+        batchId,
+        type: type as any,
+        quantity: type === 'ADJUSTMENT_IN' ? quantity : -quantity,
+        referenceType: 'ADJUSTMENT',
+        notes,
+      },
+    })
+  }
+
+  // ------------------------------------------------------------------
   // 13. Recalculate invoice balances and statuses to match seed state
   // ------------------------------------------------------------------
   await prisma.purchaseInvoice.update({

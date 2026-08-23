@@ -367,4 +367,96 @@ describe('Inventory Adjustments API', () => {
       process.env.ALLOW_MANUAL_SALE_ADJUSTMENT = originalEnv
     }
   })
+
+  it('GET returns paginated results with default page 1 and pageSize 20', async () => {
+    const category = await prisma.productCategory.create({
+      data: { name: 'Medicines', active: true },
+    })
+    const products = await Promise.all(
+      Array.from({ length: 5 }).map((_, i) =>
+        prisma.product.create({
+          data: {
+            name: `Product ${i}`,
+            code: `PRD-PAGE-${i}`,
+            categoryId: category.id,
+            unit: 'pcs',
+            purchasePrice: 10,
+            sellingPrice: 15,
+            currentStock: 100,
+            minimumStock: 10,
+            maximumStock: 200,
+          },
+        })
+      )
+    )
+    await Promise.all(
+      products.map((p) =>
+        prisma.inventoryTransaction.create({
+          data: {
+            productId: p.id,
+            type: 'ADJUSTMENT_IN',
+            quantity: 10,
+            referenceType: 'ADJUSTMENT',
+            notes: 'Stock found',
+          },
+        })
+      )
+    )
+
+    const req = new Request('http://localhost/api/inventory-adjustments?page=1&pageSize=2', { method: 'GET' })
+    const res = await GET(req)
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.adjustments).toHaveLength(2)
+    expect(data.page).toBe(1)
+    expect(data.pageSize).toBe(2)
+    expect(data.total).toBe(5)
+    expect(data.totalPages).toBe(3)
+  })
+
+  it('GET returns second page when page=2', async () => {
+    const category = await prisma.productCategory.create({
+      data: { name: 'Medicines 2', active: true },
+    })
+    const products = await Promise.all(
+      Array.from({ length: 3 }).map((_, i) =>
+        prisma.product.create({
+          data: {
+            name: `Page2 Product ${i}`,
+            code: `PRD-PAGE2-${i}`,
+            categoryId: category.id,
+            unit: 'pcs',
+            purchasePrice: 10,
+            sellingPrice: 15,
+            currentStock: 100,
+            minimumStock: 10,
+            maximumStock: 200,
+          },
+        })
+      )
+    )
+    await Promise.all(
+      products.map((p) =>
+        prisma.inventoryTransaction.create({
+          data: {
+            productId: p.id,
+            type: 'ADJUSTMENT_IN',
+            quantity: 10,
+            referenceType: 'ADJUSTMENT',
+            notes: 'Stock found',
+          },
+        })
+      )
+    )
+
+    const req = new Request('http://localhost/api/inventory-adjustments?page=2&pageSize=2', { method: 'GET' })
+    const res = await GET(req)
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.adjustments).toHaveLength(1)
+    expect(data.page).toBe(2)
+    expect(data.pageSize).toBe(2)
+    expect(data.total).toBe(3)
+    expect(data.totalPages).toBe(2)
+  })
 })

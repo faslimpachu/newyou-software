@@ -71,14 +71,21 @@ export default function InventoryAdjustmentsPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [showForm, setShowForm] = useState(false)
+  const [page, setPage] = useState(1)
+  const [pageSize] = useState(20)
+  const [totalPages, setTotalPages] = useState(1)
+  const [total, setTotal] = useState(0)
   const [form, setForm] = useState(emptyAdjustment)
 
-  const loadAdjustments = async () => {
+  const loadAdjustments = async (pageNum = 1) => {
     try {
-      const res = await fetch('/api/inventory-adjustments')
+      const res = await fetch(`/api/inventory-adjustments?page=${pageNum}&pageSize=${pageSize}`)
       if (!res.ok) throw new Error('Failed to load adjustments')
       const data = await res.json()
       setAdjustments(data.adjustments)
+      setTotalPages(data.totalPages || 1)
+      setTotal(data.total || 0)
+      setPage(data.page || pageNum)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load adjustments')
     } finally {
@@ -127,10 +134,22 @@ export default function InventoryAdjustmentsPage() {
   }
 
   useEffect(() => {
-    loadAdjustments()
+    loadAdjustments(1)
     loadProducts()
     loadSuppliers()
   }, [])
+
+  const handlePrevPage = () => {
+    if (page > 1) {
+      loadAdjustments(page - 1)
+    }
+  }
+
+  const handleNextPage = () => {
+    if (page < totalPages) {
+      loadAdjustments(page + 1)
+    }
+  }
 
   useEffect(() => {
     if (form.productId) {
@@ -356,7 +375,9 @@ export default function InventoryAdjustmentsPage() {
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Adjustment History</CardTitle>
-            <CardDescription>{adjustments.length} adjustment(s) in the system</CardDescription>
+            <CardDescription>
+              {total > 0 ? `Page ${page} of ${totalPages} (${total} total)` : `${adjustments.length} adjustment(s) in the system`}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             {loading ? (
@@ -404,6 +425,32 @@ export default function InventoryAdjustmentsPage() {
             )}
           </CardContent>
         </Card>
+
+        {!loading && totalPages > 1 && (
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">
+              Page {page} of {totalPages} ({total} total)
+            </p>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handlePrevPage}
+                disabled={page <= 1}
+              >
+                Previous
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleNextPage}
+                disabled={page >= totalPages}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </DashboardShell>
   )

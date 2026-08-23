@@ -43,7 +43,7 @@ global.fetch = async (url: string) => {
   if (url.includes('/api/inventory-adjustments')) {
     return {
       ok: true,
-      json: async () => ({ adjustments: mockAdjustments }),
+      json: async () => ({ adjustments: mockAdjustments, page: 1, pageSize: 20, total: 1, totalPages: 1 }),
     } as Response
   }
   if (url.includes('/api/products')) {
