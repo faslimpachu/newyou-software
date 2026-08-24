@@ -75,7 +75,7 @@ function mapFollowUp(row: ApiFollowUp): FollowUpRow {
   }
 }
 
-export function WorkflowWorkspace() {
+export function WorkflowWorkspace(_props: { mode?: string } = {}) {
   const router = useRouter()
   const [query, setQuery] = useState('')
   const [followUps, setFollowUps] = useState<FollowUpRow[]>([])
@@ -159,11 +159,13 @@ export function WorkflowWorkspace() {
             </div>
           </CardContent>
         </Card>
-        {selected ? (
-          <WorkflowDetails item={selected} onOpen={() => setEditor(selected)} onOpenPatient={() => openPatient(selected.mr)} />
-        ) : (
-          <Card className="h-fit rounded-lg shadow-sm"><CardContent className="py-10 text-center text-sm text-muted-foreground">Select a record to view details.</CardContent></Card>
-        )}
+        <aside data-testid="workflow-details-panel" className="xl:sticky xl:top-24 xl:self-start">
+          {selected ? (
+            <WorkflowDetails item={selected} onOpen={() => setEditor(selected)} onOpenPatient={() => openPatient(selected.mr)} />
+          ) : (
+            <Card className="h-fit rounded-lg shadow-sm"><CardContent className="py-10 text-center text-sm text-muted-foreground">Select a record to view details.</CardContent></Card>
+          )}
+        </aside>
       </div>
       {editor && <WorkflowEditor record={editor === true ? null : editor} onSaved={() => loadFollowUps(false)} onClose={() => setEditor(null)} />}
     </div>

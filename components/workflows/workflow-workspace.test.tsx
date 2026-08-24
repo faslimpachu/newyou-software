@@ -41,6 +41,7 @@ describe('WorkflowWorkspace', () => {
     expect(screen.getAllByText('Diet review').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Dr. Neha Verma').length).toBeGreaterThan(0)
     expect(screen.getByText('Open patient profile')).toBeDefined()
+    expect(screen.getByTestId('workflow-details-panel')).toHaveClass('xl:sticky', 'xl:top-24', 'xl:self-start')
     expect(global.fetch).toHaveBeenCalledWith('/api/follow-ups')
   })
 })
