@@ -495,6 +495,8 @@ describe('PatientProfile', () => {
 
     expect(mockCreateElement).toHaveBeenCalledWith('iframe')
     expect(printCalls.length).toBeGreaterThan(0)
+    expect(printCalls.some((call) => call.write.includes('@page{size:A5 portrait;margin:10mm}'))).toBe(true)
+    expect(printCalls.some((call) => call.write.includes('@page{size:A4'))).toBe(false)
     expect(printCalls.some((call) => call.write.includes('Ayurcare Center'))).toBe(true)
     expect(printCalls.some((call) => call.write.includes('NEW YOU'))).toBe(false)
   })
@@ -538,6 +540,8 @@ describe('PatientProfile', () => {
 
     expect(mockCreateElement).toHaveBeenCalledWith('iframe')
     expect(printCalls.length).toBeGreaterThan(0)
+    expect(printCalls.some((call) => call.write.includes('@page{size:A5 portrait;margin:10mm}'))).toBe(true)
+    expect(printCalls.some((call) => call.write.includes('@page{size:A4'))).toBe(false)
     expect(printCalls.some((call) => call.write.includes('Ayurcare Center'))).toBe(true)
     expect(printCalls.some((call) => call.write.includes('NEW YOU'))).toBe(false)
   })
@@ -704,6 +708,8 @@ describe('PatientProfile', () => {
 
     expect(mockCreateElement).toHaveBeenCalledWith('iframe')
     expect(printCalls.length).toBeGreaterThan(0)
+    expect(printCalls.some((call) => call.write.includes('@page{size:A5 portrait;margin:10mm}'))).toBe(true)
+    expect(printCalls.some((call) => call.write.includes('@page{size:A4'))).toBe(false)
     expect(printCalls.some((call) => call.write.includes('Ayurcare Center'))).toBe(true)
     expect(printCalls.some((call) => call.write.includes('NEW YOU'))).toBe(false)
     expect(printCalls.some((call) => call.write.includes('Patient:'))).toBe(true)
@@ -813,6 +819,8 @@ describe('PatientProfile', () => {
 
     expect(mockCreateElement).toHaveBeenCalledWith('iframe')
     expect(printCalls.length).toBeGreaterThan(0)
+    expect(printCalls.some((call) => call.write.includes('@page{size:A5 portrait;margin:10mm}'))).toBe(true)
+    expect(printCalls.some((call) => call.write.includes('@page{size:A4'))).toBe(false)
     expect(printCalls.some((call) => call.write.includes('Ayurcare Center'))).toBe(true)
     expect(printCalls.some((call) => call.write.includes('NEW YOU'))).toBe(false)
     expect(printCalls.some((call) => call.write.includes('Prescription'))).toBe(true)

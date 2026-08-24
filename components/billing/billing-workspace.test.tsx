@@ -27,6 +27,10 @@ vi.mock('xlsx', () => ({
   writeFile: vi.fn(),
 }))
 
+function renderedPrintStyles() {
+  return Array.from(document.querySelectorAll('style')).map((style) => style.textContent ?? '').join('\n')
+}
+
 const mockInvoices = [
   {
     invoiceNumber: 'INV-90112',
@@ -71,7 +75,7 @@ describe('BillingWorkspace', () => {
     global.fetch = undefined as any
   })
 
-  const mockFetchInvoicesAndExpenses = (invoices = mockInvoices, expenses = mockExpenses) => {
+  const mockFetchInvoicesAndExpenses = (invoices: any[] = mockInvoices, expenses: any[] = mockExpenses) => {
     global.fetch = vi.fn().mockImplementation((url: string) => {
       if (url.includes('/api/patients?')) {
         return Promise.resolve({
@@ -318,6 +322,10 @@ describe('BillingWorkspace', () => {
     await waitFor(() => {
       expect(screen.getByText('Invoice preview')).toBeDefined()
     })
+    expect(screen.getByText('INV-90112 · A5 print-ready format')).toBeDefined()
+    expect(renderedPrintStyles()).toContain('@page { size: A5; margin: 10mm; }')
+    expect(renderedPrintStyles()).toContain('width: 148mm;')
+    expect(renderedPrintStyles()).toContain('min-height: 210mm;')
   })
 
   it('calls window.print when clicking Print in invoice preview', async () => {
@@ -531,5 +539,19 @@ describe('BillingWorkspace', () => {
     await waitFor(() => {
       expect(screen.getByText('Expense ID')).toBeDefined()
     })
+  })
+
+  it('prints expense vouchers using A5 page styles', async () => {
+    mockFetchInvoicesAndExpenses([], mockExpenses)
+    render(<BillingWorkspace />)
+
+    await waitFor(() => expect(screen.getByText('Expenses')).toBeDefined())
+    fireEvent.click(screen.getByText('Expenses'))
+    fireEvent.click(await screen.findByRole('button', { name: 'View' }))
+
+    await waitFor(() => expect(screen.getByText('Expense details')).toBeDefined())
+    expect(renderedPrintStyles()).toContain('@page { size: A5; margin: 10mm; }')
+    expect(renderedPrintStyles()).toContain('width: 148mm;')
+    expect(renderedPrintStyles()).toContain('min-height: 210mm;')
   })
 })

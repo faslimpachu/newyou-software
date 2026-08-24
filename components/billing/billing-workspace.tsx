@@ -1240,18 +1240,18 @@ function InvoiceModal({ invoice, onClose }: { invoice: Invoice; onClose: () => v
           #invoice-print-area {
             position: absolute;
             inset: 0;
-            width: 210mm;
-            min-height: 297mm;
+            width: 148mm;
+            min-height: 210mm;
             margin: 0 auto;
           }
-          @page { size: A4; margin: 12mm; }
+          @page { size: A5; margin: 10mm; }
         }
       `}</style>
 
       <div className="flex items-center justify-between border-b px-6 py-4 print:hidden">
         <div>
           <h2 className="font-display text-lg font-semibold">Invoice preview</h2>
-          <p className="text-sm text-muted-foreground">{invoice.id} · A4 print-ready format</p>
+          <p className="text-sm text-muted-foreground">{invoice.id} · A5 print-ready format</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={handlePrint}>
@@ -1268,7 +1268,7 @@ function InvoiceModal({ invoice, onClose }: { invoice: Invoice; onClose: () => v
         <div
           id="invoice-print-area"
           ref={printRef}
-          className="mx-auto w-full max-w-[210mm] bg-white p-10 text-black shadow-sm print:shadow-none"
+          className="mx-auto w-full max-w-[148mm] bg-white p-8 text-black shadow-sm print:shadow-none"
           style={{ fontFamily: PRINT_FONT }}
         >
           {/* Letterhead */}
@@ -1743,10 +1743,11 @@ function ExpenseDetailModal({
           #expense-print-area {
             position: absolute;
             inset: 0;
-            width: 210mm;
+            width: 148mm;
+            min-height: 210mm;
             margin: 0 auto;
           }
-          @page { size: A4; margin: 12mm; }
+          @page { size: A5; margin: 10mm; }
         }
       `}</style>
 
@@ -1775,7 +1776,7 @@ function ExpenseDetailModal({
       </div>
 
       <div className="max-h-[80vh] overflow-y-auto bg-muted/30 px-6 py-6 print:max-h-none print:overflow-visible print:bg-transparent print:px-0 print:py-0">
-        <div id="expense-print-area" ref={printRef} className="mx-auto w-full max-w-[210mm] space-y-5 bg-white p-10 text-black shadow-sm print:shadow-none" style={{ fontFamily: PRINT_FONT }}>
+        <div id="expense-print-area" ref={printRef} className="mx-auto w-full max-w-[148mm] space-y-5 bg-white p-8 text-black shadow-sm print:shadow-none" style={{ fontFamily: PRINT_FONT }}>
           <div className="border-b-2 border-black pb-3 text-center">
             <h1 className="text-2xl font-bold tracking-wide">Expense Voucher</h1>
             <p className="mt-1 text-xs text-neutral-600">New You Nutrition Center &amp; Ayurcare Center</p>
