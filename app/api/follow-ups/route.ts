@@ -60,7 +60,7 @@ export async function GET(request: Request) {
       prisma.followUp.findMany({
         where,
         ...(hasPagination ? { skip, take: limit } : {}),
-        orderBy: { createdAt: 'desc' },
+        orderBy: { reviewDate: 'desc' },
         include: { patient: true },
       }),
       prisma.followUp.count({ where }),
