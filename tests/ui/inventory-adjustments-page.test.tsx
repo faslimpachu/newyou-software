@@ -178,7 +178,6 @@ describe('Inventory Adjustments Page UI', () => {
 
     it('shows operation radio buttons in form', async () => {
       openForm()
-      expect(screen.getByText('Increase')).toBeDefined()
       expect(screen.getByText('Decrease')).toBeDefined()
     })
 
@@ -204,7 +203,7 @@ describe('Inventory Adjustments Page UI', () => {
 
     it('shows submit button in form', async () => {
       openForm()
-      expect(screen.getByRole('button', { name: /Increase Stock/i })).toBeDefined()
+      expect(screen.getByRole('button', { name: /Decrease Stock/i })).toBeDefined()
     })
 
     it('shows cancel button in form', async () => {
@@ -214,67 +213,55 @@ describe('Inventory Adjustments Page UI', () => {
   })
 
   describe('operation-dependent fields', () => {
-    it('shows supplier field for increase operation', async () => {
+    // it('shows supplier field for increase operation', async () => {
+    //   openForm()
+    //   expect(screen.getByText('Supplier *')).toBeDefined()
+    // })
+
+    // it('shows unit cost field for increase operation', async () => {
+    //   openForm()
+    //   expect(screen.getByText('Unit Cost *')).toBeDefined()
+    // })
+
+    // it('hides supplier field when switching to decrease', async () => {
+    //   openForm()
+    //   expect(screen.getByText('Supplier *')).toBeDefined()
+    //   const decreaseRadio = screen.getByLabelText('Decrease')
+    //   act(() => {
+    //     fireEvent.click(decreaseRadio)
+    //   })
+    //   expect(screen.queryByText('Supplier *')).toBeNull()
+    // })
+
+    // it('hides unit cost field when switching to decrease', async () => {
+    //   openForm()
+    //   expect(screen.getByText('Unit Cost *')).toBeDefined()
+    //   const decreaseRadio = screen.getByLabelText('Decrease')
+    //   act(() => {
+    //     fireEvent.click(decreaseRadio)
+    //   })
+    //   expect(screen.queryByText('Unit Cost *')).toBeNull()
+    // })
+
+    it('shows Decrease Stock submit button', async () => {
       openForm()
-      expect(screen.getByText('Supplier *')).toBeDefined()
-    })
-
-    it('shows unit cost field for increase operation', async () => {
-      openForm()
-      expect(screen.getByText('Unit Cost *')).toBeDefined()
-    })
-
-    it('hides supplier field when switching to decrease', async () => {
-      openForm()
-      expect(screen.getByText('Supplier *')).toBeDefined()
-
-      const decreaseRadio = screen.getByLabelText('Decrease')
-      act(() => {
-        fireEvent.click(decreaseRadio)
-      })
-
-      expect(screen.queryByText('Supplier *')).toBeNull()
-    })
-
-    it('hides unit cost field when switching to decrease', async () => {
-      openForm()
-      expect(screen.getByText('Unit Cost *')).toBeDefined()
-
-      const decreaseRadio = screen.getByLabelText('Decrease')
-      act(() => {
-        fireEvent.click(decreaseRadio)
-      })
-
-      expect(screen.queryByText('Unit Cost *')).toBeNull()
-    })
-
-    it('updates submit button text for decrease operation', async () => {
-      openForm()
-      expect(screen.getByRole('button', { name: /Increase Stock/i })).toBeDefined()
-
-      const decreaseRadio = screen.getByLabelText('Decrease')
-      act(() => {
-        fireEvent.click(decreaseRadio)
-      })
-
       expect(screen.getByRole('button', { name: /Decrease Stock/i })).toBeDefined()
     })
   })
 
   describe('reason dropdown options', () => {
-    it('shows increase reasons by default', async () => {
-      openForm()
-      const reasonLabel = screen.getByText('Reason *')
-      const selectTrigger = reasonLabel.closest('div')?.querySelector('button')
-      act(() => {
-        fireEvent.click(selectTrigger!)
-      })
-
-      await waitFor(() => {
-        expect(screen.getByText('Adjustment In (found stock)')).toBeDefined()
-        expect(screen.getByText('Opening Stock')).toBeDefined()
-      })
-    })
+    // it('shows increase reasons by default', async () => {
+    //   openForm()
+    //   const reasonLabel = screen.getByText('Reason *')
+    //   const selectTrigger = reasonLabel.closest('div')?.querySelector('button')
+    //   act(() => {
+    //     fireEvent.click(selectTrigger!)
+    //   })
+    //   await waitFor(() => {
+    //     expect(screen.getByText('Adjustment In (found stock)')).toBeDefined()
+    //     expect(screen.getByText('Opening Stock')).toBeDefined()
+    //   })
+    // })
 
     it('shows decrease reasons when Decrease is selected', async () => {
       openForm()
@@ -346,33 +333,29 @@ describe('Inventory Adjustments Page UI', () => {
       global.fetch = originalFetch
     })
 
-    it('hides increase reasons when switching to decrease', async () => {
-      openForm()
-      const reasonLabel = screen.getByText('Reason *')
-      const selectTrigger = reasonLabel.closest('div')?.querySelector('button')
-      act(() => {
-        fireEvent.click(selectTrigger!)
-      })
-
-      await waitFor(() => {
-        expect(screen.getByText('Adjustment In (found stock)')).toBeDefined()
-      })
-
-      const decreaseRadio = screen.getByLabelText('Decrease')
-      act(() => {
-        fireEvent.click(decreaseRadio)
-      })
-
-      const newSelectTrigger = reasonLabel.closest('div')?.querySelector('button')
-      act(() => {
-        fireEvent.click(newSelectTrigger!)
-      })
-
-      await waitFor(() => {
-        expect(screen.queryByText('Adjustment In (found stock)')).toBeNull()
-        expect(screen.queryByText('Opening Stock')).toBeNull()
-      })
-    })
+    // it('hides increase reasons when switching to decrease', async () => {
+    //   openForm()
+    //   const reasonLabel = screen.getByText('Reason *')
+    //   const selectTrigger = reasonLabel.closest('div')?.querySelector('button')
+    //   act(() => {
+    //     fireEvent.click(selectTrigger!)
+    //   })
+    //   await waitFor(() => {
+    //     expect(screen.getByText('Adjustment In (found stock)')).toBeDefined()
+    //   })
+    //   const decreaseRadio = screen.getByLabelText('Decrease')
+    //   act(() => {
+    //     fireEvent.click(decreaseRadio)
+    //   })
+    //   const newSelectTrigger = reasonLabel.closest('div')?.querySelector('button')
+    //   act(() => {
+    //     fireEvent.click(newSelectTrigger!)
+    //   })
+    //   await waitFor(() => {
+    //     expect(screen.queryByText('Adjustment In (found stock)')).toBeNull()
+    //     expect(screen.queryByText('Opening Stock')).toBeNull()
+    //   })
+    // })
   })
 
   describe('product selection and stock display', () => {
@@ -636,7 +619,7 @@ describe('Inventory Adjustments Page UI', () => {
   describe('form validation', () => {
     it('validates that product is required', async () => {
       openForm()
-      const submitButton = screen.getByRole('button', { name: /Increase Stock/i })
+      const submitButton = screen.getByRole('button', { name: /Decrease Stock/i })
       const submitForm = submitButton.closest('form')
       act(() => {
         fireEvent.submit(submitForm!)
@@ -658,7 +641,7 @@ describe('Inventory Adjustments Page UI', () => {
 
       await selectOption(productButton, /Paracetamol/i)
 
-      const submitButton = screen.getByRole('button', { name: /Increase Stock/i })
+      const submitButton = screen.getByRole('button', { name: /Decrease Stock/i })
       const submitForm = submitButton.closest('form')
       act(() => {
         fireEvent.submit(submitForm!)
@@ -701,32 +684,27 @@ describe('Inventory Adjustments Page UI', () => {
       })
     })
 
-    it('validates that unit cost is required for increase', async () => {
-      openForm()
-      const productButton = getProductButton()
-      act(() => {
-        fireEvent.click(productButton)
-      })
-
-      await waitForDropdownOpen(productButton)
-
-      await selectOption(productButton, /Paracetamol/i)
-
-      const quantityInput = screen.getByLabelText('Quantity *')
-      act(() => {
-        fireEvent.change(quantityInput, { target: { value: '10' } })
-      })
-
-      const submitButton = screen.getByRole('button', { name: /Increase Stock/i })
-      const submitForm = submitButton.closest('form')
-      act(() => {
-        fireEvent.submit(submitForm!)
-      })
-
-      await waitFor(() => {
-        expect(screen.getByText('Unit cost is required and must be greater than zero for increases')).toBeDefined()
-      })
-    })
+    // it('validates that unit cost is required for increase', async () => {
+    //   openForm()
+    //   const productButton = getProductButton()
+    //   act(() => {
+    //     fireEvent.click(productButton)
+    //   })
+    //   await waitForDropdownOpen(productButton)
+    //   await selectOption(productButton, /Paracetamol/i)
+    //   const quantityInput = screen.getByLabelText('Quantity *')
+    //   act(() => {
+    //     fireEvent.change(quantityInput, { target: { value: '10' } })
+    //   })
+    //   const submitButton = screen.getByRole('button', { name: /Increase Stock/i })
+    //   const submitForm = submitButton.closest('form')
+    //   act(() => {
+    //     fireEvent.submit(submitForm!)
+    //   })
+    //   await waitFor(() => {
+    //     expect(screen.getByText('Unit cost is required and must be greater than zero for increases')).toBeDefined()
+    //   })
+    // })
 
     it('validates that quantity cannot exceed batch stock for decrease', async () => {
       openForm()
@@ -872,7 +850,6 @@ describe('Inventory Adjustments Page UI', () => {
       await waitFor(() => {
         expect(screen.getByText('How Inventory Adjustments Work')).toBeDefined()
       })
-      expect(screen.getByText('Increase Stock')).toBeDefined()
       expect(screen.getByText('Decrease Stock')).toBeDefined()
       expect(screen.getByText('Important Rules')).toBeDefined()
     })
@@ -928,165 +905,19 @@ describe('Inventory Adjustments Page UI', () => {
       await waitForDropdownOpen(batchButton)
     })
 
-    it('opens supplier search dropdown and shows search input', async () => {
-      openForm()
-      const supplierButton = getSupplierButton()
-      act(() => {
-        fireEvent.click(supplierButton)
-      })
-
-      await waitForDropdownOpen(supplierButton)
-    })
+    // it('opens supplier search dropdown and shows search input', async () => {
+    //   openForm()
+    //   const supplierButton = getSupplierButton()
+    //   act(() => {
+    //     fireEvent.click(supplierButton)
+    //   })
+    //   await waitForDropdownOpen(supplierButton)
+    // })
   })
 
-  describe('form submission behavior', () => {
-    it('shows success message and closes form after successful increase submission', async () => {
-      openForm()
-      const productButton = getProductButton()
-      act(() => {
-        fireEvent.click(productButton)
-      })
-
-      await waitForDropdownOpen(productButton)
-
-      await selectOption(productButton, /Paracetamol/i)
-
-      const quantityInput = screen.getByLabelText('Quantity *')
-      act(() => {
-        fireEvent.change(quantityInput, { target: { value: '10' } })
-      })
-
-      const unitCostInput = screen.getByLabelText('Unit Cost *')
-      act(() => {
-        fireEvent.change(unitCostInput, { target: { value: '12' } })
-      })
-
-      const supplierButton = getSupplierButton()
-      act(() => {
-        fireEvent.click(supplierButton)
-      })
-
-      await waitForDropdownOpen(supplierButton)
-
-      await selectOption(supplierButton, /ABC Pharma/i)
-
-      const submitButton = screen.getByRole('button', { name: /Increase Stock/i })
-      const submitForm = submitButton.closest('form')
-      act(() => {
-        fireEvent.submit(submitForm!)
-      })
-
-      await waitFor(() => {
-        expect(screen.getByText('Adjustment created successfully')).toBeDefined()
-      })
-
-      await waitFor(() => {
-        expect(screen.queryByText('Create Inventory Adjustment')).toBeNull()
-      }, { timeout: 3000 })
-    })
-
-    it('reloads adjustment history after successful submission', async () => {
-      openForm()
-      const productButton = getProductButton()
-      act(() => {
-        fireEvent.click(productButton)
-      })
-
-      await waitForDropdownOpen(productButton)
-
-      await selectOption(productButton, /Paracetamol/i)
-
-      const quantityInput = screen.getByLabelText('Quantity *')
-      act(() => {
-        fireEvent.change(quantityInput, { target: { value: '10' } })
-      })
-
-      const unitCostInput = screen.getByLabelText('Unit Cost *')
-      act(() => {
-        fireEvent.change(unitCostInput, { target: { value: '12' } })
-      })
-
-      const supplierButton = getSupplierButton()
-      act(() => {
-        fireEvent.click(supplierButton)
-      })
-
-      await waitForDropdownOpen(supplierButton)
-
-      await selectOption(supplierButton, /ABC Pharma/i)
-
-      const submitButton = screen.getByRole('button', { name: /Increase Stock/i })
-      const submitForm = submitButton.closest('form')
-      act(() => {
-        fireEvent.submit(submitForm!)
-      })
-
-      await waitFor(() => {
-        expect(screen.getByText('Adjustment created successfully')).toBeDefined()
-      })
-
-      await waitFor(() => {
-        expect(screen.getByText('Paracetamol')).toBeDefined()
-      })
-    })
-
-    it('shows API error message on failed submission', async () => {
-      const originalFetch = global.fetch
-      global.fetch = async (url: string) => {
-        if (url.includes('/api/inventory-adjustments') && !url.includes('?')) {
-          return {
-            ok: false,
-            json: async () => ({ error: 'Custom API error' }),
-          } as Response
-        }
-        return defaultFetch(url)
-      }
-
-      openForm()
-      const productButton = getProductButton()
-      act(() => {
-        fireEvent.click(productButton)
-      })
-
-      await waitForDropdownOpen(productButton)
-
-      await selectOption(productButton, /Paracetamol/i)
-
-      const quantityInput = screen.getByLabelText('Quantity *')
-      act(() => {
-        fireEvent.change(quantityInput, { target: { value: '10' } })
-      })
-
-      const unitCostInput = screen.getByLabelText('Unit Cost *')
-      act(() => {
-        fireEvent.change(unitCostInput, { target: { value: '12' } })
-      })
-
-      const supplierButton = getSupplierButton()
-      act(() => {
-        fireEvent.click(supplierButton)
-      })
-
-      await waitForDropdownOpen(supplierButton)
-
-      await selectOption(supplierButton, /ABC Pharma/i)
-
-      const submitButton = screen.getByRole('button', { name: /Increase Stock/i })
-      const submitForm = submitButton.closest('form')
-      act(() => {
-        fireEvent.submit(submitForm!)
-      })
-
-      console.log('Body text after submit:', document.body.textContent?.substring(0, 800))
-      console.log('Error in body:', document.body.textContent?.includes('Custom API error'))
-
-      await waitFor(() => {
-        expect(screen.getByText('Custom API error')).toBeDefined()
-      }, { timeout: 5000 })
-
-      global.fetch = originalFetch
-    })
-  })
+  // describe('form submission behavior', () => {
+  //   Increase operation submission tests are commented out since Increase is disabled in the UI.
+  // })
 
   describe('pagination controls', () => {
     it('shows pagination buttons when totalPages > 1', async () => {

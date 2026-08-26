@@ -57,8 +57,8 @@ interface Adjustment {
 
 const emptyAdjustment = {
   productId: '',
-  operation: 'increase' as 'increase' | 'decrease',
-  type: 'ADJUSTMENT_IN',
+  operation: 'decrease' as 'increase' | 'decrease',
+  type: 'ADJUSTMENT_OUT',
   quantity: 0,
   batchId: '',
   unitCost: 0,
@@ -187,12 +187,12 @@ export default function InventoryAdjustmentsPage() {
   }, [form.productId])
 
   const getAvailableReasons = () => {
-    if (form.operation === 'increase') {
-      return [
-        { value: 'ADJUSTMENT_IN', label: 'Adjustment In (found stock)' },
-        { value: 'OPENING', label: 'Opening Stock' },
-      ]
-    }
+    // if (form.operation === 'increase') {
+    //   return [
+    //     { value: 'ADJUSTMENT_IN', label: 'Adjustment In (found stock)' },
+    //     { value: 'OPENING', label: 'Opening Stock' },
+    //   ]
+    // }
     return [
       { value: 'ADJUSTMENT_OUT', label: 'Adjustment Out (correction)' },
       { value: 'DAMAGED', label: 'Damaged' },
@@ -238,16 +238,16 @@ export default function InventoryAdjustmentsPage() {
       return false
     }
 
-    if (form.operation === 'increase') {
-      if (!form.unitCost || form.unitCost <= 0) {
-        setError('Unit cost is required and must be greater than zero for increases')
-        return false
-      }
-      if (!form.supplierId) {
-        setError('Please select a supplier for stock increases')
-        return false
-      }
-    }
+    // if (form.operation === 'increase') {
+    //   if (!form.unitCost || form.unitCost <= 0) {
+    //     setError('Unit cost is required and must be greater than zero for increases')
+    //     return false
+    //   }
+    //   if (!form.supplierId) {
+    //     setError('Please select a supplier for stock increases')
+    //     return false
+    //   }
+    // }
 
     if (form.operation === 'decrease' && form.batchId) {
       const selectedBatch = batches.find(b => b.id === form.batchId)
@@ -276,10 +276,10 @@ export default function InventoryAdjustmentsPage() {
         notes: form.notes || null,
       }
 
-      if (form.operation === 'increase') {
-        body.unitCost = form.unitCost
-        body.supplierId = form.supplierId
-      }
+      // if (form.operation === 'increase') {
+      //   body.unitCost = form.unitCost
+      //   body.supplierId = form.supplierId
+      // }
 
       const res = await fetch('/api/inventory-adjustments', {
         method: 'POST',
@@ -411,7 +411,7 @@ export default function InventoryAdjustmentsPage() {
             </CardHeader>
             <CardContent className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <h3 className="text-sm font-medium text-blue-900">Increase Stock</h3>
+                {/* <h3 className="text-sm font-medium text-blue-900">Increase Stock</h3>
                 <ul className="text-xs text-blue-800 space-y-1 list-disc list-inside">
                   <li>Select product and choose <strong>Increase</strong></li>
                   <li>Select reason: Adjustment In (found stock) or Opening Stock</li>
@@ -419,9 +419,7 @@ export default function InventoryAdjustmentsPage() {
                   <li>Enter quantity and unit cost (required)</li>
                   <li>Select supplier for traceability</li>
                   <li>System creates a new BatchReceipt layer with the supplied cost</li>
-                </ul>
-              </div>
-              <div className="space-y-2">
+                </ul> */}
                 <h3 className="text-sm font-medium text-blue-900">Decrease Stock</h3>
                 <ul className="text-xs text-blue-800 space-y-1 list-disc list-inside">
                   <li>Select product and choose <strong>Decrease</strong></li>
@@ -459,7 +457,7 @@ export default function InventoryAdjustmentsPage() {
             <CardHeader>
               <CardTitle className="text-base">Create Inventory Adjustment</CardTitle>
               <CardDescription>
-                {form.operation === 'increase' ? 'Increase stock with audit trail' : 'Decrease stock with audit trail'}
+                Decrease stock with audit trail
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -503,7 +501,7 @@ export default function InventoryAdjustmentsPage() {
                 <div className="space-y-2 md:col-span-2 lg:col-span-3">
                   <Label>Operation *</Label>
                   <div className="flex gap-4">
-                    <label className="flex items-center gap-2 cursor-pointer">
+                    {/* <label className="flex items-center gap-2 cursor-pointer">
                       <input
                         type="radio"
                         name="operation"
@@ -513,7 +511,7 @@ export default function InventoryAdjustmentsPage() {
                         className="size-4"
                       />
                       <span className="text-sm font-medium">Increase</span>
-                    </label>
+                    </label> */}
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input
                         type="radio"
@@ -612,7 +610,7 @@ export default function InventoryAdjustmentsPage() {
                   )}
                 </div>
 
-                {!isDecrease && (
+                {/* {!isDecrease && (
                   <>
                     <div className="space-y-2">
                       <Label htmlFor="unitCost">Unit Cost *</Label>
@@ -648,7 +646,7 @@ export default function InventoryAdjustmentsPage() {
                       </SearchableSelect>
                     </div>
                   </>
-                )}
+                )} */}
 
                 <div className="space-y-2 md:col-span-2 lg:col-span-3">
                   <Label htmlFor="notes">Notes</Label>
@@ -666,9 +664,9 @@ export default function InventoryAdjustmentsPage() {
                       {saving ? 'Saving...' : 'Decrease Stock'}
                     </Button>
                   ) : (
-                    <Button type="submit" disabled={saving}>
+                    {/* <Button type="submit" disabled={saving}>
                       {saving ? 'Saving...' : 'Increase Stock'}
-                    </Button>
+                    </Button> */}
                   )}
                   <Button type="button" variant="outline" onClick={() => { setShowForm(false); setError(''); setSuccess('') }}>
                     Cancel
