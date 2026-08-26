@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { CalendarPlus, Check, Plus, Search, UserRound, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -43,6 +43,8 @@ type FollowUpRow = {
   remarks: string
 }
 
+const PAGE_SIZE = 20
+
 function formatDate(value?: string | null) {
   if (!value) return 'Not set'
   const date = new Date(value)
@@ -78,44 +80,49 @@ function mapFollowUp(row: ApiFollowUp): FollowUpRow {
 export function WorkflowWorkspace(_props: { mode?: string } = {}) {
   const router = useRouter()
   const [query, setQuery] = useState('')
+  const [page, setPage] = useState(1)
+  const [total, setTotal] = useState(0)
   const [followUps, setFollowUps] = useState<FollowUpRow[]>([])
   const [selected, setSelected] = useState<FollowUpRow | null>(null)
   const [editor, setEditor] = useState<FollowUpRow | true | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  const loadFollowUps = async (showLoading = true) => {
+  const loadFollowUps = useCallback(async (showLoading = true) => {
     if (showLoading) setLoading(true)
     setError('')
     try {
-      const response = await fetch('/api/follow-ups')
+      const params = new URLSearchParams({ page: String(page), limit: String(PAGE_SIZE) })
+      if (query.trim()) params.set('search', query.trim())
+      const response = await fetch(`/api/follow-ups?${params.toString()}`)
       if (!response.ok) throw new Error('Failed to load follow-ups')
-      const body = await response.json() as { followUps: ApiFollowUp[] }
+      const body = await response.json() as { followUps: ApiFollowUp[]; total?: number }
       const mapped = body.followUps.map(mapFollowUp)
       setFollowUps(mapped)
+      setTotal(body.total ?? mapped.length)
       setSelected(mapped[0] ?? null)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load follow-ups')
       setFollowUps([])
+      setTotal(0)
       setSelected(null)
     } finally {
       if (showLoading) setLoading(false)
     }
-  }
+  }, [page, query])
 
   useEffect(() => {
-    loadFollowUps()
+    void loadFollowUps()
     const timer = setInterval(() => {
       void loadFollowUps(false)
     }, 3000)
     return () => clearInterval(timer)
-  }, [])
-
-  const rows = useMemo(() => {
-    return followUps.filter((row) => `${row.name} ${row.mr} ${row.id} ${row.program}`.toLowerCase().includes(query.toLowerCase()))
-  }, [followUps, query])
+  }, [loadFollowUps])
 
   const openPatient = (mr: string) => router.push(`/patients/${mr}`)
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+  const firstItem = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1
+  const lastItem = Math.min(page * PAGE_SIZE, total)
 
   return (
     <div className="mx-auto max-w-[1600px] space-y-6">
@@ -132,9 +139,9 @@ export function WorkflowWorkspace(_props: { mode?: string } = {}) {
           <CardHeader className="flex-row items-center justify-between">
             <div>
               <CardTitle>Follow-up queue</CardTitle>
-              <CardDescription>{loading ? 'Loading records...' : `${rows.length} records currently shown.`}</CardDescription>
+              <CardDescription>{loading ? 'Loading records...' : `${total} records found.`}</CardDescription>
             </div>
-            <div className="relative"><Search className="absolute left-2.5 top-2 size-4 text-muted-foreground" /><Input className="w-56 pl-8" placeholder="Search MR, patient, reference" value={query} onChange={(e) => setQuery(e.target.value)} /></div>
+            <div className="relative"><Search className="absolute left-2.5 top-2 size-4 text-muted-foreground" /><Input className="w-56 pl-8" placeholder="Search MR, patient, reference" value={query} onChange={(e) => { setPage(1); setQuery(e.target.value) }} /></div>
           </CardHeader>
           <CardContent className="px-0">
             <div className="overflow-x-auto">
@@ -143,7 +150,7 @@ export function WorkflowWorkspace(_props: { mode?: string } = {}) {
                   <tr>{['Patient', 'Address / phone', 'Program', 'Due date', 'Assigned to', 'Status'].map((heading) => <th key={heading} className="px-5 py-3 text-left font-medium">{heading}</th>)}</tr>
                 </thead>
                 <tbody>
-                  {rows.map((row) => (
+                  {followUps.map((row) => (
                     <tr key={row.id} onClick={() => setSelected(row)} className="cursor-pointer border-b hover:bg-muted/50">
                       <td className="px-5 py-4"><p className="font-medium">{row.name}</p><p className="text-xs text-primary">{row.mr}</p></td>
                       <td className="px-5 py-4 text-sm text-muted-foreground">{row.address} - {row.phone}</td>
@@ -153,10 +160,24 @@ export function WorkflowWorkspace(_props: { mode?: string } = {}) {
                       <td className="px-5 py-4">{row.status}</td>
                     </tr>
                   ))}
-                  {!loading && rows.length === 0 && <tr><td className="px-5 py-10 text-center text-sm text-muted-foreground" colSpan={6}>{error || 'No follow-ups found.'}</td></tr>}
+                  {!loading && followUps.length === 0 && <tr><td className="px-5 py-10 text-center text-sm text-muted-foreground" colSpan={6}>{error || 'No follow-ups found.'}</td></tr>}
                 </tbody>
               </table>
             </div>
+            {!loading && (
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t px-5 py-3">
+                <p className="text-xs text-muted-foreground">Showing {firstItem}-{lastItem} of {total}</p>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={page <= 1}>
+                    Previous
+                  </Button>
+                  <span className="text-xs text-muted-foreground">Page {page} of {totalPages}</span>
+                  <Button variant="outline" size="sm" onClick={() => setPage((current) => Math.min(totalPages, current + 1))} disabled={page >= totalPages}>
+                    Next
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
         <aside data-testid="workflow-details-panel" className="xl:sticky xl:top-24 xl:self-start">

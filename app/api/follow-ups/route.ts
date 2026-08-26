@@ -1,21 +1,57 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import type { Prisma } from '@prisma/client';
 
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
     const patientMr = url.searchParams.get('patientMr') || '';
+    const search = url.searchParams.get('search') || '';
+    const pageParam = url.searchParams.get('page');
+    const limitParam = url.searchParams.get('limit');
+    const hasPagination = pageParam !== null || limitParam !== null;
+    const page = hasPagination ? Math.max(1, parseInt(pageParam || '1', 10) || 1) : 0;
+    const limit = hasPagination ? Math.max(1, parseInt(limitParam || '20', 10) || 20) : 0;
+    const skip = hasPagination ? (page - 1) * limit : 0;
 
-    const where: Record<string, unknown> = {};
+    const where: Prisma.FollowUpWhereInput = {};
     if (patientMr) where.patientMr = patientMr;
+    if (search) {
+      where.OR = [
+        { patientMr: { contains: search } },
+        { program: { contains: search } },
+        { assignedTo: { contains: search } },
+        { priority: { contains: search } },
+        { status: { contains: search } },
+        { remarks: { contains: search } },
+        {
+          patient: {
+            is: {
+              OR: [
+                { patientName: { contains: search } },
+                { mobileNumber: { contains: search } },
+                { address: { contains: search } },
+                { district: { contains: search } },
+              ],
+            },
+          },
+        },
+      ];
+    }
 
-    const followUps = await prisma.followUp.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-      include: { patient: true },
-    });
+    const [followUps, total] = await Promise.all([
+      prisma.followUp.findMany({
+        where,
+        ...(hasPagination ? { skip, take: limit } : {}),
+        orderBy: { createdAt: 'desc' },
+        include: { patient: true },
+      }),
+      prisma.followUp.count({ where }),
+    ]);
 
-    return NextResponse.json({ followUps });
+    return hasPagination
+      ? NextResponse.json({ followUps, total, page, limit, totalPages: Math.ceil(total / limit) })
+      : NextResponse.json({ followUps, total });
   } catch (e) {
     console.error('Follow-ups GET error', e);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

@@ -68,6 +68,54 @@ describe('Follow-ups API', () => {
     expect(data.followUps[0].program).toBe('Weight Loss');
   });
 
+  it('GET paginates follow-ups when page and limit are provided', async () => {
+    const patient = await prisma.patient.create({
+      data: {
+        mr: 'MR000001', consultationType: 'NUTRITION', patientName: 'Paged Patient', parentName: 'P',
+        gender: 'Male', mobileNumber: '9999999991', address: 'Addr', district: 'D', state: 'S', pinCode: '123456',
+      },
+    });
+    await prisma.followUp.create({ data: { patientMr: patient.mr, program: 'First follow-up' } });
+    await prisma.followUp.create({ data: { patientMr: patient.mr, program: 'Second follow-up' } });
+    await prisma.followUp.create({ data: { patientMr: patient.mr, program: 'Third follow-up' } });
+
+    const req = new Request('http://localhost/api/follow-ups?page=2&limit=2', { method: 'GET' });
+    const res = await GET(req);
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.followUps).toHaveLength(1);
+    expect(data.total).toBe(3);
+    expect(data.page).toBe(2);
+    expect(data.limit).toBe(2);
+    expect(data.totalPages).toBe(2);
+  });
+
+  it('GET searches follow-ups by patient and follow-up fields before pagination', async () => {
+    const first = await prisma.patient.create({
+      data: {
+        mr: 'MR000001', consultationType: 'NUTRITION', patientName: 'Anu Nair', parentName: 'P',
+        gender: 'Female', mobileNumber: '9999999991', address: 'Addr', district: 'Kannur', state: 'S', pinCode: '123456',
+      },
+    });
+    const second = await prisma.patient.create({
+      data: {
+        mr: 'MR000002', consultationType: 'NUTRITION', patientName: 'Ravi Menon', parentName: 'P',
+        gender: 'Male', mobileNumber: '9999999992', address: 'Addr', district: 'Kochi', state: 'S', pinCode: '123456',
+      },
+    });
+    await prisma.followUp.create({ data: { patientMr: first.mr, program: 'Diet review', assignedTo: 'Front desk' } });
+    await prisma.followUp.create({ data: { patientMr: second.mr, program: 'Therapy review', assignedTo: 'Care team' } });
+
+    const req = new Request('http://localhost/api/follow-ups?page=1&limit=20&search=Anu', { method: 'GET' });
+    const res = await GET(req);
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.followUps).toHaveLength(1);
+    expect(data.followUps[0].patientMr).toBe(first.mr);
+    expect(data.followUps[0].patient.patientName).toBe('Anu Nair');
+    expect(data.total).toBe(1);
+  });
+
   it('PATCH updates a follow-up without requiring a visit', async () => {
     const patient = await prisma.patient.create({
       data: {
