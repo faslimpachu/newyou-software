@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, waitFor, fireEvent, act, within, cleanup } from '@testing-library/react'
 import PurchaseInvoicesPage from '@/app/purchase-invoices/page'
 
@@ -191,6 +191,71 @@ describe('Purchase Invoices Page UI', () => {
     await waitFor(() => {
       expect(screen.getByText('Purchase Invoice: PINV-20260820-0001')).toBeDefined()
     })
+  })
+
+  it('prints the purchase invoice in A5 with the selected invoice data', async () => {
+    await waitFor(() => {
+      expect(screen.getByText('PINV-20260820-0001')).toBeDefined()
+    })
+    const actionCell = screen.getByText('PINV-20260820-0001').closest('tr')!
+    const viewButton = within(actionCell).getByRole('button')
+    act(() => {
+      fireEvent.click(viewButton)
+    })
+    await waitFor(() => {
+      expect(screen.getByText('Purchase Invoice: PINV-20260820-0001')).toBeDefined()
+    })
+
+    const openSpy = vi.fn()
+    const writeSpy = vi.fn()
+    const closeSpy = vi.fn()
+    const focusSpy = vi.fn()
+    const printSpy = vi.fn()
+    const frameDoc = { open: openSpy, write: writeSpy, close: closeSpy }
+    const iframe = {
+      style: { cssText: '' },
+      contentDocument: frameDoc,
+      contentWindow: { document: frameDoc, focus: focusSpy, print: printSpy },
+      parentNode: document.body,
+      onload: null,
+    } as unknown as HTMLIFrameElement
+    const originalCreateElement = document.createElement.bind(document)
+    const createElementSpy = vi.spyOn(document, 'createElement').mockImplementation((tagName: string) => {
+      if (tagName.toLowerCase() === 'iframe') return iframe
+      return originalCreateElement(tagName)
+    })
+    const appendChildSpy = vi.spyOn(document.body, 'appendChild').mockImplementation((node) => node)
+    const removeChildSpy = vi.spyOn(document.body, 'removeChild').mockImplementation((node) => node)
+    vi.useFakeTimers()
+
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: /Print/i }))
+      vi.advanceTimersByTime(100)
+    })
+
+    expect(createElementSpy).toHaveBeenCalledWith('iframe')
+    expect(appendChildSpy).toHaveBeenCalledWith(iframe)
+    expect(openSpy).toHaveBeenCalled()
+    expect(writeSpy).toHaveBeenCalledTimes(1)
+    expect(printSpy).toHaveBeenCalled()
+    const html = writeSpy.mock.calls[0][0] as string
+    expect(html).toContain('@page { size: A5 portrait; margin: 10mm; }')
+    expect(html).toContain('Purchase Invoice')
+    expect(html).toContain('PINV-20260820-0001')
+    expect(html).toContain('Om Sai Medical')
+    expect(html).toContain('Paracetamol')
+    expect(html).toContain('BATCH-001')
+    expect(html).not.toContain('overflow')
+    expect(closeSpy).toHaveBeenCalled()
+    expect(focusSpy).toHaveBeenCalled()
+
+    act(() => {
+      vi.advanceTimersByTime(1000)
+    })
+    vi.useRealTimers()
+    createElementSpy.mockRestore()
+    appendChildSpy.mockRestore()
+    removeChildSpy.mockRestore()
   })
 
   it('shows Add Item button in create form', async () => {

@@ -23,7 +23,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { SearchableSelect, SearchableSelectItem } from '@/components/ui/searchable-select'
 import { DashboardShell } from '@/components/dashboard/dashboard-shell'
-import { Plus, Trash2, Eye, HelpCircle, Info } from 'lucide-react'
+import { Plus, Trash2, Eye, HelpCircle, Info, Printer } from 'lucide-react'
 
 interface Supplier {
   id: string
@@ -94,6 +94,146 @@ const emptyItem: InvoiceItem = {
   batchNumber: '',
   expiryDate: '',
   gstPercent: 0,
+}
+
+const printMoney = (value: number) => `Rs. ${value.toLocaleString('en-IN')}`
+const printDate = (value: string | null) => value ? new Date(value).toLocaleDateString('en-IN') : '-'
+const escapePrintHtml = (value: string | number | null | undefined) => String(value ?? '')
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+  .replace(/'/g, '&#039;')
+
+function buildPurchaseInvoicePrintHtml(invoice: PurchaseInvoice): string {
+  const rows = invoice.items.map((item, index) => `
+    <tr>
+      <td>${index + 1}</td>
+      <td>
+        <strong>${escapePrintHtml(item.product.name)}</strong>
+        ${item.product.sku ? `<br><span>${escapePrintHtml(item.product.sku)}</span>` : ''}
+      </td>
+      <td class="right">${escapePrintHtml(item.quantity)} ${escapePrintHtml(item.product.unit)}</td>
+      <td class="right">${escapePrintHtml(printMoney(item.purchaseRate))}</td>
+      <td>${escapePrintHtml(item.batchNumber || '-')}</td>
+      <td>${escapePrintHtml(printDate(item.expiryDate))}</td>
+      <td class="right">${escapePrintHtml(printMoney(item.amount))}</td>
+    </tr>
+  `).join('')
+
+  return `<!doctype html>
+<html>
+<head>
+  <title>Purchase Invoice ${escapePrintHtml(invoice.invoiceNumber)}</title>
+  <style>
+    @page { size: A5 portrait; margin: 10mm; }
+    * { box-sizing: border-box; }
+    body { margin: 0; color: #111827; font-family: Arial, sans-serif; font-size: 11px; }
+    .letterhead { border-bottom: 2px solid #111827; padding-bottom: 10px; text-align: center; }
+    .letterhead h1 { font-size: 22px; margin: 0; }
+    .letterhead p { color: #4b5563; line-height: 1.4; margin: 3px 0 0; }
+    .title { display: flex; justify-content: space-between; gap: 16px; margin: 14px 0; }
+    .title h2 { font-size: 15px; margin: 0; text-transform: uppercase; }
+    .title p { margin: 2px 0 0; text-align: right; }
+    .box { border: 1px solid #d1d5db; display: grid; gap: 7px 18px; grid-template-columns: 1fr 1fr; padding: 10px; }
+    .label { color: #6b7280; display: block; font-size: 10px; text-transform: uppercase; }
+    table { border-collapse: collapse; margin-top: 14px; table-layout: fixed; width: 100%; }
+    th { border-bottom: 2px solid #111827; font-size: 10px; padding: 7px 5px; text-align: left; text-transform: uppercase; }
+    td { border-bottom: 1px solid #e5e7eb; padding: 7px 5px; vertical-align: top; word-break: break-word; }
+    th:nth-child(1), td:nth-child(1) { width: 8%; }
+    th:nth-child(2), td:nth-child(2) { width: 26%; }
+    th:nth-child(3), td:nth-child(3) { width: 12%; }
+    th:nth-child(4), td:nth-child(4) { width: 14%; }
+    th:nth-child(5), td:nth-child(5) { width: 15%; }
+    th:nth-child(6), td:nth-child(6) { width: 13%; }
+    th:nth-child(7), td:nth-child(7) { width: 12%; }
+    .right { text-align: right; }
+    .totals { margin-left: auto; margin-top: 12px; width: 210px; }
+    .totals div { display: flex; justify-content: space-between; padding: 3px 0; }
+    .grand { border-top: 2px solid #111827; font-size: 13px; font-weight: 700; margin-top: 4px; padding-top: 6px; }
+    .notes { margin-top: 12px; }
+    .footer { color: #6b7280; font-size: 10px; margin-top: 24px; text-align: center; }
+  </style>
+</head>
+<body>
+  <header class="letterhead">
+    <h1>NEW YOU</h1>
+    <p>Center for Weight Management</p>
+    <p>Onden Road, Kannur - 670001, Kerala<br>PH: 8111999581 / 8111999582</p>
+  </header>
+  <section class="title">
+    <div>
+      <h2>Purchase Invoice</h2>
+      <p><strong>${escapePrintHtml(invoice.invoiceNumber)}</strong></p>
+    </div>
+    <div>
+      <p><span class="label">Invoice Date</span>${escapePrintHtml(printDate(invoice.invoiceDate))}</p>
+      <p><span class="label">Status</span>${escapePrintHtml(invoice.status)}</p>
+    </div>
+  </section>
+  <section class="box">
+    <div><span class="label">Supplier</span>${escapePrintHtml(invoice.supplier.supplierName)}</div>
+    <div><span class="label">Payment Mode</span>${escapePrintHtml(invoice.paymentMode || '-')}</div>
+    <div><span class="label">Due Date</span>${escapePrintHtml(printDate(invoice.dueDate))}</div>
+    <div><span class="label">Notes</span>${escapePrintHtml(invoice.notes || '-')}</div>
+  </section>
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Product</th>
+        <th class="right">Qty</th>
+        <th class="right">Rate</th>
+        <th>Batch</th>
+        <th>Expiry</th>
+        <th class="right">Amount</th>
+      </tr>
+    </thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <section class="totals">
+    <div><span>Subtotal</span><span>${escapePrintHtml(printMoney(invoice.subtotal))}</span></div>
+    <div><span>Tax</span><span>${escapePrintHtml(printMoney(invoice.tax))}</span></div>
+    <div class="grand"><span>Grand Total</span><span>${escapePrintHtml(printMoney(invoice.grandTotal))}</span></div>
+    <div><span>Paid</span><span>${escapePrintHtml(printMoney(invoice.paid))}</span></div>
+    <div><span>Balance</span><span>${escapePrintHtml(printMoney(invoice.balance))}</span></div>
+  </section>
+  <p class="footer">This is a computer-generated purchase invoice.</p>
+</body>
+</html>`
+}
+
+function printPurchaseInvoice(invoice: PurchaseInvoice) {
+  const printFrame = document.createElement('iframe')
+  printFrame.style.cssText = 'position:fixed;left:0;top:0;width:0;height:0;border:0;opacity:0;pointer-events:none'
+  document.body.appendChild(printFrame)
+
+  const frameDoc = printFrame.contentDocument || printFrame.contentWindow?.document
+  if (!frameDoc) {
+    window.alert('Unable to create print preview. Please try again.')
+    document.body.removeChild(printFrame)
+    return
+  }
+
+  frameDoc.open()
+  frameDoc.write(buildPurchaseInvoicePrintHtml(invoice))
+  frameDoc.close()
+
+  let printed = false
+  const doPrint = () => {
+    if (printed) return
+    printed = true
+    printFrame.contentWindow?.focus()
+    printFrame.contentWindow?.print()
+    setTimeout(() => {
+      if (printFrame.parentNode) {
+        document.body.removeChild(printFrame)
+      }
+    }, 1000)
+  }
+
+  printFrame.onload = doPrint
+  setTimeout(doPrint, 100)
 }
 
 export default function PurchaseInvoicesPage() {
@@ -778,9 +918,15 @@ export default function PurchaseInvoicesPage() {
                     {new Date(viewingInvoice.invoiceDate).toLocaleDateString('en-IN')} · {viewingInvoice.supplier.supplierName}
                   </CardDescription>
                 </div>
-                <Button variant="outline" size="sm" onClick={() => setViewingInvoice(null)}>
-                  Close
-                </Button>
+                <div className="purchase-invoice-print-actions flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => printPurchaseInvoice(viewingInvoice)}>
+                    <Printer className="mr-2 size-4" />
+                    Print
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => setViewingInvoice(null)}>
+                    Close
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
