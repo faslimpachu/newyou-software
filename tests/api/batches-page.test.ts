@@ -252,6 +252,7 @@ describe('Batches Page API', () => {
           paymentMode: 'CASH',
           items: [
             { productId: product.id, quantity: 50, purchaseRate: 10, batchNumber: 'SEARCH-BATCH-1', expiryDate: '2026-12-31' },
+            { productId: product.id, quantity: 50, purchaseRate: 10, batchNumber: 'OTHER-BATCH', expiryDate: '2026-12-31' },
           ],
         }),
       })
@@ -296,6 +297,7 @@ describe('Batches Page API', () => {
           paymentMode: 'CASH',
           items: [
             { productId: product.id, quantity: 50, purchaseRate: 10, batchNumber: 'BATCH-SEARCH-2', expiryDate: '2026-12-31' },
+            { productId: product.id, quantity: 50, purchaseRate: 10, batchNumber: 'BATCH-SEARCH-2B', expiryDate: '2026-12-31' },
           ],
         }),
       })
@@ -305,7 +307,158 @@ describe('Batches Page API', () => {
     const res = await BatchesGet(req)
     expect(res.status).toBe(200)
     const data = await res.json()
-    expect(data.batches.length).toBeGreaterThanOrEqual(1)
+    expect(data.batches).toHaveLength(2)
+    const batchNumbers = data.batches.map((b: any) => b.batchNumber).sort()
+    expect(batchNumbers).toEqual(['BATCH-SEARCH-2', 'BATCH-SEARCH-2B'])
+  })
+
+  it('GET /api/batches search by supplier name', async () => {
+    const supplierA = await prisma.supplier.create({
+      data: { supplierName: 'Alpha Supplier', status: 'ACTIVE' },
+    })
+    const supplierB = await prisma.supplier.create({
+      data: { supplierName: 'Beta Supplier', status: 'ACTIVE' },
+    })
+    const category = await prisma.productCategory.create({
+      data: { name: 'Medicines', active: true },
+    })
+    const product = await prisma.product.create({
+      data: {
+        name: 'Supplier Search Product',
+        code: 'PRD-BATCH-SEARCH-3',
+        categoryId: category.id,
+        unit: 'pcs',
+        purchasePrice: 10,
+        sellingPrice: 15,
+        currentStock: 0,
+        minimumStock: 10,
+        maximumStock: 200,
+      },
+    })
+
+    await PurchasePost(
+      new Request('http://localhost/api/purchase-invoices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          invoiceDate: '2026-08-18',
+          supplierId: supplierA.id,
+          paymentMode: 'CASH',
+          items: [
+            { productId: product.id, quantity: 50, purchaseRate: 10, batchNumber: 'BATCH-ALPHA', expiryDate: '2026-12-31' },
+          ],
+        }),
+      })
+    )
+
+    await PurchasePost(
+      new Request('http://localhost/api/purchase-invoices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          invoiceDate: '2026-08-18',
+          supplierId: supplierB.id,
+          paymentMode: 'CASH',
+          items: [
+            { productId: product.id, quantity: 50, purchaseRate: 12, batchNumber: 'BATCH-BETA', expiryDate: '2026-12-31' },
+          ],
+        }),
+      })
+    )
+
+    const req = new Request('http://localhost/api/batches?search=Alpha', { method: 'GET' })
+    const res = await BatchesGet(req)
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.batches).toHaveLength(1)
+    expect(data.batches[0].batchNumber).toBe('BATCH-ALPHA')
+  })
+
+  it('GET /api/batches search is case-sensitive', async () => {
+    const supplier = await prisma.supplier.create({
+      data: { supplierName: 'Case Supplier', status: 'ACTIVE' },
+    })
+    const category = await prisma.productCategory.create({
+      data: { name: 'Medicines', active: true },
+    })
+    const product = await prisma.product.create({
+      data: {
+        name: 'Case Product',
+        code: 'PRD-BATCH-SEARCH-4',
+        categoryId: category.id,
+        unit: 'pcs',
+        purchasePrice: 10,
+        sellingPrice: 15,
+        currentStock: 0,
+        minimumStock: 10,
+        maximumStock: 200,
+      },
+    })
+
+    await PurchasePost(
+      new Request('http://localhost/api/purchase-invoices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          invoiceDate: '2026-08-18',
+          supplierId: supplier.id,
+          paymentMode: 'CASH',
+          items: [
+            { productId: product.id, quantity: 50, purchaseRate: 10, batchNumber: 'CASE-BATCH-1', expiryDate: '2026-12-31' },
+          ],
+        }),
+      })
+    )
+
+    const req = new Request('http://localhost/api/batches?search=CASE-BATCH-1', { method: 'GET' })
+    const res = await BatchesGet(req)
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.batches).toHaveLength(1)
+    expect(data.batches[0].batchNumber).toBe('CASE-BATCH-1')
+  })
+
+  it('GET /api/batches search with no matches returns empty list', async () => {
+    const supplier = await prisma.supplier.create({
+      data: { supplierName: 'Batch Supplier', status: 'ACTIVE' },
+    })
+    const category = await prisma.productCategory.create({
+      data: { name: 'Medicines', active: true },
+    })
+    const product = await prisma.product.create({
+      data: {
+        name: 'No Match Product',
+        code: 'PRD-BATCH-SEARCH-5',
+        categoryId: category.id,
+        unit: 'pcs',
+        purchasePrice: 10,
+        sellingPrice: 15,
+        currentStock: 0,
+        minimumStock: 10,
+        maximumStock: 200,
+      },
+    })
+
+    await PurchasePost(
+      new Request('http://localhost/api/purchase-invoices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          invoiceDate: '2026-08-18',
+          supplierId: supplier.id,
+          paymentMode: 'CASH',
+          items: [
+            { productId: product.id, quantity: 50, purchaseRate: 10, batchNumber: 'NO-MATCH-BATCH', expiryDate: '2026-12-31' },
+          ],
+        }),
+      })
+    )
+
+    const req = new Request('http://localhost/api/batches?search=NONEXISTENT', { method: 'GET' })
+    const res = await BatchesGet(req)
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.batches).toHaveLength(0)
   })
 
   it('GET /api/batches includes receipt details with supplier and invoice', async () => {

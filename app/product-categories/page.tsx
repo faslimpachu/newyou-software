@@ -66,6 +66,14 @@ export default function ProductCategoriesPage() {
     loadCategories()
   }, [])
 
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      void loadCategories()
+    }, 3000)
+
+    return () => window.clearInterval(interval)
+  }, [])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')

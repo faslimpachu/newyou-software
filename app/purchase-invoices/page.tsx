@@ -319,6 +319,16 @@ export default function PurchaseInvoicesPage() {
     loadProducts()
   }, [search, filterSupplierId, filterStatus])
 
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      void loadInvoices(page)
+      void loadSuppliers()
+      void loadProducts()
+    }, 3000)
+
+    return () => window.clearInterval(interval)
+  }, [page, pageSize, search, filterSupplierId, filterStatus])
+
   const handlePrevPage = () => {
     if (page > 1) {
       loadInvoices(page - 1)

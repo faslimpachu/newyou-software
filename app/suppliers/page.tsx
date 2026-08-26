@@ -129,8 +129,12 @@ export default function SuppliersPage() {
   }, [loadSuppliers])
 
   useEffect(() => {
-    loadSuppliers(1)
-  }, [loadSuppliers])
+    const interval = window.setInterval(() => {
+      void loadSuppliers(page)
+    }, 3000)
+
+    return () => window.clearInterval(interval)
+  }, [loadSuppliers, page])
 
   const handlePrevPage = () => {
     if (page > 1) {

@@ -64,8 +64,8 @@ export default function BatchesPage() {
   const [total, setTotal] = useState(0)
   const [showHelp, setShowHelp] = useState(false)
 
-  const loadBatches = useCallback(async (pageNum = 1) => {
-    setLoading(true)
+  const loadBatches = useCallback(async (pageNum = 1, showLoading = true) => {
+    if (showLoading) setLoading(true)
     setError('')
     try {
       const params = new URLSearchParams()
@@ -84,13 +84,21 @@ export default function BatchesPage() {
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load batches')
     } finally {
-      setLoading(false)
+      if (showLoading) setLoading(false)
     }
   }, [search, statusFilter, pageSize])
 
   useEffect(() => {
     loadBatches(1)
   }, [loadBatches])
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      void loadBatches(page, false)
+    }, 3000)
+
+    return () => window.clearInterval(interval)
+  }, [loadBatches, page])
 
   const handlePrevPage = () => {
     if (page > 1) {

@@ -59,8 +59,8 @@ export default function InventoryTransactionsPage() {
   const [total, setTotal] = useState(0)
   const [showHelp, setShowHelp] = useState(false)
 
-  const loadTransactions = async (pageNum = 1) => {
-    setLoading(true)
+  const loadTransactions = async (pageNum = 1, showLoading = true) => {
+    if (showLoading) setLoading(true)
     try {
       const params = new URLSearchParams()
       if (filters.productId) params.set('productId', filters.productId)
@@ -80,7 +80,7 @@ export default function InventoryTransactionsPage() {
     } catch (e) {
       console.error(e)
     } finally {
-      setLoading(false)
+      if (showLoading) setLoading(false)
     }
   }
 
@@ -103,6 +103,15 @@ export default function InventoryTransactionsPage() {
   useEffect(() => {
     loadTransactions(1)
   }, [filters])
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      void loadTransactions(page, false)
+      void loadProducts()
+    }, 3000)
+
+    return () => window.clearInterval(interval)
+  }, [filters, page, pageSize])
 
   const handlePrevPage = () => {
     if (page > 1) {

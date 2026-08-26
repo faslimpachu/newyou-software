@@ -176,6 +176,15 @@ export default function ProductsPage() {
     loadLowStockCount()
   }, [search, filterCategory, loadProducts, loadLowStockCount])
 
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      void loadProducts(page)
+      void loadLowStockCount()
+    }, 3000)
+
+    return () => window.clearInterval(interval)
+  }, [loadProducts, loadLowStockCount, page])
+
   const validate = useCallback((): boolean => {
     const errors: FieldError = {}
 

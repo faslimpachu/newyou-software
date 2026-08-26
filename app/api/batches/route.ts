@@ -42,6 +42,21 @@ export async function GET(request: Request) {
       where.expiryDate = null
     }
 
+    const search = url.searchParams.get('search')?.trim() || ''
+    if (search) {
+      where.OR = [
+        { batchNumber: { contains: search } },
+        { product: { name: { contains: search } } },
+        {
+          receipts: {
+            some: {
+              supplier: { supplierName: { contains: search } },
+            },
+          },
+        },
+      ]
+    }
+
     const [batches, total] = await Promise.all([
       prisma.productBatch.findMany({
         where,

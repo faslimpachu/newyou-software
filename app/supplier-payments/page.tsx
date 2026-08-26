@@ -162,6 +162,18 @@ export default function SupplierPaymentsPage() {
     loadSuppliers()
   }, [])
 
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      void loadPayments(page)
+      void loadSuppliers()
+      if (form.supplierId) {
+        void loadInvoices(form.supplierId)
+      }
+    }, 3000)
+
+    return () => window.clearInterval(interval)
+  }, [page, pageSize, form.supplierId])
+
   const handlePrevPage = () => {
     if (page > 1) {
       loadPayments(page - 1)

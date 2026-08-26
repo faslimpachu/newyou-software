@@ -155,6 +155,19 @@ export default function InventoryAdjustmentsPage() {
     loadSuppliers()
   }, [])
 
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      void loadAdjustments(page)
+      void loadProducts()
+      void loadSuppliers()
+      if (form.productId) {
+        void loadBatches(form.productId)
+      }
+    }, 3000)
+
+    return () => window.clearInterval(interval)
+  }, [page, pageSize, form.productId])
+
   const handlePrevPage = () => {
     if (page > 1) {
       loadAdjustments(page - 1)
