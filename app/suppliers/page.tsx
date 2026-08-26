@@ -432,7 +432,7 @@ export default function SuppliersPage() {
                     <p className="text-xs text-destructive">{fieldErrors.gstNumber}</p>
                   )}
                 </div>
-                <div className="space-y-2">
+                {/* <div className="space-y-2">
                   <Label htmlFor="openingBalance">Opening Balance</Label>
                   <Input
                     id="openingBalance"
@@ -445,7 +445,7 @@ export default function SuppliersPage() {
                   {fieldErrors.openingBalance && (
                     <p className="text-xs text-destructive">{fieldErrors.openingBalance}</p>
                   )}
-                </div>
+                </div> */}
                 <div className="space-y-2">
                   <Label htmlFor="status">Status</Label>
                   <Select value={form.status} onValueChange={(value) => setForm({ ...form, status: value || 'ACTIVE' })}>
@@ -510,7 +510,7 @@ export default function SuppliersPage() {
                     <TableHead>Phone</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>GST Number</TableHead>
-                    <TableHead className="text-right">Opening Balance</TableHead>
+                    {/* <TableHead className="text-right">Opening Balance</TableHead> */}
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -523,8 +523,8 @@ export default function SuppliersPage() {
                       <TableCell>{supplier.phone ? formatPhoneDisplay(supplier.phone) : '-'}</TableCell>
                       <TableCell>{supplier.email || '-'}</TableCell>
                       <TableCell>{supplier.gstNumber || '-'}</TableCell>
-                      <TableCell className="text-right tabular-nums">₹{supplier.openingBalance.toLocaleString('en-IN')}</TableCell>
-                      <TableCell>
+                      {/* <TableCell className="text-right tabular-nums">₹{supplier.openingBalance.toLocaleString('en-IN')}</TableCell> */}
+                       <TableCell>
                         <Badge variant={supplier.status === 'ACTIVE' ? 'default' : 'destructive'}>
                           {supplier.status}
                         </Badge>
@@ -548,7 +548,7 @@ export default function SuppliersPage() {
                   ))}
                   {suppliers.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center text-muted-foreground">
+                       <TableCell colSpan={7} className="text-center text-muted-foreground">
                         No suppliers found
                       </TableCell>
                     </TableRow>

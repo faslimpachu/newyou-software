@@ -115,19 +115,19 @@ describe('Suppliers Page UI', () => {
     fireEvent.click(createButtons[createButtons.length - 1])
     expect(screen.getByText('Add a new supplier to the system')).toBeDefined()
     expect(screen.getByLabelText('Supplier Name *')).toBeDefined()
-    expect(screen.getByLabelText('Opening Balance')).toBeDefined()
+    // Opening Balance field is commented out in the UI.
   })
 
-  it('allows entering opening balance value', async () => {
-    await waitFor(() => {
-      expect(screen.getByText('Create Supplier')).toBeDefined()
-    })
-    const createButtons = screen.getAllByText('Create Supplier')
-    fireEvent.click(createButtons[createButtons.length - 1])
-    const openingBalanceInput = screen.getByLabelText('Opening Balance')
-    fireEvent.change(openingBalanceInput, { target: { value: '5000' } })
-    expect(openingBalanceInput).toHaveValue(5000)
-  })
+  // it('allows entering opening balance value', async () => {
+  //   await waitFor(() => {
+  //     expect(screen.getByText('Create Supplier')).toBeDefined()
+  //   })
+  //   const createButtons = screen.getAllByText('Create Supplier')
+  //   fireEvent.click(createButtons[createButtons.length - 1])
+  //   const openingBalanceInput = screen.getByLabelText('Opening Balance')
+  //   fireEvent.change(openingBalanceInput, { target: { value: '5000' } })
+  //   expect(openingBalanceInput).toHaveValue(5000)
+  // })
 
   it('shows validation error for empty supplier name on submit', async () => {
     await waitFor(() => {
@@ -140,11 +140,11 @@ describe('Suppliers Page UI', () => {
     expect(screen.getByText('Supplier name is required')).toBeDefined()
   })
 
-  it('displays formatted opening balance', async () => {
-    await waitFor(() => {
-      expect(screen.getByText('₹15,000')).toBeDefined()
-    })
-  })
+  // it('displays formatted opening balance', async () => {
+  //   await waitFor(() => {
+  //     expect(screen.getByText('₹15,000')).toBeDefined()
+  //   })
+  // })
 
   it('displays ACTIVE badge', async () => {
     await waitFor(() => {
