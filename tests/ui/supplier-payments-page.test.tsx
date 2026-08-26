@@ -104,6 +104,14 @@ global.fetch = async (url: string) => {
     } as Response
   }
   if (url.includes('/api/purchase-invoices')) {
+    if (url.includes('status=PENDING')) {
+      return {
+        ok: true,
+        json: async () => ({
+          invoices: mockInvoices.filter((inv) => Number(inv.balance) > 0 && (inv.status === 'PENDING' || inv.status === 'PARTIAL' || inv.status === 'OVERDUE')),
+        }),
+      } as Response
+    }
     return {
       ok: true,
       json: async () => ({ invoices: mockInvoices }),
@@ -166,8 +174,14 @@ describe('Supplier Payments Page UI', () => {
     await waitFor(() => {
       expect(screen.getByText('Total Payments')).toBeDefined()
     })
-    expect(screen.getByText('Pending Invoices')).toBeDefined()
-    expect(screen.getByText('Overdue Invoices')).toBeDefined()
+    expect(screen.getByText('Pending Payments')).toBeDefined()
+  })
+
+  it('shows correct pending payments total balance', async () => {
+    await waitFor(() => {
+      expect(screen.getByText('Pending Payments')).toBeDefined()
+    })
+    expect(screen.getByText('₹2,620')).toBeDefined()
   })
 
   it('shows payment count in stats', async () => {
@@ -406,6 +420,14 @@ describe('Supplier Payments Page UI', () => {
         } as Response
       }
       if (url.includes('/api/purchase-invoices')) {
+        if (url.includes('status=PENDING')) {
+          return {
+            ok: true,
+            json: async () => ({
+              invoices: mockInvoices.filter((inv: any) => Number(inv.balance) > 0 && (inv.status === 'PENDING' || inv.status === 'PARTIAL' || inv.status === 'OVERDUE')),
+            }),
+          } as Response
+        }
         return {
           ok: true,
           json: async () => ({ invoices: mockInvoices }),
@@ -513,6 +535,14 @@ describe('Supplier Payments Page UI', () => {
         } as Response
       }
       if (url.includes('/api/purchase-invoices')) {
+        if (url.includes('status=PENDING')) {
+          return {
+            ok: true,
+            json: async () => ({
+              invoices: mockInvoices.filter((inv: any) => Number(inv.balance) > 0 && (inv.status === 'PENDING' || inv.status === 'PARTIAL' || inv.status === 'OVERDUE')),
+            }),
+          } as Response
+        }
         return {
           ok: true,
           json: async () => ({ invoices: mockInvoices }),

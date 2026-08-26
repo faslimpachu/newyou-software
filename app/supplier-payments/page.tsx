@@ -23,7 +23,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { SearchableSelect, SearchableSelectItem } from '@/components/ui/searchable-select'
 import { DashboardShell } from '@/components/dashboard/dashboard-shell'
-import { Plus, IndianRupee, AlertCircle, CheckCircle2, Clock, TrendingUp, HelpCircle, Info } from 'lucide-react'
+import { Plus, IndianRupee, AlertCircle, CheckCircle2, Clock, TrendingUp, HelpCircle, Info, Wallet } from 'lucide-react'
 
 interface Supplier {
   id: string
@@ -98,6 +98,7 @@ export default function SupplierPaymentsPage() {
   const [total, setTotal] = useState(0)
   const [form, setForm] = useState(emptyPayment)
   const [showHelp, setShowHelp] = useState(false)
+  const [allPendingInvoices, setAllPendingInvoices] = useState<Invoice[]>([])
 
   const selectedInvoice = invoices.find((inv) => inv.id === form.invoiceId)
 
@@ -110,10 +111,14 @@ export default function SupplierPaymentsPage() {
 
   const stats = useMemo(() => {
     const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0)
-    const pendingCount = payments.filter((p) => p.invoice?.status === 'PENDING').length
-    const overdueCount = payments.filter((p) => p.invoice?.status === 'OVERDUE').length
-    return { totalPaid, pendingCount, overdueCount }
-  }, [payments])
+    const pendingPayments = allPendingInvoices
+      .filter((inv) => {
+        const status = inv.status
+        return status === 'PENDING' || status === 'PARTIAL' || status === 'OVERDUE'
+      })
+      .reduce((sum, inv) => sum + Number(inv.balance), 0)
+    return { totalPaid, pendingPayments }
+  }, [payments, allPendingInvoices])
 
   const loadPayments = async (pageNum = 1) => {
     try {
@@ -149,6 +154,19 @@ export default function SupplierPaymentsPage() {
     }
   }
 
+  const loadAllPendingInvoices = async () => {
+    try {
+      const res = await fetch('/api/purchase-invoices?status=PENDING')
+      if (res.ok) {
+        const data = await res.json()
+        const pending = data.invoices.filter((inv: Invoice) => Number(inv.balance) > 0)
+        setAllPendingInvoices(pending)
+      }
+    } catch {
+      // ignore
+    }
+  }
+
   const loadInvoices = async (supplierId: string) => {
     if (!supplierId) {
       setInvoices([])
@@ -173,12 +191,14 @@ export default function SupplierPaymentsPage() {
   useEffect(() => {
     loadPayments(1)
     loadSuppliers()
+    loadAllPendingInvoices()
   }, [])
 
   useEffect(() => {
     const interval = window.setInterval(() => {
       void loadPayments(page)
       void loadSuppliers()
+      void loadAllPendingInvoices()
       if (form.supplierId) {
         void loadInvoices(form.supplierId)
       }
@@ -494,7 +514,7 @@ export default function SupplierPaymentsPage() {
           </Card>
         )}
 
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">Total Payments</CardTitle>
@@ -509,26 +529,14 @@ export default function SupplierPaymentsPage() {
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Pending Invoices</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Pending Payments</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex items-center gap-2">
-                <Clock className="size-4 text-yellow-600" />
-                <span className="text-2xl font-semibold">{stats.pendingCount}</span>
+                <Wallet className="size-4 text-yellow-600" />
+                <span className="text-2xl font-semibold">₹{stats.pendingPayments.toLocaleString('en-IN')}</span>
               </div>
-              <p className="text-xs text-muted-foreground mt-1">Awaiting payment</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Overdue Invoices</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-2">
-                <AlertCircle className="size-4 text-red-600" />
-                <span className="text-2xl font-semibold">{stats.overdueCount}</span>
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">Past due date</p>
+              <p className="text-xs text-muted-foreground mt-1">outstanding</p>
             </CardContent>
           </Card>
         </div>
