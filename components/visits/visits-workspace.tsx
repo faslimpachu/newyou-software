@@ -117,7 +117,7 @@ export function VisitsWorkspace() {
           <div>
             <p className="text-xs font-medium uppercase tracking-wider text-primary">Patient Care</p>
             <h1 className="mt-1 font-display text-2xl font-semibold">Visit Management</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Manage today's outpatient queue, consultation assignments, and visit progression.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Manage outpatient queue, consultation assignments, and visit progression.</p>
           </div>
         </div>
 
@@ -138,7 +138,7 @@ export function VisitsWorkspace() {
         <Card className="rounded-lg shadow-sm">
           <CardHeader className="flex-row items-center justify-between">
             <div>
-              <CardTitle>Today's visits</CardTitle>
+              <CardTitle>Visit queue</CardTitle>
               <CardDescription>{total} appointments found.</CardDescription>
             </div>
             <div className="flex flex-wrap items-center gap-2">
