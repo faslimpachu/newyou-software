@@ -94,6 +94,52 @@ describe('Inventory Transactions Page UI', () => {
         expect(screen.getByText('PINV-001')).toBeDefined()
       })
     })
+
+    it('product select shows product name after selection, not UUID', async () => {
+      render(<InventoryTransactionsPage />)
+
+      const selectTrigger = document.getElementById('productId') as HTMLElement
+      act(() => {
+        fireEvent.click(selectTrigger)
+      })
+
+      const option = await screen.findByRole('option', { name: 'Paracetamol' })
+      act(() => {
+        fireEvent.pointerDown(option, { pointerType: 'mouse' })
+        fireEvent.click(option)
+      })
+
+      await waitFor(() => {
+        expect(screen.queryByRole('option', { name: 'Paracetamol' })).toBeNull()
+      })
+
+      await waitFor(() => {
+        const updatedTrigger = document.getElementById('productId') as HTMLElement
+        expect(updatedTrigger.textContent).toContain('Paracetamol')
+        expect(updatedTrigger.textContent).toContain('(MED001)')
+      })
+    })
+
+    it('product dropdown items do not show SKU to prevent congestion', async () => {
+      render(<InventoryTransactionsPage />)
+
+      const selectTrigger = document.getElementById('productId') as HTMLElement
+      act(() => {
+        fireEvent.click(selectTrigger)
+      })
+
+      const option = await screen.findByRole('option', { name: 'Paracetamol' })
+      expect(option.textContent).toBe('Paracetamol')
+
+      act(() => {
+        fireEvent.pointerDown(option, { pointerType: 'mouse' })
+        fireEvent.click(option)
+      })
+
+      await waitFor(() => {
+        expect(screen.queryByRole('option', { name: 'Paracetamol' })).toBeNull()
+      })
+    })
   })
 
   describe('pagination controls', () => {

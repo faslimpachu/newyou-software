@@ -222,22 +222,27 @@ export default function InventoryTransactionsPage() {
           </CardHeader>
           <CardContent>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-              <div className="space-y-2">
-                <Label htmlFor="productId">Product</Label>
-                <Select value={filters.productId || ''} onValueChange={(value) => setFilters({ ...filters, productId: value || '' })}>
-                  <SelectTrigger id="productId">
-                    <SelectValue placeholder="All Products" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">All Products</SelectItem>
-                    {products.map((product) => (
-                      <SelectItem key={product.id} value={product.id}>
-                        {product.name} {product.sku ? `(${product.sku})` : ''}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                <div className="space-y-2">
+                  <Label htmlFor="productId">Product</Label>
+                  <Select value={filters.productId || ''} onValueChange={(value) => setFilters({ ...filters, productId: value || '' })}>
+                    <SelectTrigger id="productId">
+                      <SelectValue placeholder="All Products">
+                        {(value) => {
+                          const product = products.find((p) => p.id === value)
+                          return product ? `${product.name} ${product.sku ? `(${product.sku})` : ''}` : 'All Products'
+                        }}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">All Products</SelectItem>
+                      {products.map((product) => (
+                        <SelectItem key={product.id} value={product.id}>
+                          {product.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               <div className="space-y-2">
                 <Label htmlFor="type">Type</Label>
                 <Select value={filters.type || ''} onValueChange={(value) => setFilters({ ...filters, type: value || '' })}>
