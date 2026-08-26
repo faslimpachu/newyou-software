@@ -61,8 +61,8 @@ const navGroups: { heading: string; items: NavItem[] }[] = [
     heading: 'Purchase & Inventory',
     items: [
       { label: 'Suppliers', icon: Truck, href: '/suppliers' },
-      { label: 'Products', icon: Package, href: '/products' },
       { label: 'Categories', icon: FolderOpen, href: '/product-categories' },
+      { label: 'Products', icon: Package, href: '/products' },
       { label: 'Purchase Invoices', icon: ReceiptText, href: '/purchase-invoices' },
       { label: 'Supplier Payments', icon: Wallet, href: '/supplier-payments' },
       { label: 'Inventory Adjustment', icon: SlidersHorizontal, href: '/inventory-adjustments' },
