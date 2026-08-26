@@ -66,14 +66,14 @@ describe('PatientProfile', () => {
       ...existingPatients[0],
       visits: [
         ...existingPatients[0].visits,
-        { id: 'NU000001', doctor: 'Dr. Anjali Menon', center: 'Nutrition Center', reason: 'Waiting', createdAt: new Date().toISOString() },
+        { id: 'NU000001', doctor: 'Dr.K.Gangadharan', center: 'Nutrition Center', reason: 'Waiting', createdAt: new Date().toISOString() },
       ],
     }
 
     const mockFetch = vi.fn()
       .mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ visit: { id: 'NU000001', doctor: 'Dr. Anjali Menon' } }),
+        json: async () => ({ visit: { id: 'NU000001', doctor: 'Dr.K.Gangadharan' } }),
       })
       .mockResolvedValueOnce({
         ok: true,
@@ -104,14 +104,14 @@ describe('PatientProfile', () => {
     fireEvent.change(centerSelect, { target: { value: 'nutrition' } })
 
     const doctorSelect = screen.getByRole('combobox', { name: /Doctor/ })
-    fireEvent.change(doctorSelect, { target: { value: 'Dr. Anjali Menon' } })
+    fireEvent.change(doctorSelect, { target: { value: 'Dr.K.Gangadharan' } })
 
     fireEvent.click(screen.getByRole('button', { name: /Create Visit/ }))
 
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith('/api/visits', expect.objectContaining({
         method: 'POST',
-        body: JSON.stringify({ patientMr: 'MR000001', doctor: 'Dr. Anjali Menon', center: 'Nutrition Center' }),
+        body: JSON.stringify({ patientMr: 'MR000001', doctor: 'Dr.K.Gangadharan', center: 'Nutrition Center' }),
       }))
     })
   })

@@ -214,7 +214,7 @@ describe('PatientWorkspace registration flow', () => {
     const doctorSelects = screen.getAllByRole('combobox')
     const doctorSelect = doctorSelects.find((el) => (el as HTMLSelectElement).value === '' || el.textContent?.includes('Select a doctor'))
     if (doctorSelect) {
-      fireEvent.change(doctorSelect, { target: { value: 'Dr. Anjali Menon' } })
+      fireEvent.change(doctorSelect, { target: { value: 'Dr.K.Gangadharan' } })
     }
 
     fireEvent.click(screen.getByRole('button', { name: /Save & create visit/ }))
@@ -264,7 +264,7 @@ describe('PatientWorkspace registration flow', () => {
     const doctorSelects = screen.getAllByRole('combobox')
     const doctorSelect = doctorSelects.find((el) => (el as HTMLSelectElement).value === '' || el.textContent?.includes('Select a doctor'))
     if (doctorSelect) {
-      fireEvent.change(doctorSelect, { target: { value: 'Dr. Anjali Menon' } })
+      fireEvent.change(doctorSelect, { target: { value: 'Dr.K.Gangadharan' } })
     }
 
     fireEvent.click(screen.getByRole('button', { name: /Save & create visit/ }))
