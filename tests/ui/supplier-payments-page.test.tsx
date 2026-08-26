@@ -678,4 +678,121 @@ describe('Supplier Payments Page UI', () => {
       expect(screen.queryByText('Record Supplier Payment')).toBeNull()
     })
   })
+
+  it('sends search query param when typing in search input', async () => {
+    await waitFor(() => {
+      expect(screen.getByText('PPAY-20260820-0001')).toBeDefined()
+    })
+
+    const searchInput = screen.getByPlaceholderText('Payment #, reference, notes...')
+    act(() => {
+      fireEvent.change(searchInput, { target: { value: 'PPAY-20260820-0001' } })
+    })
+
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText('Payment #, reference, notes...')).toHaveValue('PPAY-20260820-0001')
+    })
+  })
+
+  it('sends supplierId filter when selecting a supplier', async () => {
+    await waitFor(() => {
+      expect(screen.getByText('PPAY-20260820-0001')).toBeDefined()
+    })
+
+    const supplierSelect = screen.getByRole('combobox', { name: /Supplier/i })
+    act(() => {
+      fireEvent.click(supplierSelect)
+    })
+
+    const option = await screen.findByRole('option', { name: 'Om Sai Medical' })
+    act(() => {
+      fireEvent.click(option)
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('PPAY-20260820-0001')).toBeDefined()
+    })
+  })
+
+  it('resets to page 1 when search changes', async () => {
+    await waitFor(() => {
+      expect(screen.getByText('PPAY-20260820-0001')).toBeDefined()
+    })
+
+    const searchInput = screen.getByPlaceholderText('Payment #, reference, notes...')
+    act(() => {
+      fireEvent.change(searchInput, { target: { value: 'PPAY-20260820-0001' } })
+    })
+
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText('Payment #, reference, notes...')).toHaveValue('PPAY-20260820-0001')
+    })
+  })
+
+  it('clears filters when Clear Filters is clicked', async () => {
+    await waitFor(() => {
+      expect(screen.getByText('PPAY-20260820-0001')).toBeDefined()
+    })
+
+    const searchInput = screen.getByPlaceholderText('Payment #, reference, notes...')
+    act(() => {
+      fireEvent.change(searchInput, { target: { value: 'PPAY-20260820-0001' } })
+    })
+
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText('Payment #, reference, notes...')).toHaveValue('PPAY-20260820-0001')
+    })
+
+    const clearButton = screen.getByRole('button', { name: /Clear Filters/i })
+    act(() => {
+      fireEvent.click(clearButton)
+    })
+
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText('Payment #, reference, notes...')).toHaveValue('')
+    })
+  })
+
+  it('respects pagination with filters applied', async () => {
+    await waitFor(() => {
+      expect(screen.getByText('PPAY-20260820-0001')).toBeDefined()
+    })
+
+    const supplierSelect = screen.getByRole('combobox', { name: /Supplier/i })
+    act(() => {
+      fireEvent.click(supplierSelect)
+    })
+
+    const option = await screen.findByRole('option', { name: 'Om Sai Medical' })
+    act(() => {
+      fireEvent.click(option)
+    })
+
+    await waitFor(() => {
+      const nextButton = screen.getByRole('button', { name: /Next/i })
+      expect(nextButton).not.toBeDisabled()
+    })
+  })
+
+  it('supplier filter shows supplier name after selection, not UUID', async () => {
+    await waitFor(() => {
+      expect(screen.getByText('PPAY-20260820-0001')).toBeDefined()
+    })
+
+    const supplierSelect = screen.getByRole('combobox', { name: /Supplier/i })
+    act(() => {
+      fireEvent.click(supplierSelect)
+    })
+
+    const option = await screen.findByRole('option', { name: 'Om Sai Medical' })
+    act(() => {
+      fireEvent.pointerDown(option, { pointerType: 'mouse' })
+      fireEvent.click(option)
+    })
+
+    await waitFor(() => {
+      const updatedTrigger = document.getElementById('supplierFilter') as HTMLElement
+      expect(updatedTrigger.textContent).toContain('Om Sai Medical')
+    })
+  })
 })

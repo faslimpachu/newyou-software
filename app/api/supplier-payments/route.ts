@@ -24,6 +24,7 @@ export async function GET(request: Request) {
         { paymentNumber: { contains: search } },
         { reference: { contains: search } },
         { notes: { contains: search } },
+        { supplier: { supplierName: { contains: search } } },
       ];
     }
     if (supplierId) {

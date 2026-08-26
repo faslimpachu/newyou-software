@@ -90,6 +90,8 @@ export default function SupplierPaymentsPage() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [showForm, setShowForm] = useState(false)
+  const [search, setSearch] = useState('')
+  const [supplierFilter, setSupplierFilter] = useState('')
   const [page, setPage] = useState(1)
   const [pageSize] = useState(20)
   const [totalPages, setTotalPages] = useState(1)
@@ -115,7 +117,13 @@ export default function SupplierPaymentsPage() {
 
   const loadPayments = async (pageNum = 1) => {
     try {
-      const res = await fetch(`/api/supplier-payments?page=${pageNum}&pageSize=${pageSize}`)
+      const params = new URLSearchParams()
+      params.set('page', String(pageNum))
+      params.set('pageSize', String(pageSize))
+      if (search) params.set('search', search)
+      if (supplierFilter) params.set('supplierId', supplierFilter)
+
+      const res = await fetch(`/api/supplier-payments?${params.toString()}`)
       if (!res.ok) throw new Error('Failed to load payments')
       const data = await res.json()
       setPayments(data.payments)
@@ -157,6 +165,11 @@ export default function SupplierPaymentsPage() {
     }
   }
 
+  const clearFilters = () => {
+    setSearch('')
+    setSupplierFilter('')
+  }
+
   useEffect(() => {
     loadPayments(1)
     loadSuppliers()
@@ -172,7 +185,7 @@ export default function SupplierPaymentsPage() {
     }, 3000)
 
     return () => window.clearInterval(interval)
-  }, [page, pageSize, form.supplierId])
+  }, [page, pageSize, form.supplierId, search, supplierFilter])
 
   const handlePrevPage = () => {
     if (page > 1) {
@@ -189,6 +202,12 @@ export default function SupplierPaymentsPage() {
   useEffect(() => {
     loadInvoices(form.supplierId)
   }, [form.supplierId])
+
+  useEffect(() => {
+    setPage(1)
+    setLoading(true)
+    loadPayments(1)
+  }, [search, supplierFilter])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -513,6 +532,52 @@ export default function SupplierPaymentsPage() {
             </CardContent>
           </Card>
         </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Filters</CardTitle>
+            <CardDescription>Search payments by number, reference, notes, or supplier</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <div className="space-y-2">
+                <Label htmlFor="search">Search</Label>
+                <Input
+                  id="search"
+                  placeholder="Payment #, reference, notes..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="supplierFilter">Supplier</Label>
+                <Select value={supplierFilter} onValueChange={(value) => setSupplierFilter(value || '')}>
+                  <SelectTrigger id="supplierFilter">
+                    <SelectValue placeholder="All Suppliers">
+                      {(value) => {
+                        const supplier = suppliers.find((s) => s.id === value)
+                        return supplier ? supplier.supplierName : 'All Suppliers'
+                      }}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">All Suppliers</SelectItem>
+                    {suppliers.map((supplier) => (
+                      <SelectItem key={supplier.id} value={supplier.id}>
+                        {supplier.supplierName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-end">
+                <Button variant="outline" onClick={clearFilters} className="w-full">
+                  Clear Filters
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader>
