@@ -136,4 +136,40 @@ describe('Follow-ups API', () => {
     expect(data.followUp.remarks).toBe('Called patient');
     expect(data.followUp.patientMr).toBe(patient.mr);
   });
+
+  it('GET filters follow-ups by status', async () => {
+    const patient = await prisma.patient.create({
+      data: {
+        mr: 'MR000001', consultationType: 'NUTRITION', patientName: 'Filter Patient', parentName: 'P',
+        gender: 'Male', mobileNumber: '9999999991', address: 'Addr', district: 'D', state: 'S', pinCode: '123456',
+      },
+    });
+    await prisma.followUp.create({ data: { patientMr: patient.mr, program: 'Diet review', status: 'Pending' } });
+    await prisma.followUp.create({ data: { patientMr: patient.mr, program: 'Therapy review', status: 'Completed' } });
+
+    const req = new Request('http://localhost/api/follow-ups?status=Pending', { method: 'GET' });
+    const res = await GET(req);
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.followUps).toHaveLength(1);
+    expect(data.followUps[0].status).toBe('Pending');
+  });
+
+  it('GET filters follow-ups by reviewDate range', async () => {
+    const patient = await prisma.patient.create({
+      data: {
+        mr: 'MR000001', consultationType: 'NUTRITION', patientName: 'Date Patient', parentName: 'P',
+        gender: 'Male', mobileNumber: '9999999991', address: 'Addr', district: 'D', state: 'S', pinCode: '123456',
+      },
+    });
+    await prisma.followUp.create({ data: { patientMr: patient.mr, program: 'Diet review', reviewDate: new Date('2026-08-01') } });
+    await prisma.followUp.create({ data: { patientMr: patient.mr, program: 'Therapy review', reviewDate: new Date('2026-08-05') } });
+    await prisma.followUp.create({ data: { patientMr: patient.mr, program: 'Follow-up', reviewDate: new Date('2026-08-10') } });
+
+    const req = new Request('http://localhost/api/follow-ups?reviewDateFrom=2026-08-01&reviewDateTo=2026-08-05', { method: 'GET' });
+    const res = await GET(req);
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.followUps).toHaveLength(2);
+  })
 });

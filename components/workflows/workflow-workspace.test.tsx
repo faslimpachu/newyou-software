@@ -106,6 +106,64 @@ describe('WorkflowWorkspace', () => {
     })
   })
 
+  it('filters follow-ups by status through the backend', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        followUps: [{
+          id: 'FU-STATUS-1',
+          patientMr: 'MR000009',
+          program: 'Diet review',
+          status: 'Pending',
+          patient: { patientName: 'Real Patient', mobileNumber: '9999999999', district: 'Kannur' },
+        }],
+        total: 1,
+        page: 1,
+        limit: 20,
+      }),
+    })
+
+    render(<WorkflowWorkspace />)
+    await waitFor(() => expect(screen.getAllByText('Real Patient').length).toBeGreaterThan(0))
+
+    const statusSelect = screen.getByLabelText('Status')
+    fireEvent.change(statusSelect, { target: { value: 'Pending' } })
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith('/api/follow-ups?page=1&limit=20&status=Pending')
+    })
+  })
+
+  it('filters follow-ups by review date range through the backend', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        followUps: [{
+          id: 'FU-DATE-1',
+          patientMr: 'MR000009',
+          program: 'Diet review',
+          reviewDate: '2026-08-01',
+          patient: { patientName: 'Real Patient', mobileNumber: '9999999999', district: 'Kannur' },
+        }],
+        total: 1,
+        page: 1,
+        limit: 20,
+      }),
+    })
+
+    render(<WorkflowWorkspace />)
+    await waitFor(() => expect(screen.getAllByText('Real Patient').length).toBeGreaterThan(0))
+
+    const fromInput = screen.getByLabelText('Review date from')
+    const toInput = screen.getByLabelText('Review date to')
+    fireEvent.change(fromInput, { target: { value: '2026-08-01' } })
+    fireEvent.change(toInput, { target: { value: '2026-08-05' } })
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith('/api/follow-ups?page=1&limit=20&reviewDateFrom=2026-08-01&reviewDateTo=2026-08-05')
+    })
+  })
+
   it('preserves selected follow-up across polling intervals', async () => {
     const followUps = [
       {

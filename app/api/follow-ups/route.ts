@@ -7,6 +7,9 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const patientMr = url.searchParams.get('patientMr') || '';
     const search = url.searchParams.get('search') || '';
+    const status = url.searchParams.get('status') || '';
+    const reviewDateFrom = url.searchParams.get('reviewDateFrom') || '';
+    const reviewDateTo = url.searchParams.get('reviewDateTo') || '';
     const pageParam = url.searchParams.get('page');
     const limitParam = url.searchParams.get('limit');
     const hasPagination = pageParam !== null || limitParam !== null;
@@ -37,6 +40,20 @@ export async function GET(request: Request) {
           },
         },
       ];
+    }
+    if (status) {
+      where.status = status
+    }
+    if (reviewDateFrom || reviewDateTo) {
+      where.reviewDate = {}
+      if (reviewDateFrom) {
+        where.reviewDate.gte = new Date(reviewDateFrom)
+      }
+      if (reviewDateTo) {
+        const toDate = new Date(reviewDateTo)
+        toDate.setHours(23, 59, 59, 999)
+        where.reviewDate.lte = toDate
+      }
     }
 
     const [followUps, total] = await Promise.all([

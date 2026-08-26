@@ -87,6 +87,9 @@ export function WorkflowWorkspace(_props: { mode?: string } = {}) {
   const [editor, setEditor] = useState<FollowUpRow | true | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
+  const [reviewDateFrom, setReviewDateFrom] = useState('')
+  const [reviewDateTo, setReviewDateTo] = useState('')
 
   const loadFollowUps = useCallback(async (showLoading = true) => {
     if (showLoading) setLoading(true)
@@ -94,6 +97,9 @@ export function WorkflowWorkspace(_props: { mode?: string } = {}) {
     try {
       const params = new URLSearchParams({ page: String(page), limit: String(PAGE_SIZE) })
       if (query.trim()) params.set('search', query.trim())
+      if (statusFilter.trim()) params.set('status', statusFilter.trim())
+      if (reviewDateFrom.trim()) params.set('reviewDateFrom', reviewDateFrom.trim())
+      if (reviewDateTo.trim()) params.set('reviewDateTo', reviewDateTo.trim())
       const response = await fetch(`/api/follow-ups?${params.toString()}`)
       if (!response.ok) throw new Error('Failed to load follow-ups')
       const body = await response.json() as { followUps: ApiFollowUp[]; total?: number }
@@ -109,7 +115,7 @@ export function WorkflowWorkspace(_props: { mode?: string } = {}) {
     } finally {
       if (showLoading) setLoading(false)
     }
-  }, [page, query])
+  }, [page, query, statusFilter, reviewDateFrom, reviewDateTo])
 
   useEffect(() => {
     void loadFollowUps()
@@ -123,6 +129,14 @@ export function WorkflowWorkspace(_props: { mode?: string } = {}) {
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
   const firstItem = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1
   const lastItem = Math.min(page * PAGE_SIZE, total)
+
+  const clearFilters = () => {
+    setQuery('')
+    setStatusFilter('')
+    setReviewDateFrom('')
+    setReviewDateTo('')
+    setPage(1)
+  }
 
   return (
     <div className="mx-auto max-w-[1600px] space-y-6">
@@ -141,13 +155,25 @@ export function WorkflowWorkspace(_props: { mode?: string } = {}) {
               <CardTitle>Follow-up queue</CardTitle>
               <CardDescription>{loading ? 'Loading records...' : `${total} records found.`}</CardDescription>
             </div>
-            <div className="relative"><Search className="absolute left-2.5 top-2 size-4 text-muted-foreground" /><Input className="w-56 pl-8" placeholder="Search MR, patient, reference" value={query} onChange={(e) => { setPage(1); setQuery(e.target.value) }} /></div>
+            <div className="flex flex-wrap items-center gap-2">
+               <div className="relative"><Search className="absolute left-2.5 top-2 size-4 text-muted-foreground"/><Input className="w-56 pl-8" value={query} onChange={(e) => { setPage(1); setQuery(e.target.value) }} placeholder="Search MR, patient, reference"/></div>
+               <select aria-label="Status" className="h-8 rounded-lg border border-input bg-background px-2.5 text-sm" value={statusFilter} onChange={(e) => { setPage(1); setStatusFilter(e.target.value) }}>
+                 <option value="">All statuses</option>
+                 <option value="Pending">Pending</option>
+                 <option value="Scheduled">Scheduled</option>
+                 <option value="Completed">Completed</option>
+                 <option value="Cancelled">Cancelled</option>
+               </select>
+               <Input type="date" aria-label="Review date from" className="w-44 text-xs" value={reviewDateFrom} onChange={(e) => { setPage(1); setReviewDateFrom(e.target.value) }} />
+               <Input type="date" aria-label="Review date to" className="w-44 text-xs" value={reviewDateTo} onChange={(e) => { setPage(1); setReviewDateTo(e.target.value) }} />
+               <Button variant="outline" size="sm" onClick={clearFilters}>Clear</Button>
+            </div>
           </CardHeader>
           <CardContent className="px-0">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[780px] text-sm">
                 <thead className="border-y bg-muted/40 text-xs text-muted-foreground">
-                  <tr>{['Patient', 'Address / phone', 'Program', 'Due date', 'Assigned to', 'Status'].map((heading) => <th key={heading} className="px-5 py-3 text-left font-medium">{heading}</th>)}</tr>
+                  <tr>{['Patient', 'Address / phone', 'Program', 'Review date', 'Due date', 'Assigned to', 'Status'].map((heading) => <th key={heading} className="px-5 py-3 text-left font-medium">{heading}</th>)}</tr>
                 </thead>
                 <tbody>
                   {followUps.map((row) => (
@@ -155,12 +181,13 @@ export function WorkflowWorkspace(_props: { mode?: string } = {}) {
                       <td className="px-5 py-4"><p className="font-medium">{row.name}</p><p className="text-xs text-primary">{row.mr}</p></td>
                       <td className="px-5 py-4 text-sm text-muted-foreground">{row.address} - {row.phone}</td>
                       <td className="px-5 py-4">{row.program}</td>
+                      <td className="px-5 py-4 text-sm text-muted-foreground">{formatDate(row.reviewDate)}</td>
                       <td className="px-5 py-4 text-sm text-muted-foreground">{row.due}</td>
                       <td className="px-5 py-4 text-sm text-muted-foreground">{row.assigned}</td>
                       <td className="px-5 py-4">{row.status}</td>
                     </tr>
                   ))}
-                  {!loading && followUps.length === 0 && <tr><td className="px-5 py-10 text-center text-sm text-muted-foreground" colSpan={6}>{error || 'No follow-ups found.'}</td></tr>}
+                  {!loading && followUps.length === 0 && <tr><td className="px-5 py-10 text-center text-sm text-muted-foreground" colSpan={7}>{error || 'No follow-ups found.'}</td></tr>}
                 </tbody>
               </table>
             </div>
