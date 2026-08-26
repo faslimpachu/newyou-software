@@ -972,29 +972,40 @@ export default function ProductsPage() {
                         <TableRow>
                           <TableHead>Batch Number</TableHead>
                           <TableHead>Qty</TableHead>
-                          <TableHead>Avg Cost</TableHead>
+                          <TableHead>Purchase Rate</TableHead>
                           <TableHead>Expiry</TableHead>
                           <TableHead>Status</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {batches.map((batch) => (
-                          <TableRow key={batch.id}>
-                            <TableCell className="font-medium">{batch.batchNumber}</TableCell>
-                            <TableCell className="tabular-nums">{batch.quantity} {viewingProduct.unit}</TableCell>
-                            <TableCell className="tabular-nums">₹{batch.avgCost.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
-                            <TableCell>{batch.expiryDate ? new Date(batch.expiryDate).toLocaleDateString('en-IN') : '-'}</TableCell>
-                            <TableCell>
-                              <Badge variant={
-                                batch.status === 'EXPIRED' ? 'destructive' :
-                                batch.status === 'EXPIRING_SOON' ? 'secondary' :
-                                batch.status === 'OK' ? 'default' : 'outline'
-                              }>
-                                {batch.status}
-                              </Badge>
-                            </TableCell>
-                          </TableRow>
-                        ))}
+                        {batches.map((batch) => {
+                          const receiptRates = (batch.receipts || [])
+                            .map((r) => Number(r.purchaseRate))
+                            .filter((rate) => !Number.isNaN(rate) && rate > 0)
+                          const purchaseRateDisplay = receiptRates.length === 0
+                            ? '-'
+                            : receiptRates.length === 1
+                              ? `₹${receiptRates[0].toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
+                              : `₹${Math.min(...receiptRates).toLocaleString('en-IN', { minimumFractionDigits: 2 })} - ₹${Math.max(...receiptRates).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
+
+                          return (
+                            <TableRow key={batch.id}>
+                              <TableCell className="font-medium">{batch.batchNumber}</TableCell>
+                              <TableCell className="tabular-nums">{batch.quantity} {viewingProduct.unit}</TableCell>
+                              <TableCell className="tabular-nums">{purchaseRateDisplay}</TableCell>
+                              <TableCell>{batch.expiryDate ? new Date(batch.expiryDate).toLocaleDateString('en-IN') : '-'}</TableCell>
+                              <TableCell>
+                                <Badge variant={
+                                  batch.status === 'EXPIRED' ? 'destructive' :
+                                  batch.status === 'EXPIRING_SOON' ? 'secondary' :
+                                  batch.status === 'OK' ? 'default' : 'outline'
+                                }>
+                                  {batch.status}
+                                </Badge>
+                              </TableCell>
+                            </TableRow>
+                           )
+                        })}
                       </TableBody>
                     </Table>
                   </div>

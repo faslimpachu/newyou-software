@@ -254,7 +254,7 @@ export default function BatchesPage() {
                     <TableHead>Batch Number</TableHead>
                     <TableHead>Supplier</TableHead>
                     <TableHead className="text-right">Qty</TableHead>
-                    <TableHead className="text-right">Avg Cost</TableHead>
+                    <TableHead className="text-right">Purchase Rate</TableHead>
                     <TableHead>Expiry</TableHead>
                     <TableHead>Status</TableHead>
                   </TableRow>
@@ -265,6 +265,14 @@ export default function BatchesPage() {
                     const supplierNames = [
                       ...new Set((batch.receipts || []).map((r) => r.supplierName).filter(Boolean)),
                     ]
+                    const receiptRates = (batch.receipts || [])
+                      .map((r) => Number(r.purchaseRate))
+                      .filter((rate) => !Number.isNaN(rate) && rate > 0)
+                    const purchaseRateDisplay = receiptRates.length === 0
+                      ? '-'
+                      : receiptRates.length === 1
+                        ? `₹${receiptRates[0].toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
+                        : `₹${Math.min(...receiptRates).toLocaleString('en-IN', { minimumFractionDigits: 2 })} - ₹${Math.max(...receiptRates).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
 
                     return (
                       <TableRow key={batch.id}>
@@ -282,7 +290,7 @@ export default function BatchesPage() {
                         </TableCell>
                         <TableCell className="text-right tabular-nums">{batch.quantity}</TableCell>
                         <TableCell className="text-right tabular-nums">
-                          ₹{batch.avgCost?.toLocaleString('en-IN') || '-'}
+                          {purchaseRateDisplay}
                         </TableCell>
                         <TableCell>
                           {batch.expiryDate
