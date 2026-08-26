@@ -100,7 +100,7 @@ export function WorkflowWorkspace(_props: { mode?: string } = {}) {
       const mapped = body.followUps.map(mapFollowUp)
       setFollowUps(mapped)
       setTotal(body.total ?? mapped.length)
-      setSelected(mapped[0] ?? null)
+      setSelected((current) => (showLoading || !current ? mapped[0] ?? null : current))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load follow-ups')
       setFollowUps([])

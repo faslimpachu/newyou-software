@@ -105,4 +105,53 @@ describe('WorkflowWorkspace', () => {
       expect(global.fetch).toHaveBeenCalledWith('/api/follow-ups?page=1&limit=20&search=MR000009')
     })
   })
+
+  it('preserves selected follow-up across polling intervals', async () => {
+    const followUps = [
+      {
+        id: 'FU-POLL-1',
+        patientMr: 'MR000001',
+        program: 'Diet review',
+        dueDate: '2026-07-25T00:00:00.000Z',
+        assignedTo: 'Dr. Neha Verma',
+        priority: 'High',
+        status: 'Pending',
+        remarks: 'First',
+        patient: { patientName: 'First Patient', mobileNumber: '9999999991', district: 'Kannur' },
+      },
+      {
+        id: 'FU-POLL-2',
+        patientMr: 'MR000002',
+        program: 'Therapy review',
+        dueDate: '2026-07-26T00:00:00.000Z',
+        assignedTo: 'Dr. Riya Shah',
+        priority: 'Medium',
+        status: 'Scheduled',
+        remarks: 'Second',
+        patient: { patientName: 'Second Patient', mobileNumber: '9999999992', district: 'Kozhikode' },
+      },
+    ]
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        followUps,
+        total: followUps.length,
+        page: 1,
+        limit: 20,
+      }),
+    })
+
+    render(<WorkflowWorkspace />)
+
+    await waitFor(() => expect(screen.getAllByText('First Patient').length).toBeGreaterThan(0))
+
+    const secondRow = screen.getByText('Second Patient').closest('tr')
+    expect(secondRow).toBeTruthy()
+    fireEvent.click(secondRow!)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('workflow-details-panel')).toHaveTextContent('Second Patient')
+    })
+  })
 })
