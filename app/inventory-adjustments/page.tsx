@@ -216,8 +216,8 @@ export default function InventoryAdjustmentsPage() {
     })
   }
 
-  const handleTypeChange = (type: string) => {
-    setForm({ ...form, type })
+  const handleTypeChange = (type: string | null) => {
+    if (type) setForm({ ...form, type })
   }
 
   const validateForm = (): boolean => {
@@ -650,15 +650,9 @@ export default function InventoryAdjustmentsPage() {
                 </div>
 
                 <div className="flex items-end gap-2 md:col-span-2 lg:col-span-3">
-                  {isDecrease ? (
-                    <Button type="button" variant="destructive" onClick={handleDecreaseClick} disabled={saving}>
-                      {saving ? 'Saving...' : 'Decrease Stock'}
-                    </Button>
-                  ) : (
-                    {/* <Button type="submit" disabled={saving}>
-                      {saving ? 'Saving...' : 'Increase Stock'}
-                    </Button> */}
-                  )}
+                  <Button type="button" variant="destructive" onClick={handleDecreaseClick} disabled={saving}>
+                    {saving ? 'Saving...' : 'Decrease Stock'}
+                  </Button>
                   <Button type="button" variant="outline" onClick={() => { setShowForm(false); setError(''); setSuccess('') }}>
                     Cancel
                   </Button>
