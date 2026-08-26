@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Search, UserRound } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -10,6 +10,8 @@ import { Label } from '@/components/ui/label'
 
 type VisitStatus = 'Waiting' | 'Active' | 'Completed' | 'Cancelled'
 type Visit = { id: string; op: string; mr: string; patient: string; center: string; date: string; time: string; clinician: string; status: VisitStatus }
+
+const PAGE_SIZE = 20
 
 function mapApiVisit(visit: any): Visit {
   const appointmentDate = visit.appointmentDate ? new Date(visit.appointmentDate) : null
@@ -33,6 +35,8 @@ export function VisitsWorkspace() {
   const [visits, setVisits] = useState<Visit[]>([])
   const [selected, setSelected] = useState<Visit | null>(null)
   const [query, setQuery] = useState('')
+  const [page, setPage] = useState(1)
+  const [total, setTotal] = useState(0)
   const [center, setCenter] = useState('All centres')
   const [status, setStatus] = useState('All statuses')
   const [loading, setLoading] = useState(true)
@@ -42,21 +46,26 @@ export function VisitsWorkspace() {
   const fetchVisits = useCallback(async () => {
     setError('')
     try {
-      const params = new URLSearchParams()
+      const params = new URLSearchParams({ page: String(page), limit: String(PAGE_SIZE) })
+      if (query.trim()) params.set('search', query.trim())
       if (status !== 'All statuses') params.set('status', status)
       if (center !== 'All centres') params.set('center', center)
-      const queryString = params.toString()
-      const res = await fetch(queryString ? `/api/visits?${queryString}` : '/api/visits')
+      const res = await fetch(`/api/visits?${params.toString()}`)
       if (!res.ok) throw new Error('Failed to load visits')
       const data = await res.json()
       const mapped = (data.visits || []).map(mapApiVisit)
       setVisits(mapped)
+      setTotal(data.total ?? mapped.length)
+      setSelected((current) => current && mapped.some((visit) => visit.id === current.id) ? current : null)
     } catch (err: any) {
       setError(err.message || 'Failed to load visits')
+      setVisits([])
+      setTotal(0)
+      setSelected(null)
     } finally {
       setLoading(false)
     }
-  }, [center, status])
+  }, [center, page, query, status])
 
   useEffect(() => {
     let mounted = true
@@ -76,14 +85,9 @@ export function VisitsWorkspace() {
     }
   }, [fetchVisits])
 
-  const visible = useMemo(() => {
-    return visits.filter((visit) => {
-      const matchesQuery = `${visit.id} ${visit.mr} ${visit.patient}`.toLowerCase().includes(query.toLowerCase())
-      const matchesCenter = center === 'All centres' || visit.center === center
-      const matchesStatus = status === 'All statuses' || visit.status === status
-      return matchesQuery && matchesCenter && matchesStatus
-    })
-  }, [visits, query, center, status])
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+  const firstItem = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1
+  const lastItem = Math.min(page * PAGE_SIZE, total)
 
   const updateStatus = async (status: VisitStatus) => {
     if (!selected) return
@@ -135,12 +139,12 @@ export function VisitsWorkspace() {
           <CardHeader className="flex-row items-center justify-between">
             <div>
               <CardTitle>Today's visits</CardTitle>
-              <CardDescription>{visible.length} appointments scheduled.</CardDescription>
+              <CardDescription>{total} appointments found.</CardDescription>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-               <div className="relative"><Search className="absolute left-2.5 top-2 size-4 text-muted-foreground"/><Input className="w-56 pl-8" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search visit ID, MR or patient"/></div>
-               <Filter label="Centre" value={center} values={['All centres', 'Nutrition Center', 'Ayurcare Center']} onChange={setCenter} />
-               <Filter label="Status" value={status} values={['All statuses', 'Waiting', 'Active', 'Completed', 'Cancelled']} onChange={setStatus} />
+               <div className="relative"><Search className="absolute left-2.5 top-2 size-4 text-muted-foreground"/><Input className="w-56 pl-8" value={query} onChange={(e) => { setPage(1); setQuery(e.target.value) }} placeholder="Search visit ID, MR or patient"/></div>
+               <Filter label="Centre" value={center} values={['All centres', 'Nutrition Center', 'Ayurcare Center']} onChange={(value) => { setPage(1); setCenter(value) }} />
+               <Filter label="Status" value={status} values={['All statuses', 'Waiting', 'Active', 'Completed', 'Cancelled']} onChange={(value) => { setPage(1); setStatus(value) }} />
             </div>
           </CardHeader>
           <CardContent className="px-0">
@@ -150,8 +154,8 @@ export function VisitsWorkspace() {
                     <tr>{['ID','MR','Patient','Date & time','Centre','Clinician','Visit status'].map((heading) => <th key={heading} className="px-5 py-3 text-left font-medium">{heading}</th>)}</tr>
                   </thead>
                   <tbody>
-                    {visible.length === 0 && <tr><td colSpan={7} className="p-8 text-center text-sm text-muted-foreground">No visits found.</td></tr>}
-                    {visible.map((visit) => (
+                    {visits.length === 0 && <tr><td colSpan={7} className="p-8 text-center text-sm text-muted-foreground">No visits found.</td></tr>}
+                    {visits.map((visit) => (
                       <tr key={visit.id} onClick={() => setSelected(visit)} className={'cursor-pointer border-b hover:bg-muted/50 ' + (selected && selected.id === visit.id ? 'bg-primary/5' : '')}>
                         <td className="px-5 py-4 text-sm font-medium">{visit.id}</td>
                         <td className="px-5 py-4 text-sm font-medium">{visit.mr}</td>
@@ -165,13 +169,29 @@ export function VisitsWorkspace() {
                   </tbody>
                 </table>
             </div>}
+            {!loading && (
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t px-5 py-3">
+                <p className="text-xs text-muted-foreground">Showing {firstItem}-{lastItem} of {total}</p>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={page <= 1}>
+                    Previous
+                  </Button>
+                  <span className="text-xs text-muted-foreground">Page {page} of {totalPages}</span>
+                  <Button variant="outline" size="sm" onClick={() => setPage((current) => Math.min(totalPages, current + 1))} disabled={page >= totalPages}>
+                    Next
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
-        {selected ? (
-          <VisitDetailPanel visit={selected} updateStatus={updateStatus} updating={updating} onOpenPatient={() => openPatient(selected.mr)} />
-        ) : (
-          <Card className="h-fit rounded-lg shadow-sm"><CardContent className="py-10 text-center text-sm text-muted-foreground">Select a visit to view details.</CardContent></Card>
-        )}
+        <aside data-testid="visit-details-panel" className="xl:sticky xl:top-24 xl:self-start">
+          {selected ? (
+            <VisitDetailPanel visit={selected} updateStatus={updateStatus} updating={updating} onOpenPatient={() => openPatient(selected.mr)} />
+          ) : (
+            <Card className="h-fit rounded-lg shadow-sm"><CardContent className="py-10 text-center text-sm text-muted-foreground">Select a visit to view details.</CardContent></Card>
+          )}
+        </aside>
       </div>
     </div>
   )

@@ -18,10 +18,10 @@ describe('VisitsWorkspace', () => {
     global.fetch = undefined as any
   })
 
-  const mockFetchVisits = (visits = mockVisits) => {
+  const mockFetchVisits = (visits = mockVisits, total = visits.length) => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ visits }),
+      json: async () => ({ visits, total, page: 1, limit: 20 }),
     })
   }
 
@@ -39,9 +39,10 @@ describe('VisitsWorkspace', () => {
       expect(screen.getByText('Aarav Sharma')).toBeDefined()
     })
     expect(screen.getAllByText('1').length).toBeGreaterThan(0)
+    expect(global.fetch).toHaveBeenCalledWith('/api/visits?page=1&limit=20')
   })
 
-  it('filters visits by search query', async () => {
+  it('searches visits through the paginated backend', async () => {
     mockFetchVisits()
     render(<VisitsWorkspace />)
 
@@ -50,15 +51,14 @@ describe('VisitsWorkspace', () => {
     })
 
     const searchInput = screen.getByPlaceholderText('Search visit ID, MR or patient')
-    ;(searchInput as HTMLInputElement).value = 'Rohan'
-    searchInput.dispatchEvent(new Event('input', { bubbles: true }))
+    fireEvent.change(searchInput, { target: { value: 'Rohan' } })
 
     await waitFor(() => {
-      expect(screen.getByText('Rohan Mehta')).toBeDefined()
+      expect(global.fetch).toHaveBeenCalledWith('/api/visits?page=1&limit=20&search=Rohan')
     })
   })
 
-  it('filters visits by center', async () => {
+  it('filters visits by center through the paginated backend', async () => {
     mockFetchVisits()
     render(<VisitsWorkspace />)
 
@@ -70,11 +70,11 @@ describe('VisitsWorkspace', () => {
     fireEvent.change(centerSelect, { target: { value: 'Ayurcare Center' } })
 
     await waitFor(() => {
-      expect(screen.getByText('Rohan Mehta')).toBeDefined()
+      expect(global.fetch).toHaveBeenCalledWith('/api/visits?page=1&limit=20&center=Ayurcare+Center')
     })
   })
 
-  it('filters visits by status', async () => {
+  it('filters visits by status through the paginated backend', async () => {
     mockFetchVisits()
     render(<VisitsWorkspace />)
 
@@ -86,7 +86,7 @@ describe('VisitsWorkspace', () => {
     fireEvent.change(statusSelect, { target: { value: 'Active' } })
 
     await waitFor(() => {
-      expect(screen.getByText('Aarav Sharma')).toBeDefined()
+      expect(global.fetch).toHaveBeenCalledWith('/api/visits?page=1&limit=20&status=Active')
     })
   })
 
@@ -111,6 +111,31 @@ describe('VisitsWorkspace', () => {
     expect(screen.getAllByText('Cancelled').length).toBeGreaterThan(0)
   })
 
+  it('moves to the next backend page with simple pagination controls', async () => {
+    const firstPage = [mockVisits[0]]
+    const secondPage = [mockVisits[1]]
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      const page = new URL(`http://localhost${url}`).searchParams.get('page')
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({ visits: page === '2' ? secondPage : firstPage, total: 21, page: Number(page), limit: 20 }),
+      })
+    })
+
+    render(<VisitsWorkspace />)
+
+    await waitFor(() => expect(screen.getByText('Aarav Sharma')).toBeDefined())
+    expect(screen.getByText('Page 1 of 2')).toBeDefined()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }))
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith('/api/visits?page=2&limit=20')
+      expect(screen.getByText('Rohan Mehta')).toBeDefined()
+    })
+    expect(screen.getByText('Page 2 of 2')).toBeDefined()
+  })
+
   it('opens patient profile when clicking Open patient profile', async () => {
     mockFetchVisits()
     render(<VisitsWorkspace />)
@@ -125,5 +150,6 @@ describe('VisitsWorkspace', () => {
     await waitFor(() => {
       expect(screen.getByText('Open patient profile')).toBeDefined()
     })
+    expect(screen.getByTestId('visit-details-panel')).toHaveClass('xl:sticky', 'xl:top-24', 'xl:self-start')
   })
 })
