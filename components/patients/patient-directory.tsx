@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Search, Info, UserPlus, Trash2, FileSpreadsheet } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 
 type Patient = { mr: string; name: string; parent: string; phone: string; age: number; lastVisit: string }
 
-
+const PAGE_SIZE = 20
 
 function mapApiPatient(patient: any): Patient {
   const lastVisit = patient.visits?.length ? patient.visits[0].appointmentDate || patient.createdAt : patient.createdAt
@@ -40,6 +40,8 @@ export function PatientDirectory() {
   const router = useRouter()
   const [patients, setPatients] = useState<Patient[]>([])
   const [query, setQuery] = useState('')
+  const [page, setPage] = useState(1)
+  const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [deleting, setDeleting] = useState<Patient | null>(null)
@@ -48,20 +50,20 @@ export function PatientDirectory() {
   const fetchPatients = useCallback(async () => {
     setError('')
     try {
-      const params = new URLSearchParams()
+      const params = new URLSearchParams({ page: String(page), limit: String(PAGE_SIZE) })
       if (query.trim()) params.set('search', query.trim())
-      const url = params.toString() ? `/api/patients?${params.toString()}` : '/api/patients'
-      const res = await fetch(url)
+      const res = await fetch(`/api/patients?${params.toString()}`)
       if (!res.ok) throw new Error('Failed to load patients')
       const data = await res.json()
-      const mapped = (data.patients || [])
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-        .map(mapApiPatient)
+      const mapped = (data.patients || []).map(mapApiPatient)
       setPatients(mapped)
+      setTotal(data.total ?? mapped.length)
     } catch (err: any) {
       setError(err.message || 'Failed to load patients')
+      setPatients([])
+      setTotal(0)
     }
-  }, [query])
+  }, [page, query])
 
   useEffect(() => {
     let mounted = true
@@ -81,12 +83,9 @@ export function PatientDirectory() {
     }
   }, [fetchPatients])
 
-  const filtered = useMemo(() => {
-    return patients.filter((patient) => {
-      const matchesQuery = `${patient.mr} ${patient.name} ${patient.parent} ${patient.phone}`.toLowerCase().includes(query.toLowerCase())
-      return matchesQuery
-    })
-  }, [patients, query])
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+  const firstItem = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1
+  const lastItem = Math.min(page * PAGE_SIZE, total)
 
   const deletePatient = async () => {
     if (!deleting) return
@@ -95,6 +94,7 @@ export function PatientDirectory() {
       const res = await fetch(`/api/patients/${encodeURIComponent(deleting.mr)}`, { method: 'DELETE' })
       if (!res.ok) throw new Error('Failed to delete patient')
       setPatients((items) => items.filter((item) => item.mr !== deleting.mr))
+      setTotal((current) => Math.max(0, current - 1))
       setDeleting(null)
     } catch (err: any) {
       setError(err.message || 'Failed to delete patient')
@@ -111,7 +111,7 @@ export function PatientDirectory() {
         <p className="mt-1 text-sm text-muted-foreground">Search registered patients, review details, and keep care status current.</p>
       </div>
       <div className="flex flex-wrap gap-2">
-        <Button variant="outline" size="sm" onClick={() => exportToCSV(filtered.length ? filtered : patients, 'patients')}><FileSpreadsheet className="mr-2 size-4"/>Export CSV</Button>
+        <Button variant="outline" size="sm" onClick={() => exportToCSV(patients, 'patients')}><FileSpreadsheet className="mr-2 size-4"/>Export CSV</Button>
         <Button size="sm" onClick={() => router.push('/register')}><UserPlus className="mr-2 size-4"/>Register patient</Button>
       </div>
     </div>
@@ -122,9 +122,17 @@ export function PatientDirectory() {
       <CardContent className="flex flex-wrap items-end gap-3 p-4">
         <div className="relative">
           <Search className="absolute left-2.5 top-2 size-4 text-muted-foreground"/>
-          <Input className="w-70 pl-8" placeholder="MR number, name, mobile, parent" value={query} onChange={(e) => setQuery(e.target.value)} />
+          <Input
+            className="w-70 pl-8"
+            placeholder="MR number, name, mobile, parent"
+            value={query}
+            onChange={(e) => {
+              setPage(1)
+              setQuery(e.target.value)
+            }}
+          />
         </div>
-        <p className="ml-auto text-xs text-muted-foreground">{filtered.length} matching patients</p>
+        <p className="ml-auto text-xs text-muted-foreground">{total} matching patients</p>
       </CardContent>
     </Card>
 
@@ -144,8 +152,8 @@ export function PatientDirectory() {
               </tr>
             </thead>
             <tbody>
-              {filtered.length === 0 && <tr><td colSpan={7} className="p-8 text-center text-sm text-muted-foreground">No patients found.</td></tr>}
-              {filtered.map((patient) => (
+              {patients.length === 0 && <tr><td colSpan={7} className="p-8 text-center text-sm text-muted-foreground">No patients found.</td></tr>}
+              {patients.map((patient) => (
                 <tr key={patient.mr} className="border-b last:border-0 hover:bg-muted/40 cursor-pointer" onClick={() => router.push(`/patients/${patient.mr}`)}>
                   <td className="p-3 font-medium">{patient.mr}</td>
                   <td className="p-3">{patient.name}</td>
@@ -164,6 +172,22 @@ export function PatientDirectory() {
             </tbody>
           </table>
         </div>}
+        {!loading && (
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t px-4 py-3">
+            <p className="text-xs text-muted-foreground">
+              Showing {firstItem}-{lastItem} of {total}
+            </p>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={page <= 1}>
+                Previous
+              </Button>
+              <span className="text-xs text-muted-foreground">Page {page} of {totalPages}</span>
+              <Button variant="outline" size="sm" onClick={() => setPage((current) => Math.min(totalPages, current + 1))} disabled={page >= totalPages}>
+                Next
+              </Button>
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
 

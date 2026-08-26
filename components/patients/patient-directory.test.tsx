@@ -19,10 +19,10 @@ describe('PatientDirectory', () => {
     global.fetch = undefined as any
   })
 
-  const mockFetchPatients = (patients = mockPatients) => {
+  const mockFetchPatients = (patients = mockPatients, total = patients.length) => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ patients, total: patients.length, page: 1, limit: 100 }),
+      json: async () => ({ patients, total, page: 1, limit: 20 }),
     })
   }
 
@@ -40,9 +40,10 @@ describe('PatientDirectory', () => {
       expect(screen.getAllByText('Aarav Sharma').length).toBeGreaterThan(0)
     })
     expect(screen.getAllByText('MR000001').length).toBeGreaterThan(0)
+    expect(global.fetch).toHaveBeenCalledWith('/api/patients?page=1&limit=20')
   })
 
-  it('filters patients by search query', async () => {
+  it('searches patients through the paginated API', async () => {
     mockFetchPatients()
     render(<PatientDirectory />)
 
@@ -54,7 +55,7 @@ describe('PatientDirectory', () => {
     fireEvent.change(searchInput, { target: { value: 'Aarav' } })
 
     await waitFor(() => {
-      expect(screen.getAllByText('Aarav Sharma').length).toBeGreaterThan(0)
+      expect(global.fetch).toHaveBeenCalledWith('/api/patients?page=1&limit=20&search=Aarav')
     })
   })
 
@@ -83,7 +84,12 @@ describe('PatientDirectory', () => {
     })
   })
 
-  it('exports CSV when clicking export', async () => {
+  it('exports CSV for the current paginated page only', async () => {
+    const createObjectURL = vi.fn(() => 'blob:patients')
+    const revokeObjectURL = vi.fn()
+    Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: createObjectURL })
+    Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: revokeObjectURL })
+
     mockFetchPatients()
     render(<PatientDirectory />)
 
@@ -94,7 +100,12 @@ describe('PatientDirectory', () => {
     const exportButton = screen.getByText('Export CSV')
     fireEvent.click(exportButton)
 
-    expect(document.createElement).toBeDefined()
+    expect(createObjectURL).toHaveBeenCalled()
+    const blob = createObjectURL.mock.calls[0][0] as Blob
+    const csv = await blob.text()
+    expect(csv).toContain('Aarav Sharma')
+    expect(csv).toContain('Priya Nair')
+    expect(csv).toContain('Rohan Mehta')
   })
 
   it('shows matching patients count', async () => {
@@ -104,6 +115,33 @@ describe('PatientDirectory', () => {
     await waitFor(() => {
       expect(screen.getByText('3 matching patients')).toBeDefined()
     })
+  })
+
+  it('moves to the next backend page with simple pagination controls', async () => {
+    const pageOne = [mockPatients[0]]
+    const pageTwo = [mockPatients[1]]
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      const page = new URL(`http://localhost${url}`).searchParams.get('page')
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({ patients: page === '2' ? pageTwo : pageOne, total: 21, page: Number(page), limit: 20 }),
+      })
+    })
+
+    render(<PatientDirectory />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Aarav Sharma')).toBeDefined()
+    })
+    expect(screen.getByText('Page 1 of 2')).toBeDefined()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }))
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith('/api/patients?page=2&limit=20')
+      expect(screen.getByText('Priya Nair')).toBeDefined()
+    })
+    expect(screen.getByText('Page 2 of 2')).toBeDefined()
   })
 
   it('displays patient data in the table', async () => {
@@ -120,7 +158,7 @@ describe('PatientDirectory', () => {
     expect(table.textContent).toContain('Rohan Mehta')
   })
 
-  it('shows newest patients first', async () => {
+  it('shows patients in the backend page order', async () => {
     mockFetchPatients()
     render(<PatientDirectory />)
 
@@ -131,8 +169,8 @@ describe('PatientDirectory', () => {
     const table = screen.getByRole('table')
     const rows = table.querySelectorAll('tbody tr')
     expect(rows[0].textContent).toContain('MR000001')
-    expect(rows[1].textContent).toContain('MR000003')
-    expect(rows[2].textContent).toContain('MR000002')
+    expect(rows[1].textContent).toContain('MR000002')
+    expect(rows[2].textContent).toContain('MR000003')
   })
 
   it('navigates to register page when clicking Register patient', async () => {
