@@ -266,7 +266,7 @@ export default function ProductsPage() {
     try {
       const url = editingId ? `/api/products/${editingId}` : '/api/products'
       const method = editingId ? 'PATCH' : 'POST'
-      const { code: _code, currentStock: _currentStock, active: _active, purchasePrice: _purchasePrice, sellingPrice: _sellingPrice, ...rest } = form
+      const { code: _code, currentStock: _currentStock, purchasePrice: _purchasePrice, sellingPrice: _sellingPrice, imageUrl: _imageUrl, ...rest } = form
       const body = editingId
         ? { ...rest, categoryId: form.categoryId || null, code: form.code }
         : { ...rest, categoryId: form.categoryId || null }
@@ -650,7 +650,7 @@ export default function ProductsPage() {
                     <p className="text-xs text-destructive">{fieldErrors.maximumStock}</p>
                   )}
                 </div>
-                {!editingId && (
+                {/* {!editingId && (
                   <div className="space-y-2">
                     <Label htmlFor="currentStock">Current Stock</Label>
                     <Input
@@ -666,8 +666,8 @@ export default function ProductsPage() {
                       <p className="text-xs text-destructive">{fieldErrors.currentStock}</p>
                     )}
                   </div>
-                )}
-                <div className="space-y-2">
+                )} */}
+                {/* <div className="space-y-2">
                   <Label htmlFor="imageUrl">Image URL</Label>
                   <Input
                     id="imageUrl"
@@ -679,7 +679,7 @@ export default function ProductsPage() {
                   {fieldErrors.imageUrl && (
                     <p className="text-xs text-destructive">{fieldErrors.imageUrl}</p>
                   )}
-                </div>
+                </div> */}
                 <div className="flex items-end gap-2 md:col-span-2 lg:col-span-4">
                   <Button type="submit" disabled={saving}>
                     <Plus className="mr-2 size-4" />
