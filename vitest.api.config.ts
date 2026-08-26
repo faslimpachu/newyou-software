@@ -6,7 +6,7 @@ export default defineConfig({
     fileParallelism: false,
     environment: 'node',
     globals: true,
-    include: ['tests/api/**/*.test.ts'],
+    include: ['tests/api/**/*.test.ts', 'app/api/**/*.test.ts'],
     sequence: { concurrent: false },
   },
   resolve: {
