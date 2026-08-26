@@ -11,6 +11,8 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { cn } from '@/lib/utils'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useDashboardData } from './use-dashboard-data'
 
 function formatDate(value?: string | null) {
@@ -30,6 +32,7 @@ function statusStyle(status?: string | null) {
 export function FollowupTable() {
   const { data, loading } = useDashboardData(3000)
   const rows = data?.upcomingFollowUps ?? []
+  const router = useRouter()
 
   return (
     <Card className="rounded-2xl border-border/70 shadow-sm">
@@ -54,7 +57,7 @@ export function FollowupTable() {
           </TableHeader>
           <TableBody>
             {rows.map((fu) => (
-              <TableRow key={fu.id}>
+              <TableRow key={fu.id} className="cursor-pointer" onClick={() => router.push(`/patients/${fu.patientMr}`)}>
                 <TableCell className="pl-6">
                   <p className="text-sm font-medium text-foreground">{fu.patient?.patientName || 'Unknown patient'}</p>
                   <p className="text-xs text-muted-foreground">{fu.patientMr} / {fu.patient?.mobileNumber || 'No phone'}</p>

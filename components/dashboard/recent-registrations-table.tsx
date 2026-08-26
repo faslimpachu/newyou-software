@@ -13,6 +13,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useDashboardData } from './use-dashboard-data'
 
 function initials(name: string) {
@@ -32,6 +33,7 @@ function formatDateTime(value: string) {
 export function RecentRegistrationsTable() {
   const { data, loading } = useDashboardData(3000)
   const rows = data?.recentRegistrations ?? []
+  const router = useRouter()
 
   return (
     <Card className="rounded-2xl border-border/70 shadow-sm">
@@ -55,7 +57,7 @@ export function RecentRegistrationsTable() {
           </TableHeader>
           <TableBody>
             {rows.map((reg) => (
-              <TableRow key={reg.mr}>
+              <TableRow key={reg.mr} className="cursor-pointer" onClick={() => router.push(`/patients/${reg.mr}`)}>
                 <TableCell className="pl-6">
                   <div className="flex items-center gap-3">
                     <Avatar className="size-8">

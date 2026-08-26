@@ -149,7 +149,7 @@ export async function GET() {
         },
       }),
       prisma.followUp.findMany({
-        orderBy: { createdAt: 'desc' },
+        orderBy: { reviewDate: 'desc' },
         take: 10,
         include: {
           patient: {
