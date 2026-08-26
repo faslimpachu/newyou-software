@@ -411,15 +411,6 @@ export default function InventoryAdjustmentsPage() {
             </CardHeader>
             <CardContent className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                {/* <h3 className="text-sm font-medium text-blue-900">Increase Stock</h3>
-                <ul className="text-xs text-blue-800 space-y-1 list-disc list-inside">
-                  <li>Select product and choose <strong>Increase</strong></li>
-                  <li>Select reason: Adjustment In (found stock) or Opening Stock</li>
-                  <li>Select batch to update</li>
-                  <li>Enter quantity and unit cost (required)</li>
-                  <li>Select supplier for traceability</li>
-                  <li>System creates a new BatchReceipt layer with the supplied cost</li>
-                </ul> */}
                 <h3 className="text-sm font-medium text-blue-900">Decrease Stock</h3>
                 <ul className="text-xs text-blue-800 space-y-1 list-disc list-inside">
                   <li>Select product and choose <strong>Decrease</strong></li>
