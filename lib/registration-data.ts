@@ -174,16 +174,14 @@ export type Doctor = { id: string; name: string; qualification: string }
 
 export const doctorsByCenter: Record<ConsultationCenter, Doctor[]> = {
   nutrition: [
-    { id: 'doc-nu-1', name: 'Dr. Anjali Menon', qualification: 'Chief Dietitian, M.Sc Clinical Nutrition' },
-    { id: 'doc-nu-2', name: 'Dr. Rahul Varma', qualification: 'Nutrition Physician, MD' },
-    { id: 'doc-nu-3', name: 'Dr. Priya Nair', qualification: 'Sports Nutritionist, M.Sc' },
-    { id: 'doc-nu-4', name: 'Dr. Sandeep Kumar', qualification: 'Bariatric Consultant, MD' },
+    { id: 'doc-nu-1', name: 'Dr.K.Gangadharan', qualification: 'BAMS,M.S,Shalyatantra' },
+    { id: 'doc-nu-2', name: 'Haritha K V', qualification: 'Nutritionist' },
+    { id: 'doc-nu-3', name: 'Dr.Sayana.T.K', qualification: 'BAMS' },
   ],
   ayurcare: [
-    { id: 'doc-ay-1', name: 'Dr. Krishnan Namboothiri', qualification: 'Chief Physician, BAMS, MD (Ayu)' },
-    { id: 'doc-ay-2', name: 'Dr. Lakshmi Warrier', qualification: 'Panchakarma Specialist, BAMS' },
-    { id: 'doc-ay-3', name: 'Dr. Arun Pillai', qualification: 'Ayurvedic Consultant, BAMS, MD' },
-    { id: 'doc-ay-4', name: 'Dr. Meera Thampi', qualification: 'Ayurvedic Physician, BAMS' },
+    { id: 'doc-ay-1', name: 'Dr.K.Gangadharan', qualification: 'BAMS,M.S,Shalyatantra' },
+    { id: 'doc-ay-2', name: 'Haritha K V', qualification: 'Nutritionist' },
+    { id: 'doc-ay-3', name: 'Dr.Sayana.T.K', qualification: 'BAMS' },
   ],
 }
 
