@@ -1,5 +1,9 @@
+'use client'
+
+import { useEffect, useState } from 'react'
 import { Plus } from 'lucide-react'
 import Link from 'next/link'
+
 import { Button } from '@/components/ui/button'
 import { DashboardShell } from '@/components/dashboard/dashboard-shell'
 import { StatCards } from '@/components/dashboard/stat-cards'
@@ -11,6 +15,28 @@ import { FollowupTable } from '@/components/dashboard/followup-table'
 import { BillingTable } from '@/components/dashboard/billing-table'
 
 export default function Page() {
+  const [currentDate, setCurrentDate] = useState('')
+
+  useEffect(() => {
+    const updateDate = () => {
+      setCurrentDate(
+        new Intl.DateTimeFormat('en-GB', {
+          weekday: 'long',
+          day: '2-digit',
+          month: 'long',
+          year: 'numeric',
+        }).format(new Date())
+      )
+    }
+
+    updateDate()
+
+    // Update automatically if the page stays open past midnight
+    const interval = setInterval(updateDate, 60 * 1000)
+
+    return () => clearInterval(interval)
+  }, [])
+
   return (
     <DashboardShell>
       <div className="mx-auto flex max-w-[1600px] flex-col gap-6">
@@ -21,9 +47,10 @@ export default function Page() {
               Dashboard Overview
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Wednesday, 11 July 2026 · Real-time hospital activity
+              {currentDate} · Real-time hospital activity
             </p>
           </div>
+
           <Link href="/register" className="inline-flex">
             <Button size="sm" className="gap-2">
               <Plus className="size-4" />
