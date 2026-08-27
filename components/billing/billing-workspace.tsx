@@ -202,11 +202,13 @@ type BillingSummary = {
   netProfit: number
   outstandingPatientBills: number
   collectedRevenue: number
+  todayExpenses: number
+  todayCashCollected: number
 }
 
 const PAGE_SIZE = 20
 const emptyPagination: Pagination = { page: 1, pageSize: PAGE_SIZE, total: 0, totalPages: 0 }
-const emptyBillingSummary: BillingSummary = { totalRevenue: 0, totalExpenses: 0, netProfit: 0, outstandingPatientBills: 0, collectedRevenue: 0 }
+const emptyBillingSummary: BillingSummary = { totalRevenue: 0, totalExpenses: 0, netProfit: 0, outstandingPatientBills: 0, collectedRevenue: 0, todayExpenses: 0, todayCashCollected: 0 }
 
 const seedInvoices: Invoice[] = [
   {
@@ -488,6 +490,8 @@ export function BillingWorkspace() {
         netProfit: data.netProfit ?? 0,
         outstandingPatientBills: data.outstandingPatientBills ?? 0,
         collectedRevenue: data.collectedRevenue ?? 0,
+        todayExpenses: data.todayExpenses ?? 0,
+        todayCashCollected: data.todayCashCollected ?? 0,
       })
     } catch (err: any) {
       if (signal?.aborted || requestId !== summaryRequestId.current) return
@@ -707,11 +711,12 @@ export function BillingWorkspace() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        <Metric label="Total Revenue" value={money(billingSummary.totalRevenue)} icon={<TrendingUp className="size-4" />} />
-        <Metric label="Total Expenses" value={money(billingSummary.totalExpenses)} icon={<TrendingDown className="size-4" />} />
+        {/* <Metric label="Total Revenue" value={money(billingSummary.totalRevenue)} icon={<TrendingUp className="size-4" />} /> */}
         <Metric label="Net Profit" value={money(billingSummary.netProfit)} icon={<Wallet className="size-4" />} tone={billingSummary.netProfit >= 0 ? 'positive' : 'negative'} />
-        <Metric label="Outstanding Patient Bills" value={money(billingSummary.outstandingPatientBills)} tone={billingSummary.outstandingPatientBills > 0 ? 'negative' : undefined} />
-        <Metric label="Cash Collected" value={money(billingSummary.collectedRevenue)} icon={<ReceiptText className="size-4" />} tone="positive" />
+        <Metric label="Total Cash Collected" value={money(billingSummary.collectedRevenue)} icon={<ReceiptText className="size-4" />} tone="positive" />
+        <Metric label="Today's Cash Collected" value={money(billingSummary.todayCashCollected)} />
+        <Metric label="Total Expenses" value={money(billingSummary.totalExpenses)} icon={<TrendingDown className="size-4" />} />
+        <Metric label="Today's Expenses" value={money(billingSummary.todayExpenses)} />
       </div>
 
       {errorInvoices && <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">{errorInvoices}</div>}

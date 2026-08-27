@@ -157,11 +157,12 @@ describe('BillingWorkspace', () => {
     render(<BillingWorkspace />)
 
     await waitFor(() => {
-      expect(screen.getByText('Total Revenue')).toBeDefined()
+      expect(screen.getByText('Net Profit')).toBeDefined()
     })
+    expect(screen.getByText('Total Cash Collected')).toBeDefined()
     expect(screen.getByText('Total Expenses')).toBeDefined()
-    expect(screen.getByText('Net Profit')).toBeDefined()
-    expect(screen.getByText('Outstanding Patient Bills')).toBeDefined()
+    expect(screen.getByText("Today's Expenses")).toBeDefined()
+    expect(screen.getByText("Today's Cash Collected")).toBeDefined()
   })
 
   it('keeps dashboard totals stable when invoice pagination changes', async () => {
@@ -180,7 +181,7 @@ describe('BillingWorkspace', () => {
       if (url === '/api/billing/summary') {
         return Promise.resolve({
           ok: true,
-          json: async () => ({ totalRevenue: 50000, totalExpenses: 12000, netProfit: 38000, outstandingPatientBills: 7500 }),
+          json: async () => ({ totalRevenue: 50000, totalExpenses: 12000, netProfit: 38000, outstandingPatientBills: 7500, collectedRevenue: 42500, todayExpenses: 1200, todayCashCollected: 132 }),
         })
       }
       if (url.startsWith('/api/billing?')) {
@@ -198,16 +199,17 @@ describe('BillingWorkspace', () => {
 
     render(<BillingWorkspace />)
     await waitFor(() => expect(screen.getByText('INV-PAGE-1-1')).toBeDefined())
-    expect(screen.getByText('Rs. 50,000.00')).toBeDefined()
     expect(screen.getByText('Rs. 12,000.00')).toBeDefined()
     expect(screen.getByText('Rs. 38,000.00')).toBeDefined()
-    expect(screen.getByText('Rs. 7,500.00')).toBeDefined()
+    expect(screen.getByText('Rs. 42,500.00')).toBeDefined()
+    expect(screen.getByText('Rs. 1,200.00')).toBeDefined()
+    expect(screen.getByText('Rs. 132.00')).toBeDefined()
 
     fireEvent.click(screen.getByRole('button', { name: 'Next' }))
 
     await waitFor(() => expect(screen.getByText('INV-PAGE-2-1')).toBeDefined())
     expect(screen.queryByText('INV-PAGE-1-1')).toBeNull()
-    expect(screen.getByText('Rs. 50,000.00')).toBeDefined()
+    expect(screen.getByText('Rs. 38,000.00')).toBeDefined()
     expect((global.fetch as ReturnType<typeof vi.fn>).mock.calls.filter(([url]) => url === '/api/billing/summary')).toHaveLength(1)
   })
 
@@ -217,7 +219,7 @@ describe('BillingWorkspace', () => {
     let resolvePageTwo!: (value: unknown) => void
 
     global.fetch = vi.fn().mockImplementation((url: string) => {
-      if (url === '/api/billing/summary') return Promise.resolve({ ok: true, json: async () => ({ totalRevenue: 0, totalExpenses: 0, netProfit: 0, outstandingPatientBills: 0 }) })
+      if (url === '/api/billing/summary') return Promise.resolve({ ok: true, json: async () => ({ totalRevenue: 0, totalExpenses: 0, netProfit: 0, outstandingPatientBills: 0, todayExpenses: 0, todayCashCollected: 0 }) })
       if (url.startsWith('/api/expenses?')) return Promise.resolve({ ok: true, json: async () => ({ expenses: [], page: 1, pageSize: 20, total: 0, totalPages: 0 }) })
       if (url.startsWith('/api/billing?')) {
         const page = new URL(`http://localhost${url}`).searchParams.get('page')
