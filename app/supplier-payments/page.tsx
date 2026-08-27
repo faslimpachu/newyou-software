@@ -156,7 +156,7 @@ export default function SupplierPaymentsPage() {
 
   const loadAllPendingInvoices = async () => {
     try {
-      const res = await fetch('/api/purchase-invoices?status=PENDING')
+      const res = await fetch('/api/purchase-invoices')
       if (res.ok) {
         const data = await res.json()
         const pending = data.invoices.filter((inv: Invoice) => Number(inv.balance) > 0)
