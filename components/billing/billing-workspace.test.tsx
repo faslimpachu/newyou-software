@@ -554,4 +554,31 @@ describe('BillingWorkspace', () => {
     expect(renderedPrintStyles()).toContain('width: 148mm;')
     expect(renderedPrintStyles()).toContain('min-height: 210mm;')
   })
+
+  it('makes amount paid now read-only and equals grand total in new invoice', async () => {
+    mockFetchInvoicesAndExpenses([], [])
+    render(<BillingWorkspace />)
+
+    await waitFor(() => expect(screen.getByText('No invoices found.')).toBeDefined())
+    fireEvent.click(screen.getByText('New invoice'))
+
+    await waitFor(() => expect(screen.getByText('Create invoice')).toBeDefined())
+
+    fireEvent.change(screen.getByPlaceholderText('e.g. MR000003'), { target: { value: 'MR000003' } })
+    await waitFor(() => {
+      expect(screen.getByRole('option', { name: /MR000003.*Test Patient/ })).toBeDefined()
+    }, { timeout: 3000 })
+
+    fireEvent.click(screen.getByRole('option', { name: /MR000003.*Test Patient/ }))
+
+    fireEvent.change(screen.getByPlaceholderText('Any service, test, medicine, or package'), { target: { value: 'Full consultation' } })
+    const rateInput = screen.getAllByRole('textbox').find((el) => el.getAttribute('inputmode') === 'decimal' && !el.hasAttribute('readonly'))
+    if (!rateInput) throw new Error('Rate input not found')
+    fireEvent.change(rateInput, { target: { value: '1500' } })
+
+    await waitFor(() => {
+      const paidInput = screen.getByDisplayValue('Rs. 1,500.00')
+      expect(paidInput).toHaveAttribute('readonly')
+    })
+  })
 })

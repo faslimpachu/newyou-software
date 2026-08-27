@@ -959,6 +959,12 @@ function NewInvoiceModal({ onClose, onSave, saving }: { onClose: () => void; onS
 
   const totals = useMemo(() => computeTotals(items, discount, tax, paid), [items, discount, tax, paid])
 
+  useEffect(() => {
+    if (totals.total > 0) {
+      setPaid(totals.total)
+    }
+  }, [totals.total])
+
   const updateLine = (id: number, key: keyof Line, value: string) =>
     setItems((current) => current.map((item) => (item.id === id ? { ...item, [key]: key === 'name' ? value : Math.max(0, Number(value) || 0) } : item)))
 
@@ -1191,7 +1197,7 @@ function NewInvoiceModal({ onClose, onSave, saving }: { onClose: () => void; onS
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
-          <FormField label="Amount paid now"><Input inputMode="decimal" value={paid} onChange={(e) => setPaid(Number(e.target.value) || 0)} /></FormField>
+          <FormField label="Amount paid now"><Input readOnly inputMode="decimal" value={money(totals.total)} /></FormField>
           <div className="rounded-lg bg-muted p-3 text-sm">
             <div className="flex justify-between"><span>Subtotal</span><span>{money(totals.subtotal)}</span></div>
             <div className="flex justify-between border-t mt-2 pt-2 font-semibold"><span>Grand total</span><span>{money(totals.total)}</span></div>
