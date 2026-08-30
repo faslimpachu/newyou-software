@@ -553,9 +553,11 @@ export default function ProductsPage() {
                       </SelectContent>
                     </Select>
                   ) : (
-                    <SelectTrigger disabled className={fieldErrors.categoryId ? 'border-destructive' : ''}>
-                      <SelectValue placeholder="Loading categories..." />
-                    </SelectTrigger>
+                    <Select disabled>
+                      <SelectTrigger disabled className={fieldErrors.categoryId ? 'border-destructive' : ''}>
+                        <SelectValue placeholder="Loading categories..." />
+                      </SelectTrigger>
+                    </Select>
                   )}
                   {fieldErrors.categoryId && (
                     <p className="text-xs text-destructive">{fieldErrors.categoryId}</p>
