@@ -167,7 +167,7 @@ export function SidebarNav({ collapsed = false, onNavigate }: SidebarNavProps) {
         <div className="border-t border-sidebar-border p-3">
           <div className="rounded-xl bg-accent/60 p-3">
             <p className="text-xs font-semibold text-accent-foreground">Shift: Morning</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">Dr. Kavya  on duty</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">NewYou</p>
           </div>
         </div>
       )}
