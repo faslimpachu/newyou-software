@@ -14,6 +14,7 @@ import {
   Receipt,
   ReceiptText,
   SlidersHorizontal,
+  Stethoscope,
   Truck,
   UserPlus,
   Users,
@@ -68,6 +69,7 @@ const navGroups: { heading: string; items: NavItem[] }[] = [
       { label: 'Inventory Adjustment', icon: SlidersHorizontal, href: '/inventory-adjustments' },
       { label: 'Stock History', icon: History, href: '/inventory-transactions' },
       { label: 'Batches', icon: Package, href: '/batches' },
+      { label: 'Pharmacy Sales', icon: Stethoscope, href: '/pharmacy-sales' },
     ],
   },
   {

@@ -1,0 +1,97 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import PharmacySalesPage from '@/app/pharmacy-sales/page'
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn() }),
+  usePathname: () => '/pharmacy-sales',
+}))
+
+const productsResponse = {
+  products: [
+    { id: 'p1', name: 'Paracetamol', sku: 'PCM', unit: 'pcs', sellingPrice: 5, currentStock: 10 },
+  ],
+}
+
+const patientMatch = { mr: 'MR000001', patientName: 'Test Patient', mobileNumber: '9845012345', age: 30 }
+const patientDetail = {
+  patient: {
+    mr: 'MR000001',
+    patientName: 'Test Patient',
+    mobileNumber: '9845012345',
+    gender: 'Male',
+    age: 30,
+    dob: '1995-01-01',
+    bloodGroup: 'B+',
+    address: 'Main St',
+    district: 'Kannur',
+    state: 'Kerala',
+    pinCode: '670001',
+  },
+}
+
+beforeEach(() => {
+  vi.clearAllMocks()
+  global.fetch = vi.fn().mockImplementation((url: string) => {
+    if (url.includes('/api/products')) {
+      return Promise.resolve({ ok: true, json: async () => productsResponse })
+    }
+    if (url.includes('/api/batches')) {
+      return Promise.resolve({ ok: true, json: async () => ({ batches: [] }) })
+    }
+    if (url.includes('/api/patients?')) {
+      return Promise.resolve({ ok: true, json: async () => ({ patients: [patientMatch] }) })
+    }
+    if (url.includes('/api/patients/')) {
+      return Promise.resolve({ ok: true, json: async () => patientDetail })
+    }
+    return Promise.resolve({ ok: false, json: async () => ({}) })
+  })
+})
+
+describe('PharmacySalesPage', () => {
+  it('renders the sale form', () => {
+    render(<PharmacySalesPage />)
+    expect(screen.getByRole('heading', { name: 'Pharmacy Sales' })).toBeTruthy()
+    expect(screen.getByText('New Sale')).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Record Sale/i })).toBeTruthy()
+  })
+
+  it('requires an MR number before saving', async () => {
+    render(<PharmacySalesPage />)
+    const form = document.querySelector('form') as HTMLFormElement
+    fireEvent.submit(form)
+    expect(await screen.findByText(/MR number is required/i)).toBeTruthy()
+  })
+
+  it('searches patients when an MR number is entered', async () => {
+    render(<PharmacySalesPage />)
+    const input = screen.getByPlaceholderText(/e\.g\. MR000003/i)
+    fireEvent.change(input, { target: { value: 'MR000001' } })
+    await waitFor(() =>
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/patients?search='),
+        expect.anything()
+      )
+    )
+    expect(await screen.findByText(/MR000001/)).toBeTruthy()
+  })
+
+  it('selecting a patient auto-fills and locks the detail fields', async () => {
+    render(<PharmacySalesPage />)
+    const input = screen.getByPlaceholderText(/e\.g\. MR000003/i)
+    fireEvent.change(input, { target: { value: 'MR000001' } })
+    const matchButton = await screen.findByText(/MR000001/)
+    fireEvent.click(matchButton)
+
+    const nameInput = (await screen.findByDisplayValue('Test Patient')) as HTMLInputElement
+    expect(nameInput).toBeTruthy()
+    // locked: readOnly once a patient is linked
+    await waitFor(() => expect(nameInput.readOnly).toBe(true))
+    // MR field shows the FULL selected MR, not just what was typed
+    const mrInput = document.getElementById('mrNumber') as HTMLInputElement
+    expect(mrInput.value).toBe('MR000001')
+    expect(mrInput.readOnly).toBe(true)
+    expect(screen.getByText(/Patient linked — details auto-filled and locked/i)).toBeTruthy()
+  })
+})

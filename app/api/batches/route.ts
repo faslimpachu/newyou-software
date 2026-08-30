@@ -99,6 +99,7 @@ export async function GET(request: Request) {
         batchNumber: batch.batchNumber,
         expiryDate: batch.expiryDate,
         quantity: toNumber(batch.quantity),
+        sellingPrice: toNumber(batch.sellingPrice),
         totalRemaining,
         avgCost: Math.round(avgCost * 100) / 100,
         status: batch.expiryDate

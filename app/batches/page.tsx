@@ -29,6 +29,7 @@ type Batch = {
   batchNumber: string
   expiryDate: string | null
   quantity: number
+  sellingPrice: number
   avgCost: number | null
   status: 'EXPIRED' | 'EXPIRING_SOON' | 'OK' | 'NO_EXPIRY'
   receipts?: {
@@ -63,6 +64,35 @@ export default function BatchesPage() {
   const [totalPages, setTotalPages] = useState(1)
   const [total, setTotal] = useState(0)
   const [showHelp, setShowHelp] = useState(false)
+  const [editingPriceBatchId, setEditingPriceBatchId] = useState('')
+  const [priceDraft, setPriceDraft] = useState('')
+  const [priceSaving, setPriceSaving] = useState(false)
+
+  const startEditPrice = (batch: Batch) => {
+    setEditingPriceBatchId(batch.id)
+    setPriceDraft(batch.sellingPrice ? String(batch.sellingPrice) : '')
+  }
+
+  const savePrice = async (batchId: string) => {
+    setPriceSaving(true)
+    try {
+      const res = await fetch(`/api/batches/${batchId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sellingPrice: priceDraft === '' ? 0 : Number(priceDraft) }),
+      })
+      if (!res.ok) throw new Error('Failed to save selling price')
+      const data = await res.json()
+      setBatches((prev) =>
+        prev.map((b) => (b.id === batchId ? { ...b, sellingPrice: data.batch.sellingPrice } : b))
+      )
+      setEditingPriceBatchId('')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to save selling price')
+    } finally {
+      setPriceSaving(false)
+    }
+  }
 
   const loadBatches = useCallback(async (pageNum = 1, showLoading = true) => {
     if (showLoading) setLoading(true)
@@ -255,6 +285,7 @@ export default function BatchesPage() {
                     <TableHead>Supplier</TableHead>
                     <TableHead className="text-right">Qty</TableHead>
                     <TableHead className="text-right">Purchase Rate</TableHead>
+                    <TableHead className="text-right">Selling Price</TableHead>
                     <TableHead>Expiry</TableHead>
                     <TableHead>Status</TableHead>
                   </TableRow>
@@ -292,6 +323,39 @@ export default function BatchesPage() {
                         <TableCell className="text-right tabular-nums">
                           {purchaseRateDisplay}
                         </TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {editingPriceBatchId === batch.id ? (
+                            <span className="flex items-center justify-end gap-1">
+                              <span className="text-muted-foreground">₹</span>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                autoFocus
+                                value={priceDraft}
+                                disabled={priceSaving}
+                                onChange={(e) => setPriceDraft(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') void savePrice(batch.id)
+                                  if (e.key === 'Escape') setEditingPriceBatchId('')
+                                }}
+                                onBlur={() => void savePrice(batch.id)}
+                                className="h-7 w-24 text-right"
+                              />
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => startEditPrice(batch)}
+                              className="rounded px-1 py-0.5 hover:bg-accent"
+                              title="Click to edit selling price"
+                            >
+                              {batch.sellingPrice > 0
+                                ? `₹${batch.sellingPrice.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
+                                : '-'}
+                            </button>
+                          )}
+                        </TableCell>
                         <TableCell>
                           {batch.expiryDate
                             ? new Date(batch.expiryDate).toLocaleDateString('en-IN')
@@ -305,7 +369,7 @@ export default function BatchesPage() {
                   })}
                   {batches.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center text-muted-foreground">
+                      <TableCell colSpan={8} className="text-center text-muted-foreground">
                         No batches found
                       </TableCell>
                     </TableRow>
