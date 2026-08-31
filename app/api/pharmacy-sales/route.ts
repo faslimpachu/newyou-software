@@ -33,6 +33,10 @@ type PharmacySaleGroup = {
   _sum: { totalAmount: unknown }
 }
 
+type PharmacySaleTotal = {
+  _sum: { totalAmount: unknown }
+}
+
 async function generateSaleNumber(tx: Prisma.TransactionClient): Promise<string> {
   const date = new Date().toISOString().slice(0, 10).replace(/-/g, '')
   const seq = await tx.sequence.upsert({
@@ -99,7 +103,7 @@ export async function GET(request: Request) {
       where.createdAt = createdAt;
     }
 
-    const [groups, totalGroups]: [PharmacySaleGroup[], unknown[]] = await Promise.all([
+    const [groups, totalGroups, totalSale]: [PharmacySaleGroup[], unknown[], PharmacySaleTotal] = await Promise.all([
       pharmacySale.groupBy({
         by: ['saleGroup'],
         where,
@@ -117,6 +121,10 @@ export async function GET(request: Request) {
         by: ['saleGroup'],
         where,
         _count: { saleGroup: true },
+      }),
+      pharmacySale.aggregate({
+        where,
+        _sum: { totalAmount: true },
       }),
     ])
 
@@ -195,6 +203,7 @@ export async function GET(request: Request) {
       pageSize,
       total: totalGroups.length,
       totalPages: Math.ceil(totalGroups.length / pageSize),
+      totalSaleAmount: toNumber(totalSale._sum.totalAmount),
     });
   } catch (e: unknown) {
     console.error('PharmacySales GET error', e);

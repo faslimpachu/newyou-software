@@ -69,6 +69,7 @@ export default function PharmacySalesHistoryPage() {
   const [pageSize] = useState(20)
   const [totalPages, setTotalPages] = useState(1)
   const [total, setTotal] = useState(0)
+  const [totalSaleAmount, setTotalSaleAmount] = useState(0)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
 
   const loadSales = async (pageNum = 1, showLoading = true) => {
@@ -88,9 +89,11 @@ export default function PharmacySalesHistoryPage() {
       setSales(data.sales || [])
       setTotalPages(data.totalPages || 1)
       setTotal(data.total || 0)
+      setTotalSaleAmount(Number(data.totalSaleAmount || 0))
       setPage(data.page || pageNum)
     } catch (e) {
       console.error(e)
+      setTotalSaleAmount(0)
     } finally {
       if (showLoading) setLoading(false)
     }
@@ -225,7 +228,9 @@ export default function PharmacySalesHistoryPage() {
           <CardHeader>
             <CardTitle className="text-base">Sales</CardTitle>
             <CardDescription>
-              {total > 0 ? `Page ${page} of ${totalPages} (${total} total)` : `${sales.length} sale(s) found`}
+              {total > 0
+                ? `Page ${page} of ${totalPages} (${total} total)  Total sale - ${money(totalSaleAmount)}`
+                : `${sales.length} sale(s) found  Total sale - ${money(totalSaleAmount)}`}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -325,7 +330,7 @@ export default function PharmacySalesHistoryPage() {
         {!loading && totalPages > 1 && (
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
-              Page {page} of {totalPages} ({total} total)
+              Page {page} of {totalPages} ({total} total) Total sale - {money(totalSaleAmount)}
             </p>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={handlePrevPage} disabled={page <= 1}>

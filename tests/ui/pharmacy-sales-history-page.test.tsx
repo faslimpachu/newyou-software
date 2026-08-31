@@ -42,6 +42,7 @@ beforeEach(() => {
       pageSize: 20,
       total: 1,
       totalPages: 1,
+      totalSaleAmount: 50,
     }),
   } as Response)
 })
@@ -57,6 +58,7 @@ describe('PharmacySalesHistoryPage', () => {
     expect(await screen.findByRole('heading', { name: 'Pharmacy Sales History' })).toBeTruthy()
     expect(await screen.findByText('PSALE-20260830-0001')).toBeTruthy()
     expect(screen.getByText(/MR000001/)).toBeTruthy()
+    expect(screen.getByText(/Total sale - Rs\. 50\.00/)).toBeTruthy()
     expect(screen.getByRole('button', { name: /Reprint/i })).toBeTruthy()
   })
 
@@ -110,6 +112,7 @@ describe('PharmacySalesHistoryPage', () => {
           pageSize: 20,
           total: 25,
           totalPages: 2,
+          totalSaleAmount: 1250,
         }),
       } as Response)
     })

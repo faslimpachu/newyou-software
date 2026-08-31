@@ -735,9 +735,9 @@ export default function PharmacySalesPage() {
                               ))}
                             </SearchableSelect>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="min-w-[15rem]">
                             <Select value={it.batchId || undefined} onValueChange={(v) => handleItemBatchChange(it.key, v || '')}>
-                              <SelectTrigger>
+                              <SelectTrigger className="w-full min-w-[14rem]">
                                 <SelectValue placeholder={it.productId ? 'Select batch' : 'Select product first'}>
                                   {batch
                                     ? `${batch.batchNumber} — ${Number(batch.quantity)} left`
@@ -746,9 +746,9 @@ export default function PharmacySalesPage() {
                                       : 'Select product first'}
                                 </SelectValue>
                               </SelectTrigger>
-                              <SelectContent>
+                              <SelectContent className="w-max min-w-[14rem] max-w-[calc(100vw-2rem)] overflow-x-visible">
                                 {opts.map((b) => (
-                                  <SelectItem key={b.id} value={b.id}>
+                                  <SelectItem key={b.id} value={b.id} className="min-w-max pr-8">
                                     {b.batchNumber} — {Number(b.quantity)} left
                                   </SelectItem>
                                 ))}

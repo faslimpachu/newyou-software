@@ -111,6 +111,7 @@ describe('Pharmacy Sales API', () => {
     expect(data.sales[0].items[0].batchNumber).toBe(first.batch.batchNumber)
     expect(data.total).toBe(1)
     expect(data.totalPages).toBe(1)
+    expect(data.totalSaleAmount).toBe(55)
   })
 
   it('GET applies filters before paginating sale groups', async () => {
@@ -148,6 +149,7 @@ describe('Pharmacy Sales API', () => {
     expect(data.pageSize).toBe(2)
     expect(data.total).toBe(4)
     expect(data.totalPages).toBe(2)
+    expect(data.totalSaleAmount).toBe(100)
     expect(data.sales.every((sale: any) => sale.patientMr === 'MRFILTER')).toBe(true)
     expect(data.sales.every((sale: any) => sale.paymentMethod === 'UPI')).toBe(true)
   })
