@@ -66,9 +66,6 @@ export async function GET(request: Request) {
         include: {
           product: { select: { id: true, name: true, sku: true, unit: true } },
           receipts: {
-            where: {
-              remainingQuantity: { gt: 0 },
-            },
             include: {
               supplier: { select: { id: true, supplierName: true } },
               purchaseInvoice: { select: { id: true, invoiceNumber: true } },
