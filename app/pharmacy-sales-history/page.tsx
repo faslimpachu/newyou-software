@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, Fragment } from 'react'
+import { useCallback, useEffect, useRef, useState, Fragment } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -19,7 +19,13 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { DashboardShell } from '@/components/dashboard/dashboard-shell'
 import { Printer, ChevronDown, ChevronRight } from 'lucide-react'
@@ -71,38 +77,54 @@ export default function PharmacySalesHistoryPage() {
   const [total, setTotal] = useState(0)
   const [totalSaleAmount, setTotalSaleAmount] = useState(0)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const requestIdRef = useRef(0)
+  const inFlightRef = useRef(false)
 
-  const loadSales = async (pageNum = 1, showLoading = true) => {
-    if (showLoading) setLoading(true)
-    try {
-      const params = new URLSearchParams()
-      if (filters.search) params.set('search', filters.search)
-      if (filters.paymentMethod) params.set('paymentMethod', filters.paymentMethod)
-      if (filters.startDate) params.set('startDate', filters.startDate)
-      if (filters.endDate) params.set('endDate', filters.endDate)
-      params.set('page', String(pageNum))
-      params.set('pageSize', String(pageSize))
+  const loadSales = useCallback(
+    async (pageNum = 1, showLoading = true) => {
+      if (!showLoading && inFlightRef.current) return
 
-      const res = await fetch(`/api/pharmacy-sales?${params.toString()}`)
-      if (!res.ok) throw new Error('Failed to load sales')
-      const data = await res.json()
-      setSales(data.sales || [])
-      setTotalPages(data.totalPages || 1)
-      setTotal(data.total || 0)
-      setTotalSaleAmount(Number(data.totalSaleAmount || 0))
-      setPage(data.page || pageNum)
-    } catch (e) {
-      console.error(e)
-      setTotalSaleAmount(0)
-    } finally {
-      if (showLoading) setLoading(false)
-    }
-  }
+      const requestId = ++requestIdRef.current
+      inFlightRef.current = true
+      if (showLoading) setLoading(true)
+      try {
+        const params = new URLSearchParams()
+        if (filters.search) params.set('search', filters.search)
+        if (filters.paymentMethod)
+          params.set('paymentMethod', filters.paymentMethod)
+        if (filters.startDate) params.set('startDate', filters.startDate)
+        if (filters.endDate) params.set('endDate', filters.endDate)
+        params.set('page', String(pageNum))
+        params.set('pageSize', String(pageSize))
+
+        const res = await fetch(`/api/pharmacy-sales?${params.toString()}`)
+        if (!res.ok) throw new Error('Failed to load sales')
+        const data = await res.json()
+        if (requestId !== requestIdRef.current) return
+        setSales(data.sales || [])
+        setTotalPages(data.totalPages || 1)
+        setTotal(data.total || 0)
+        setTotalSaleAmount(Number(data.totalSaleAmount || 0))
+        setPage(data.page || pageNum)
+      } catch (e) {
+        if (requestId !== requestIdRef.current) return
+        if (showLoading) {
+          console.error(e)
+          setTotalSaleAmount(0)
+        }
+      } finally {
+        if (requestId === requestIdRef.current) {
+          inFlightRef.current = false
+          if (showLoading) setLoading(false)
+        }
+      }
+    },
+    [filters, pageSize],
+  )
 
   useEffect(() => {
-    loadSales(1)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters])
+    void loadSales(1)
+  }, [loadSales])
 
   useEffect(() => {
     const interval = window.setInterval(() => {
@@ -110,8 +132,7 @@ export default function PharmacySalesHistoryPage() {
     }, 3000)
 
     return () => window.clearInterval(interval)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters, page, pageSize])
+  }, [loadSales, page])
 
   const handlePrevPage = () => {
     if (page > 1) loadSales(page - 1)
@@ -158,7 +179,9 @@ export default function PharmacySalesHistoryPage() {
   }
 
   const customerLabel = (sale: PharmacySaleSummary) =>
-    sale.patientMr ? `${sale.customerName} (${sale.patientMr})` : sale.customerName
+    sale.patientMr
+      ? `${sale.customerName} (${sale.patientMr})`
+      : sale.customerName
 
   return (
     <DashboardShell>
@@ -168,7 +191,8 @@ export default function PharmacySalesHistoryPage() {
             Pharmacy Sales History
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Browse pharmacy sales grouped by sale, reprint receipts, and filter by date, MR, or payment
+            Browse pharmacy sales grouped by sale, reprint receipts, and filter
+            by date, MR, or payment
           </p>
         </div>
 
@@ -183,7 +207,9 @@ export default function PharmacySalesHistoryPage() {
                 <Input
                   id="search"
                   value={filters.search}
-                  onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+                  onChange={(e) =>
+                    setFilters({ ...filters, search: e.target.value })
+                  }
                   placeholder="MR000003 or patient name"
                 />
               </div>
@@ -191,7 +217,9 @@ export default function PharmacySalesHistoryPage() {
                 <Label htmlFor="paymentMethod">Payment</Label>
                 <Select
                   value={filters.paymentMethod || ''}
-                  onValueChange={(value) => setFilters({ ...filters, paymentMethod: value || '' })}
+                  onValueChange={(value) =>
+                    setFilters({ ...filters, paymentMethod: value || '' })
+                  }
                 >
                   <SelectTrigger id="paymentMethod">
                     <SelectValue placeholder="All Payments" />
@@ -212,7 +240,9 @@ export default function PharmacySalesHistoryPage() {
                   id="startDate"
                   type="date"
                   value={filters.startDate}
-                  onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
+                  onChange={(e) =>
+                    setFilters({ ...filters, startDate: e.target.value })
+                  }
                 />
               </div>
               <div className="space-y-2">
@@ -221,11 +251,17 @@ export default function PharmacySalesHistoryPage() {
                   id="endDate"
                   type="date"
                   value={filters.endDate}
-                  onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}
+                  onChange={(e) =>
+                    setFilters({ ...filters, endDate: e.target.value })
+                  }
                 />
               </div>
               <div className="flex items-end">
-                <Button variant="outline" onClick={clearFilters} className="w-full">
+                <Button
+                  variant="outline"
+                  onClick={clearFilters}
+                  className="w-full"
+                >
                   Clear Filters
                 </Button>
               </div>
@@ -269,29 +305,52 @@ export default function PharmacySalesHistoryPage() {
                             <Button
                               variant="ghost"
                               size="icon-sm"
-                              aria-label={isOpen ? 'Collapse sale' : 'Expand sale'}
+                              aria-label={
+                                isOpen ? 'Collapse sale' : 'Expand sale'
+                              }
                               onClick={() => toggleExpand(sale.saleGroup)}
                             >
-                              {isOpen ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
+                              {isOpen ? (
+                                <ChevronDown className="size-4" />
+                              ) : (
+                                <ChevronRight className="size-4" />
+                              )}
                             </Button>
                           </TableCell>
-                          <TableCell className="font-medium">{sale.saleGroup}</TableCell>
-                          <TableCell>{new Date(sale.createdAt).toLocaleString('en-IN')}</TableCell>
+                          <TableCell className="font-medium">
+                            {sale.saleGroup}
+                          </TableCell>
+                          <TableCell>
+                            {new Date(sale.createdAt).toLocaleString('en-IN')}
+                          </TableCell>
                           <TableCell>{customerLabel(sale)}</TableCell>
                           <TableCell>
-                            <Badge variant="secondary">{sale.paymentMethod}</Badge>
+                            <Badge variant="secondary">
+                              {sale.paymentMethod}
+                            </Badge>
                           </TableCell>
-                          <TableCell className="text-right tabular-nums">{sale.itemsCount}</TableCell>
-                          <TableCell className="text-right tabular-nums">{money(sale.totalAmount)}</TableCell>
+                          <TableCell className="text-right tabular-nums">
+                            {sale.itemsCount}
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums">
+                            {money(sale.totalAmount)}
+                          </TableCell>
                           <TableCell className="text-right">
-                            <Button variant="outline" size="sm" onClick={() => reprint(sale)}>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => reprint(sale)}
+                            >
                               <Printer className="mr-2 size-4" />
                               Reprint
                             </Button>
                           </TableCell>
                         </TableRow>
                         {isOpen && (
-                          <TableRow key={`${sale.saleGroup}-items`} className="bg-muted/40">
+                          <TableRow
+                            key={`${sale.saleGroup}-items`}
+                            className="bg-muted/40"
+                          >
                             <TableCell colSpan={8} className="p-0">
                               <div className="px-4 py-4">
                                 <Table>
@@ -299,19 +358,35 @@ export default function PharmacySalesHistoryPage() {
                                     <TableRow>
                                       <TableHead>Product</TableHead>
                                       <TableHead>Batch</TableHead>
-                                      <TableHead className="text-right">Qty</TableHead>
-                                      <TableHead className="text-right">Rate</TableHead>
-                                      <TableHead className="text-right">Amount</TableHead>
+                                      <TableHead className="text-right">
+                                        Qty
+                                      </TableHead>
+                                      <TableHead className="text-right">
+                                        Rate
+                                      </TableHead>
+                                      <TableHead className="text-right">
+                                        Amount
+                                      </TableHead>
                                     </TableRow>
                                   </TableHeader>
                                   <TableBody>
                                     {sale.items.map((item) => (
                                       <TableRow key={item.id}>
-                                        <TableCell>{item.productName}</TableCell>
-                                        <TableCell>{item.batchNumber}</TableCell>
-                                        <TableCell className="text-right tabular-nums">{item.quantity}</TableCell>
-                                        <TableCell className="text-right tabular-nums">{money(item.unitPrice)}</TableCell>
-                                        <TableCell className="text-right tabular-nums">{money(item.totalAmount)}</TableCell>
+                                        <TableCell>
+                                          {item.productName}
+                                        </TableCell>
+                                        <TableCell>
+                                          {item.batchNumber}
+                                        </TableCell>
+                                        <TableCell className="text-right tabular-nums">
+                                          {item.quantity}
+                                        </TableCell>
+                                        <TableCell className="text-right tabular-nums">
+                                          {money(item.unitPrice)}
+                                        </TableCell>
+                                        <TableCell className="text-right tabular-nums">
+                                          {money(item.totalAmount)}
+                                        </TableCell>
                                       </TableRow>
                                     ))}
                                   </TableBody>
@@ -325,7 +400,10 @@ export default function PharmacySalesHistoryPage() {
                   })}
                   {sales.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center text-muted-foreground">
+                      <TableCell
+                        colSpan={8}
+                        className="text-center text-muted-foreground"
+                      >
                         No sales found
                       </TableCell>
                     </TableRow>
@@ -339,13 +417,24 @@ export default function PharmacySalesHistoryPage() {
         {!loading && totalPages > 1 && (
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
-              Page {page} of {totalPages} ({total} total) Total sale - {money(totalSaleAmount)}
+              Page {page} of {totalPages} ({total} total) Total sale -{' '}
+              {money(totalSaleAmount)}
             </p>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={handlePrevPage} disabled={page <= 1}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handlePrevPage}
+                disabled={page <= 1}
+              >
                 Previous
               </Button>
-              <Button variant="outline" size="sm" onClick={handleNextPage} disabled={page >= totalPages}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleNextPage}
+                disabled={page >= totalPages}
+              >
                 Next
               </Button>
             </div>

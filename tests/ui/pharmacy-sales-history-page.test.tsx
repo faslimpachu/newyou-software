@@ -147,4 +147,45 @@ describe('PharmacySalesHistoryPage', () => {
     expect(calls.at(-1)).toContain('page=1')
     expect(calls.at(-1)).toContain('pageSize=20')
   }, 5000)
+
+  it('keeps current data when a background poll fails', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    global.fetch = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          sales: mockSales,
+          page: 1,
+          pageSize: 20,
+          total: 1,
+          totalPages: 1,
+          totalSaleAmount: 50,
+        }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          sales: mockSales,
+          page: 1,
+          pageSize: 20,
+          total: 1,
+          totalPages: 1,
+          totalSaleAmount: 50,
+        }),
+      } as Response)
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+
+    render(<PharmacySalesHistoryPage />)
+
+    expect(await screen.findByText('PSALE-20260830-0001')).toBeTruthy()
+    expect(screen.getByText(/Total sale - Rs\. 50\.00/)).toBeTruthy()
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledTimes(3)
+    }, { timeout: 3500 })
+    expect(screen.getByText(/Total sale - Rs\. 50\.00/)).toBeTruthy()
+    expect(consoleSpy).not.toHaveBeenCalled()
+    consoleSpy.mockRestore()
+  }, 5000)
 })

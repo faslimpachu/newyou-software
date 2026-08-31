@@ -11,6 +11,10 @@ const productsResponse = {
   products: [
     { id: 'p1', name: 'Paracetamol', sku: 'PCM', unit: 'pcs', sellingPrice: 5, currentStock: 10 },
   ],
+  page: 1,
+  pageSize: 100,
+  total: 1,
+  totalPages: 1,
 }
 
 const patientMatch = { mr: 'MR000001', patientName: 'Test Patient', mobileNumber: '9845012345', age: 30 }
@@ -94,6 +98,8 @@ describe('PharmacySalesPage', () => {
     const nameInput = (await screen.findByDisplayValue('Test Patient')) as HTMLInputElement
     expect(nameInput).toBeTruthy()
     await waitFor(() => expect(nameInput.readOnly).toBe(true))
+    const genderInput = screen.getByDisplayValue('Male') as HTMLInputElement
+    expect(genderInput.readOnly).toBe(true)
     const mrInput = document.getElementById('mrNumber') as HTMLInputElement
     expect(mrInput.value).toBe('MR000001')
     expect(mrInput.readOnly).toBe(true)
@@ -119,5 +125,63 @@ describe('PharmacySalesPage', () => {
     removeButtons = screen.getAllByLabelText('Remove item')
     expect(removeButtons).toHaveLength(1)
     expect((removeButtons[0] as HTMLButtonElement).disabled).toBe(true)
+  })
+
+  it('loads all active product pages for the product dropdown', async () => {
+    const firstPageProducts = Array.from({ length: 100 }, (_, index) => ({
+      id: `p-${index + 1}`,
+      name: `Product ${index + 1}`,
+      sku: `SKU-${index + 1}`,
+      unit: 'pcs',
+      sellingPrice: 5,
+      currentStock: 10,
+    }))
+    const secondPageProduct = {
+      id: 'p-101',
+      name: 'Product 101',
+      sku: 'SKU-101',
+      unit: 'pcs',
+      sellingPrice: 5,
+      currentStock: 10,
+    }
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      if (url.includes('/api/products') && url.includes('page=1')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            products: firstPageProducts,
+            page: 1,
+            pageSize: 100,
+            total: 101,
+            totalPages: 2,
+          }),
+        })
+      }
+      if (url.includes('/api/products') && url.includes('page=2')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            products: [secondPageProduct],
+            page: 2,
+            pageSize: 100,
+            total: 101,
+            totalPages: 2,
+          }),
+        })
+      }
+      return Promise.resolve({ ok: true, json: async () => ({ batches: [] }) })
+    })
+
+    render(<PharmacySalesPage />)
+
+    await waitFor(() =>
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/products?active=true&page=2&pageSize=100'),
+      ),
+    )
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/products?active=true&page=2&pageSize=100'),
+    )
   })
 })

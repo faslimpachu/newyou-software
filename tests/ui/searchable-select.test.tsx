@@ -54,6 +54,26 @@ describe('SearchableSelect Component', () => {
     })
   })
 
+  it('filters items by visible text when item text is split across nodes', async () => {
+    render(
+      <SearchableSelect placeholder="Select product" searchPlaceholder="Search product">
+        <SearchableSelectItem value="p1">
+          Bandages Roll <span>(CON003)</span>
+        </SearchableSelectItem>
+        <SearchableSelectItem value="p2">
+          Gauze Pieces <span>(CON002)</span>
+        </SearchableSelectItem>
+      </SearchableSelect>,
+    )
+
+    fireEvent.click(screen.getByRole('combobox'))
+    const input = screen.getByPlaceholderText('Search product')
+    fireEvent.change(input, { target: { value: 'Bandages Roll' } })
+
+    expect(await screen.findByText('Bandages Roll')).toBeTruthy()
+    expect(screen.queryByText('Gauze Pieces')).toBeNull()
+  })
+
   it('shows empty state when no items match', async () => {
     render(
       <SearchableSelect placeholder="Select item" emptyText="No matches">

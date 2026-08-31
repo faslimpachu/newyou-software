@@ -301,7 +301,7 @@ export default function PurchaseInvoicesPage() {
 
   const loadProducts = async () => {
     try {
-      const res = await fetch('/api/products?active=true')
+      const res = await fetch('/api/products?active=true&pageSize=1000')
       if (res.ok) {
         const data = await res.json()
         setProducts(data.products)

@@ -1,10 +1,10 @@
 export type SaleLine = {
   id: string
   saleNumber: string
-  productId: string
+  productId?: string
   productName: string
   productSku?: string | null
-  batchId: string
+  batchId?: string
   batchNumber: string
   quantity: number
   unitPrice: number
@@ -67,7 +67,6 @@ export function buildReceiptHtml(sale: SaleReceipt): string {
     .totals { margin-left: auto; margin-top: 12px; width: 230px; }
     .totals div { display: flex; justify-content: space-between; padding: 3px 0; }
     .grand { border-top: 2px solid #111827; font-size: 13px; font-weight: 700; margin-top: 4px; padding-top: 6px; }
-    .footer { color: #6b7280; font-size: 10px; margin-top: 24px; text-align: center; }
   </style>
 </head>
 <body>
@@ -107,7 +106,6 @@ export function buildReceiptHtml(sale: SaleReceipt): string {
   <section class="totals">
     <div class="grand"><span>Total</span><span>${escapeHtml(printMoney(sale.totalAmount))}</span></div>
   </section>
-  <p class="footer">This is a computer-generated pharmacy sale receipt.</p>
 </body>
 </html>`
 }

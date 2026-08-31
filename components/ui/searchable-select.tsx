@@ -1,13 +1,16 @@
-"use client"
+'use client'
 
-import * as React from "react"
-import { Combobox, type ComboboxRootProps } from "@base-ui/react/combobox"
-import { ChevronDownIcon } from "lucide-react"
+import * as React from 'react'
+import { Combobox, type ComboboxRootProps } from '@base-ui/react/combobox'
+import { ChevronDownIcon } from 'lucide-react'
 
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
+import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 
-interface SearchableSelectProps extends Omit<ComboboxRootProps<string>, "onValueChange" | "items" | "onInputValueChange"> {
+interface SearchableSelectProps extends Omit<
+  ComboboxRootProps<string>,
+  'onValueChange' | 'items' | 'onInputValueChange'
+> {
   onValueChange?: (value: string) => void
   onInputValueChange?: (value: string) => void
   placeholder?: string
@@ -17,19 +20,45 @@ interface SearchableSelectProps extends Omit<ComboboxRootProps<string>, "onValue
   children: React.ReactNode
   className?: string
   disabled?: boolean
+  triggerAriaLabel?: string
+}
+
+type SearchableSelectChild = React.ReactElement<{
+  value?: string
+  children?: React.ReactNode
+}>
+
+function isSearchableSelectChild(
+  child: React.ReactNode,
+): child is SearchableSelectChild {
+  return React.isValidElement(child)
+}
+
+function getNodeText(node: React.ReactNode): string {
+  if (typeof node === 'string' || typeof node === 'number') {
+    return String(node)
+  }
+  if (Array.isArray(node)) {
+    return node.map(getNodeText).join('')
+  }
+  if (isSearchableSelectChild(node)) {
+    return getNodeText(node.props.children)
+  }
+  return ''
 }
 
 function SearchableSelect({
   value,
   onValueChange,
   onInputValueChange,
-  placeholder = "Select",
-  searchPlaceholder = "Search...",
-  emptyText = "No results found",
+  placeholder = 'Select',
+  searchPlaceholder = 'Search...',
+  emptyText = 'No results found',
   renderValue,
   children,
   className,
   disabled,
+  triggerAriaLabel,
   ...props
 }: SearchableSelectProps) {
   const handleValueChange = React.useCallback(
@@ -38,32 +67,28 @@ function SearchableSelect({
         onValueChange(newValue)
       }
     },
-    [onValueChange]
+    [onValueChange],
   )
 
-  const getItemLabel = React.useCallback((child: React.ReactElement): string => {
-    if (typeof child.props.children === "string") {
-      return child.props.children
-    }
-    if (typeof child.props.children === "number") {
-      return String(child.props.children)
-    }
-    if (React.isValidElement(child.props.children)) {
-      return getItemLabel(child.props.children as React.ReactElement)
-    }
-    return child.props.value?.toString() || ""
-  }, [])
+  const getItemLabel = React.useCallback(
+    (child: SearchableSelectChild): string => {
+      const label = getNodeText(child.props.children).trim()
+      return label || child.props.value?.toString() || ''
+    },
+    [],
+  )
 
-  const [search, setSearch] = React.useState("")
+  const [search, setSearch] = React.useState('')
 
-  const filteredChildren = React.useMemo(() => {
-    if (!search) return children
+  const filteredChildren = React.useMemo<React.ReactNode[]>(() => {
+    const childArray = React.Children.toArray(children)
+    if (!search) return childArray
 
     const lowerSearch = search.toLowerCase()
-    return React.Children.toArray(children).filter((child) => {
-      if (React.isValidElement(child)) {
-        const label = getItemLabel(child as React.ReactElement).toLowerCase()
-        const itemValue = child.props.value?.toString().toLowerCase() || ""
+    return childArray.filter((child) => {
+      if (isSearchableSelectChild(child)) {
+        const label = getItemLabel(child).toLowerCase()
+        const itemValue = child.props.value?.toString().toLowerCase() || ''
         return label.includes(lowerSearch) || itemValue.includes(lowerSearch)
       }
       return false
@@ -71,7 +96,7 @@ function SearchableSelect({
   }, [children, search, getItemLabel])
 
   return (
-    <div className={cn("relative", className)}>
+    <div className={cn('relative', className)}>
       <Combobox.Root
         value={value}
         onValueChange={handleValueChange}
@@ -82,9 +107,24 @@ function SearchableSelect({
         }}
         {...props}
       >
-        <Combobox.Trigger render={<Button variant="outline" size="sm" className="w-full justify-between" />}>
-          {renderValue && value ? renderValue(value) : <Combobox.Value placeholder={placeholder} />}
-          <Combobox.Icon render={<ChevronDownIcon className="size-4 opacity-50" />} />
+        <Combobox.Trigger
+          render={
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full justify-between"
+              aria-label={triggerAriaLabel}
+            />
+          }
+        >
+          {renderValue && value ? (
+            renderValue(value)
+          ) : (
+            <Combobox.Value placeholder={placeholder} />
+          )}
+          <Combobox.Icon
+            render={<ChevronDownIcon className="size-4 opacity-50" />}
+          />
         </Combobox.Trigger>
 
         <Combobox.Portal>
@@ -102,9 +142,9 @@ function SearchableSelect({
                     {emptyText}
                   </div>
                 )}
-                {React.Children.map(filteredChildren, (child) => {
-                  if (React.isValidElement(child) && child.props.value) {
-                    return React.cloneElement(child as React.ReactElement, { key: child.props.value })
+                {filteredChildren.map((child) => {
+                  if (isSearchableSelectChild(child) && child.props.value) {
+                    return child
                   }
                   return null
                 })}
@@ -123,13 +163,17 @@ interface SearchableSelectItemProps {
   className?: string
 }
 
-function SearchableSelectItem({ value, children, className }: SearchableSelectItemProps) {
+function SearchableSelectItem({
+  value,
+  children,
+  className,
+}: SearchableSelectItemProps) {
   return (
     <Combobox.Item
       value={value}
       className={cn(
-        "flex w-full cursor-default items-center gap-2 rounded-md px-2 py-1.5 text-sm outline-hidden select-none data-highlighted:bg-accent data-highlighted:text-accent-foreground",
-        className
+        'flex w-full cursor-default items-center gap-2 rounded-md px-2 py-1.5 text-sm outline-hidden select-none data-highlighted:bg-accent data-highlighted:text-accent-foreground',
+        className,
       )}
     >
       {children}

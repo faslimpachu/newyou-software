@@ -104,7 +104,7 @@ export default function InventoryAdjustmentsPage() {
 
   const loadProducts = async () => {
     try {
-      const res = await fetch('/api/products?active=true')
+      const res = await fetch('/api/products?active=true&pageSize=1000')
       if (res.ok) {
         const data = await res.json()
         setProducts(data.products)
@@ -132,7 +132,7 @@ export default function InventoryAdjustmentsPage() {
       return
     }
     try {
-      const res = await fetch(`/api/batches?productId=${productId}`)
+      const res = await fetch(`/api/batches?productId=${productId}&pageSize=1000`)
       if (res.ok) {
         const data = await res.json()
         setBatches(data.batches || [])

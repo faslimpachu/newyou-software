@@ -15,7 +15,7 @@ export async function GET(request: Request) {
     const active = url.searchParams.get('active');
     const stockStatus = url.searchParams.get('stockStatus') || '';
     const page = Math.max(1, Number(url.searchParams.get('page')) || 1);
-    const pageSize = Math.min(100, Math.max(1, Number(url.searchParams.get('pageSize')) || 20));
+    const pageSize = Math.min(1000, Math.max(1, Number(url.searchParams.get('pageSize')) || 20));
     const skip = (page - 1) * pageSize;
 
     const useRaw = Boolean(stockStatus)
