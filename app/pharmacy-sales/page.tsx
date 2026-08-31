@@ -693,6 +693,7 @@ export default function PharmacySalesPage() {
                       min="0"
                       value={quantity}
                       onChange={(e) => setQuantity(e.target.value)}
+                      onWheel={(e) => e.currentTarget.blur()}
                     />
                     {stockError && <p className="text-sm text-destructive">{stockError}</p>}
                   </div>
@@ -709,6 +710,7 @@ export default function PharmacySalesPage() {
                       readOnly
                       aria-readonly="true"
                       className="bg-muted"
+                      onWheel={(e) => e.currentTarget.blur()}
                     />
                   </div>
                   <div className="space-y-2">
