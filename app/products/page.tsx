@@ -726,7 +726,7 @@ export default function ProductsPage() {
                 onChange={(e) => setSearch(e.target.value)}
                 className="max-w-xs"
               />
-              <Select value={filterCategory || undefined} onValueChange={(value) => setFilterCategory(value || '')}>
+              <Select value={filterCategory || ''} onValueChange={(value) => setFilterCategory(value || '')}>
                 <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="All Categories">
                     {(value) => {
@@ -745,7 +745,7 @@ export default function ProductsPage() {
                   ))}
                 </SelectContent>
               </Select>
-              <Select value={stockStatus || undefined} onValueChange={(value) => setStockStatus(value || '')}>
+              <Select value={stockStatus || ''} onValueChange={(value) => setStockStatus(value || '')}>
                 <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="All Stock Status">
                     {(value) => {

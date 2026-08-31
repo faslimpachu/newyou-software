@@ -730,12 +730,12 @@ export default function PharmacySalesPage() {
                               </SearchableSelect>
                             </TableCell>
                             <TableCell className="min-w-[15rem]">
-                              <Select
-                                value={it.batchId || undefined}
-                                onValueChange={(v) =>
-                                  handleItemBatchChange(it.key, v || '')
-                                }
-                              >
+                <Select
+                  value={it.batchId || ''}
+                  onValueChange={(v) =>
+                    handleItemBatchChange(it.key, v || '')
+                  }
+                >
                                 <SelectTrigger className="w-full min-w-[14rem]">
                                   <SelectValue
                                     placeholder={

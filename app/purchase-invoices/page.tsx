@@ -797,7 +797,7 @@ export default function PurchaseInvoicesPage() {
                 onChange={(e) => setSearch(e.target.value)}
                 className="max-w-xs"
               />
-              <Select value={filterSupplierId || undefined} onValueChange={(value) => setFilterSupplierId(value || '')}>
+              <Select value={filterSupplierId || ''} onValueChange={(value) => setFilterSupplierId(value || '')}>
                 <SelectTrigger className="w-[220px]">
                   <SelectValue placeholder="All Suppliers">
                     {(value) => {
@@ -816,7 +816,7 @@ export default function PurchaseInvoicesPage() {
                   ))}
                 </SelectContent>
               </Select>
-              <Select value={filterStatus || undefined} onValueChange={(value) => setFilterStatus(value || '')}>
+              <Select value={filterStatus || ''} onValueChange={(value) => setFilterStatus(value || '')}>
                 <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="All Statuses">
                     {(value) => {
