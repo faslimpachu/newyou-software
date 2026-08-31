@@ -89,14 +89,14 @@ describe('PharmacySalesHistoryPage', () => {
     await screen.findByText('PSALE-20260830-0001')
 
     act(() => {
-      fireEvent.change(screen.getByLabelText('MR Number'), { target: { value: 'mr000001' } })
+      fireEvent.change(screen.getByLabelText('MR Number / Name'), { target: { value: 'Test Patient' } })
       fireEvent.change(screen.getByLabelText('Start Date'), { target: { value: '2026-08-30' } })
     })
 
     await waitFor(() => {
       const calls = (global.fetch as any).mock.calls.map((call: any[]) => String(call[0]))
       const lastCall = calls.filter((url: string) => url.includes('/api/pharmacy-sales')).at(-1)
-      expect(lastCall).toContain('patientMr=MR000001')
+      expect(lastCall).toContain('search=Test+Patient')
       expect(lastCall).toContain('startDate=2026-08-30')
       expect(lastCall).toContain('page=1')
     })

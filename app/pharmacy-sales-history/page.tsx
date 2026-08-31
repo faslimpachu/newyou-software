@@ -60,7 +60,7 @@ export default function PharmacySalesHistoryPage() {
   const [sales, setSales] = useState<PharmacySaleSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [filters, setFilters] = useState({
-    patientMr: '',
+    search: '',
     paymentMethod: '',
     startDate: '',
     endDate: '',
@@ -76,7 +76,7 @@ export default function PharmacySalesHistoryPage() {
     if (showLoading) setLoading(true)
     try {
       const params = new URLSearchParams()
-      if (filters.patientMr) params.set('patientMr', filters.patientMr)
+      if (filters.search) params.set('search', filters.search)
       if (filters.paymentMethod) params.set('paymentMethod', filters.paymentMethod)
       if (filters.startDate) params.set('startDate', filters.startDate)
       if (filters.endDate) params.set('endDate', filters.endDate)
@@ -122,7 +122,7 @@ export default function PharmacySalesHistoryPage() {
   }
 
   const clearFilters = () => {
-    setFilters({ patientMr: '', paymentMethod: '', startDate: '', endDate: '' })
+    setFilters({ search: '', paymentMethod: '', startDate: '', endDate: '' })
   }
 
   const toggleExpand = (saleGroup: string) => {
@@ -179,12 +179,12 @@ export default function PharmacySalesHistoryPage() {
           <CardContent>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
               <div className="space-y-2">
-                <Label htmlFor="patientMr">MR Number</Label>
+                <Label htmlFor="search">MR Number / Name</Label>
                 <Input
-                  id="patientMr"
-                  value={filters.patientMr}
-                  onChange={(e) => setFilters({ ...filters, patientMr: e.target.value.toUpperCase() })}
-                  placeholder="e.g. MR000003"
+                  id="search"
+                  value={filters.search}
+                  onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+                  placeholder="MR000003 or patient name"
                 />
               </div>
               <div className="space-y-2">
