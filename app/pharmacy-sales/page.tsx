@@ -557,11 +557,11 @@ export default function PharmacySalesPage() {
                     id="customerName"
                     value={customerName}
                     onChange={(e) => setCustomerName(e.target.value)}
-                    placeholder="Customer name"
+                    placeholder="Auto-filled from MR lookup"
                     required
-                    readOnly={mrLinked}
-                    aria-readonly={mrLinked}
-                    className={mrLinked ? 'bg-muted' : undefined}
+                    readOnly
+                    aria-readonly="true"
+                    className="bg-muted"
                   />
                 </div>
                 <div className="space-y-2">
@@ -570,17 +570,17 @@ export default function PharmacySalesPage() {
                     id="customerPhone"
                     value={customerPhone}
                     onChange={(e) => setCustomerPhone(e.target.value)}
-                    placeholder="Phone"
-                    readOnly={mrLinked}
-                    aria-readonly={mrLinked}
-                    className={mrLinked ? 'bg-muted' : undefined}
+                    placeholder="Auto-filled from MR lookup"
+                    readOnly
+                    aria-readonly="true"
+                    className="bg-muted"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="gender">Gender</Label>
-                  <Select value={gender || undefined} onValueChange={setGender} disabled={mrLinked}>
-                    <SelectTrigger id="gender" className={mrLinked ? 'bg-muted' : undefined}>
-                      <SelectValue placeholder="Select" />
+                  <Select value={gender || undefined} onValueChange={setGender} disabled>
+                    <SelectTrigger id="gender" className="bg-muted">
+                      <SelectValue placeholder="Auto-filled" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Male">Male</SelectItem>
@@ -595,10 +595,10 @@ export default function PharmacySalesPage() {
                     id="age"
                     value={age}
                     onChange={(e) => setAge(e.target.value)}
-                    placeholder="Age"
-                    readOnly={mrLinked}
-                    aria-readonly={mrLinked}
-                    className={mrLinked ? 'bg-muted' : undefined}
+                    placeholder="Auto-filled"
+                    readOnly
+                    aria-readonly="true"
+                    className="bg-muted"
                   />
                 </div>
                 <div className="space-y-2">
@@ -607,10 +607,10 @@ export default function PharmacySalesPage() {
                     id="bloodGroup"
                     value={bloodGroup}
                     onChange={(e) => setBloodGroup(e.target.value)}
-                    placeholder="e.g. B+"
-                    readOnly={mrLinked}
-                    aria-readonly={mrLinked}
-                    className={mrLinked ? 'bg-muted' : undefined}
+                    placeholder="Auto-filled"
+                    readOnly
+                    aria-readonly="true"
+                    className="bg-muted"
                   />
                 </div>
                 <div className="space-y-2">
@@ -620,9 +620,9 @@ export default function PharmacySalesPage() {
                     type="date"
                     value={dateOfBirth}
                     onChange={(e) => setDateOfBirth(e.target.value)}
-                    readOnly={mrLinked}
-                    aria-readonly={mrLinked}
-                    className={mrLinked ? 'bg-muted' : undefined}
+                    readOnly
+                    aria-readonly="true"
+                    className="bg-muted"
                   />
                 </div>
                 <div className="space-y-2 md:col-span-3">
@@ -631,10 +631,10 @@ export default function PharmacySalesPage() {
                     id="address"
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
-                    placeholder="Address"
-                    readOnly={mrLinked}
-                    aria-readonly={mrLinked}
-                    className={mrLinked ? 'bg-muted' : undefined}
+                    placeholder="Auto-filled from MR lookup"
+                    readOnly
+                    aria-readonly="true"
+                    className="bg-muted"
                   />
                 </div>
               </div>
@@ -664,7 +664,13 @@ export default function PharmacySalesPage() {
                     <Label htmlFor="batchId">Batch</Label>
                     <Select value={batchId || undefined} onValueChange={handleBatchChange}>
                       <SelectTrigger id="batchId">
-                        <SelectValue placeholder={productId ? 'Select batch' : 'Select product first'} />
+                        <SelectValue placeholder={productId ? 'Select batch' : 'Select product first'}>
+                          {selectedBatch
+                            ? `${selectedBatch.batchNumber} — ${Number(selectedBatch.quantity)} left`
+                            : productId
+                              ? 'Select batch'
+                              : 'Select product first'}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         {batches.map((batch) => (

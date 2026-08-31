@@ -175,4 +175,26 @@ describe('Pharmacy Sales API', () => {
     const updated = await prisma.productBatch.findUnique({ where: { id: batch.id } })
     expect(Number(updated?.sellingPrice)).toBe(99.5)
   })
+
+  it('PATCH rejects a negative sellingPrice', async () => {
+    const { batch } = await seedStock(10, 0)
+
+    const req = new Request(`http://localhost/api/batches/${batch.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sellingPrice: -5 }),
+    })
+    const res = await PATCH(req, { params: { id: batch.id } })
+    expect(res.status).toBe(400)
+  })
+
+  it('PATCH returns 404 for an unknown batch', async () => {
+    const req = new Request('http://localhost/api/batches/does-not-exist', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sellingPrice: 10 }),
+    })
+    const res = await PATCH(req, { params: { id: 'does-not-exist' } })
+    expect(res.status).toBe(404)
+  })
 })

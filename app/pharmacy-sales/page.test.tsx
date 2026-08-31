@@ -50,11 +50,17 @@ beforeEach(() => {
 })
 
 describe('PharmacySalesPage', () => {
-  it('renders the sale form', () => {
+  it('renders the sale form with patient fields always read-only', () => {
     render(<PharmacySalesPage />)
     expect(screen.getByRole('heading', { name: 'Pharmacy Sales' })).toBeTruthy()
     expect(screen.getByText('New Sale')).toBeTruthy()
     expect(screen.getByRole('button', { name: /Record Sale/i })).toBeTruthy()
+
+    // patient detail fields are read-only even before any MR lookup
+    const nameInput = document.getElementById('customerName') as HTMLInputElement
+    expect(nameInput).toBeTruthy()
+    expect(nameInput.readOnly).toBe(true)
+    expect(nameInput.placeholder).toMatch(/auto-filled/i)
   })
 
   it('requires an MR number before saving', async () => {

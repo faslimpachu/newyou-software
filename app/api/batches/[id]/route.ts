@@ -8,9 +8,10 @@ function toNumber(value: unknown): number {
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const body = await request.json();
     const { sellingPrice } = body;
 
@@ -24,14 +25,14 @@ export async function PATCH(
     }
 
     const batch = await prisma.productBatch.findUnique({
-      where: { id: params.id },
+      where: { id },
     });
     if (!batch) {
       return NextResponse.json({ error: 'Batch not found' }, { status: 404 });
     }
 
     const updated = await prisma.productBatch.update({
-      where: { id: params.id },
+      where: { id },
       data: { sellingPrice: price },
     });
 
