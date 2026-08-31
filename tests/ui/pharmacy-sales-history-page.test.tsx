@@ -48,6 +48,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  vi.useRealTimers()
   cleanup()
 })
 
@@ -129,4 +130,21 @@ describe('PharmacySalesHistoryPage', () => {
       expect(calls.some((url: string) => url.includes('/api/pharmacy-sales') && url.includes('page=2'))).toBe(true)
     })
   })
+
+  it('polls the current backend page every 3 seconds', async () => {
+    render(<PharmacySalesHistoryPage />)
+
+    await screen.findByText('PSALE-20260830-0001')
+    const baselineCalls = (global.fetch as any).mock.calls.length
+    expect(baselineCalls).toBeGreaterThan(0)
+
+    await waitFor(() => {
+      expect((global.fetch as any).mock.calls.length).toBeGreaterThan(baselineCalls)
+    }, { timeout: 3500 })
+
+    const calls = (global.fetch as any).mock.calls.map((call: any[]) => String(call[0]))
+    expect(calls.at(-1)).toContain('/api/pharmacy-sales')
+    expect(calls.at(-1)).toContain('page=1')
+    expect(calls.at(-1)).toContain('pageSize=20')
+  }, 5000)
 })

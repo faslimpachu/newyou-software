@@ -104,6 +104,15 @@ export default function PharmacySalesHistoryPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters])
 
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      void loadSales(page, false)
+    }, 3000)
+
+    return () => window.clearInterval(interval)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters, page, pageSize])
+
   const handlePrevPage = () => {
     if (page > 1) loadSales(page - 1)
   }
