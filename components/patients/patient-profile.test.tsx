@@ -405,6 +405,18 @@ describe('PatientProfile', () => {
     const mockFetch = vi.fn()
       .mockResolvedValueOnce({
         ok: true,
+        json: async () => ({ products: [] }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ products: [] }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ products: [] }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
         json: async () => ({ prescription: { id: 'RX-1', visitId: 'NU000001', opSheetId: 'OP-1', diagnosis: '', medicines: '[]', advice: '', followUp: '', createdAt: new Date().toISOString(), opSheet } }),
       })
       .mockResolvedValueOnce({

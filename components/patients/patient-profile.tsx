@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils'
 import { type ExistingPatient, centerOptions, type ConsultationCenter, doctorsFor } from '@/lib/registration-data'
 import { mapApiPatient, readApiError, type ApiFollowUp, type ApiOPSheet, type ApiPatient, type ApiPrescription, type PatientRecord } from '@/lib/patient-api'
 import { PatientProfileEditor } from './patient-profile-editor'
+import { MedicineSelect } from './medicine-select'
 
 const measurements = ['Weight (kg)', 'Height (cm)', 'BMI', 'Body Fat (%)', 'Lean Mass (kg)', 'Waist (cm)', 'Hip (cm)', 'WHR', 'Muscle Mass (kg)', 'Water (%)', 'BMR (kcal)', 'Metabolic Age']
 const measurementColumns = ['Baseline', '1 Month', '2 Months', '3 Months', 'Change']
@@ -720,7 +721,7 @@ function PrescriptionEditor({ patient, center, record, readOnly, onCancel, onSav
         <table className="w-full text-sm">
           <thead className="bg-muted text-xs text-muted-foreground"><tr>{['Medicine', 'Dosage', 'Frequency', 'Duration', 'Instructions', ''].map((x) => <th key={x} className="p-3 text-left">{x}</th>)}</tr></thead>
           <tbody>{medicines.map((row) => <tr key={row.id} className="border-b">
-            <td className="p-2"><Input className="h-7" disabled={readOnly} aria-label="Medicine" value={row.medicine} onChange={(e) => updateRow(row.id, 'medicine', e.target.value)} /></td>
+            <td className="p-2"><MedicineSelect disabled={readOnly} value={row.medicine} onChange={(value) => updateRow(row.id, 'medicine', value)} /></td>
             <td className="p-2"><Input className="h-7" disabled={readOnly} aria-label="Dosage" value={row.dosage} onChange={(e) => updateRow(row.id, 'dosage', e.target.value)} /></td>
             <td className="p-2"><Input className="h-7" disabled={readOnly} aria-label="Frequency" value={row.frequency} onChange={(e) => updateRow(row.id, 'frequency', e.target.value)} /></td>
             <td className="p-2"><Input className="h-7" disabled={readOnly} aria-label="Duration" value={row.duration} onChange={(e) => updateRow(row.id, 'duration', e.target.value)} /></td>
