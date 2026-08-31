@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useId, useRef, useState } from 'react'
-import { ChevronDown, Search, X } from 'lucide-react'
+import { createPortal } from 'react-dom'
+import { Search, X } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 
@@ -24,8 +25,8 @@ function MedicineSelect({ value, onChange, disabled, placeholder = 'Search medic
   const [products, setProducts] = useState<ProductOption[]>([])
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(false)
+  const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({})
   const inputRef = useRef<HTMLInputElement>(null)
-  const listRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const searchInputId = useId()
   const justSelected = useRef(false)
@@ -51,7 +52,10 @@ function MedicineSelect({ value, onChange, disabled, placeholder = 'Search medic
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+      const target = event.target as Node
+      if (containerRef.current && !containerRef.current.contains(target)) {
+        const dropdown = document.getElementById(`medicine-dropdown-${searchInputId}`)
+        if (dropdown && dropdown.contains(target)) return
         setOpen(false)
       }
     }
@@ -59,7 +63,7 @@ function MedicineSelect({ value, onChange, disabled, placeholder = 'Search medic
       document.addEventListener('mousedown', handleClickOutside)
       return () => document.removeEventListener('mousedown', handleClickOutside)
     }
-  }, [open])
+  }, [open, searchInputId])
 
   const filtered = products.filter((p) => p.name.toLowerCase().includes(search.toLowerCase()))
 
@@ -72,6 +76,17 @@ function MedicineSelect({ value, onChange, disabled, placeholder = 'Search medic
 
   const handleInputFocus = () => {
     if (!disabled && !justSelected.current) {
+      const rect = inputRef.current?.getBoundingClientRect()
+      if (rect) {
+        setDropdownStyle({
+          position: 'fixed',
+          left: rect.left,
+          top: rect.bottom + 4,
+          minWidth: Math.max(320, rect.width),
+          maxWidth: 520,
+          zIndex: 9999,
+        })
+      }
       setOpen(true)
     }
     justSelected.current = false
@@ -79,7 +94,6 @@ function MedicineSelect({ value, onChange, disabled, placeholder = 'Search medic
 
   const handleInputChange = (next: string) => {
     onChange(next)
-    if (!open) setOpen(true)
     setSearch(next)
   }
 
@@ -89,6 +103,51 @@ function MedicineSelect({ value, onChange, disabled, placeholder = 'Search medic
     setSearch('')
     inputRef.current?.focus()
   }
+
+  const dropdown = open && !disabled ? (
+    <div
+      id={`medicine-dropdown-${searchInputId}`}
+      className="rounded-lg border bg-popover text-popover-foreground shadow-md"
+      role="listbox"
+      style={dropdownStyle}
+    >
+      <div className="flex items-center border-b px-2">
+        <Search className="mr-2 size-3.5 text-muted-foreground" />
+        <input
+          id={searchInputId}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search product..."
+          className="h-8 w-full bg-transparent py-1.5 text-sm outline-none"
+          autoFocus
+        />
+      </div>
+      <div className="max-h-48 overflow-y-auto p-1">
+        {loading && (
+          <div className="px-2 py-1.5 text-sm text-muted-foreground">Loading...</div>
+        )}
+        {!loading && filtered.length === 0 && (
+          <div className="px-2 py-1.5 text-sm text-muted-foreground">No products found</div>
+        )}
+        {filtered.map((product) => (
+          <button
+            key={product.id}
+            type="button"
+            role="option"
+            aria-selected={value === product.name}
+            className={cn(
+              'flex w-full items-center justify-between gap-3 rounded-md px-2 py-1.5 text-sm',
+              value === product.name ? 'bg-accent text-accent-foreground' : 'hover:bg-accent/60',
+            )}
+            onClick={() => handleSelect(product.name)}
+          >
+            <span className="truncate">{product.name}</span>
+            <span className="shrink-0 text-xs text-muted-foreground">Qty: {product.currentStock}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  ) : null
 
   return (
     <div ref={containerRef} className={cn('relative', className)}>
@@ -118,50 +177,7 @@ function MedicineSelect({ value, onChange, disabled, placeholder = 'Search medic
           </button>
         )}
       </div>
-
-      {open && !disabled && (
-        <div
-          ref={listRef}
-          className="absolute z-50 mt-1 min-w-[320px] max-w-[520px] rounded-lg border bg-popover text-popover-foreground shadow-md"
-          role="listbox"
-        >
-          <div className="flex items-center border-b px-2">
-            <Search className="mr-2 size-3.5 text-muted-foreground" />
-            <input
-              id={searchInputId}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search product..."
-              className="h-8 w-full bg-transparent py-1.5 text-sm outline-none"
-              autoFocus
-            />
-          </div>
-          <div className="max-h-48 overflow-y-auto p-1">
-            {loading && (
-              <div className="px-2 py-1.5 text-sm text-muted-foreground">Loading...</div>
-            )}
-            {!loading && filtered.length === 0 && (
-              <div className="px-2 py-1.5 text-sm text-muted-foreground">No products found</div>
-            )}
-            {filtered.map((product) => (
-              <button
-                key={product.id}
-                type="button"
-                role="option"
-                aria-selected={value === product.name}
-                className={cn(
-                  'flex w-full items-center justify-between gap-3 rounded-md px-2 py-1.5 text-sm',
-                  value === product.name ? 'bg-accent text-accent-foreground' : 'hover:bg-accent/60',
-                )}
-                onClick={() => handleSelect(product.name)}
-              >
-                <span className="truncate">{product.name}</span>
-                <span className="shrink-0 text-xs text-muted-foreground">Qty: {product.currentStock}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+      {typeof document !== 'undefined' && createPortal(dropdown, document.body)}
     </div>
   )
 }
