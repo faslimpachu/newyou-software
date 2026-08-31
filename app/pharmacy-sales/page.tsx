@@ -705,6 +705,10 @@ export default function PharmacySalesPage() {
                       min="0"
                       value={unitPrice}
                       onChange={(e) => setUnitPrice(e.target.value)}
+                      placeholder="Auto-filled from batch"
+                      readOnly
+                      aria-readonly="true"
+                      className="bg-muted"
                     />
                   </div>
                   <div className="space-y-2">

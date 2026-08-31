@@ -61,6 +61,10 @@ describe('PharmacySalesPage', () => {
     expect(nameInput).toBeTruthy()
     expect(nameInput.readOnly).toBe(true)
     expect(nameInput.placeholder).toMatch(/auto-filled/i)
+
+    // unit price is read-only (auto-filled from the batch)
+    const priceInput = document.getElementById('unitPrice') as HTMLInputElement
+    expect(priceInput.readOnly).toBe(true)
   })
 
   it('requires an MR number before saving', async () => {
