@@ -15,6 +15,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { DashboardShell } from '@/components/dashboard/dashboard-shell'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { History, HelpCircle, Info } from 'lucide-react'
 
 type Batch = {
@@ -73,13 +74,30 @@ export default function BatchesPage() {
     setPriceDraft(batch.sellingPrice ? String(batch.sellingPrice) : '')
   }
 
-  const savePrice = async (batchId: string) => {
+  const [priceConfirm, setPriceConfirm] = useState<{ batchId: string; newPrice: number } | null>(null)
+
+  const savePrice = (batchId: string) => {
+    if (priceConfirm) return
+    const batch = batches.find((b) => b.id === batchId)
+    const newPrice = priceDraft === '' ? 0 : Number(priceDraft)
+    const currentPrice = batch ? Number(batch.sellingPrice) : 0
+
+    if (newPrice === currentPrice) {
+      setEditingPriceBatchId('')
+      return
+    }
+
+    setPriceConfirm({ batchId, newPrice })
+  }
+
+  const commitPrice = async (batchId: string, newPrice: number) => {
+    setPriceConfirm(null)
     setPriceSaving(true)
     try {
       const res = await fetch(`/api/batches/${batchId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sellingPrice: priceDraft === '' ? 0 : Number(priceDraft) }),
+        body: JSON.stringify({ sellingPrice: newPrice }),
       })
       if (!res.ok) throw new Error('Failed to save selling price')
       const data = await res.json()
@@ -92,6 +110,13 @@ export default function BatchesPage() {
     } finally {
       setPriceSaving(false)
     }
+  }
+
+  const cancelPrice = () => {
+    const batch = batches.find((b) => b.id === priceConfirm?.batchId)
+    setPriceDraft(batch && batch.sellingPrice ? String(batch.sellingPrice) : '')
+    setPriceConfirm(null)
+    setEditingPriceBatchId('')
   }
 
   const loadBatches = useCallback(async (pageNum = 1, showLoading = true) => {
@@ -406,6 +431,18 @@ export default function BatchesPage() {
           </div>
         )}
       </div>
+
+      {priceConfirm && (
+        <ConfirmDialog
+          title="Confirm selling price"
+          description={`Set selling price to ₹${priceConfirm.newPrice.toLocaleString('en-IN', {
+            minimumFractionDigits: 2,
+          })}?`}
+          confirmLabel="Save"
+          onCancel={cancelPrice}
+          onConfirm={() => void commitPrice(priceConfirm.batchId, priceConfirm.newPrice)}
+        />
+      )}
     </DashboardShell>
   )
 }
