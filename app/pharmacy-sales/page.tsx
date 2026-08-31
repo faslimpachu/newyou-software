@@ -14,8 +14,16 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { SearchableSelect, SearchableSelectItem } from '@/components/ui/searchable-select'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { DashboardShell } from '@/components/dashboard/dashboard-shell'
-import { Printer, Stethoscope, CheckCircle2, AlertCircle } from 'lucide-react'
+import { Printer, Stethoscope, CheckCircle2, AlertCircle, Plus, Trash2 } from 'lucide-react'
 
 type PatientMatch = {
   mr: string
@@ -41,17 +49,32 @@ type Batch = {
   expiryDate: string | null
 }
 
-type SaleReceipt = {
+type SaleItem = {
+  key: string
+  productId: string
+  batchId: string
+  quantity: string
+  unitPrice: string
+}
+
+type SaleLine = {
+  id: string
   saleNumber: string
-  customerName: string
-  customerPhone: string | null
   productName: string
   batchNumber: string
   quantity: number
   unitPrice: number
   totalAmount: number
+}
+
+type SaleReceipt = {
+  saleGroup: string
+  customerName: string
+  customerPhone: string | null
   paymentMethod: string
   createdAt: string
+  lines: SaleLine[]
+  totalAmount: number
 }
 
 const PAYMENT_METHODS = ['CASH', 'UPI', 'CARD', 'BANK'] as const
@@ -66,10 +89,22 @@ const escapeHtml = (value: string | number | null | undefined) =>
     .replace(/'/g, '&#039;')
 
 function buildReceiptHtml(sale: SaleReceipt): string {
+  const rows = sale.lines
+    .map(
+      (line) => `<tr>
+        <td>${escapeHtml(line.productName)}</td>
+        <td>${escapeHtml(line.batchNumber || '-')}</td>
+        <td class="right">${escapeHtml(line.quantity)}</td>
+        <td class="right">${escapeHtml(printMoney(line.unitPrice))}</td>
+        <td class="right">${escapeHtml(printMoney(line.totalAmount))}</td>
+      </tr>`
+    )
+    .join('')
+
   return `<!doctype html>
 <html>
 <head>
-  <title>Pharmacy Sale ${escapeHtml(sale.saleNumber)}</title>
+  <title>Pharmacy Sale ${escapeHtml(sale.saleGroup)}</title>
   <style>
     @page { size: A5 portrait; margin: 10mm; }
     * { box-sizing: border-box; }
@@ -100,7 +135,7 @@ function buildReceiptHtml(sale: SaleReceipt): string {
   <section class="title">
     <div>
       <h2>Pharmacy Sale</h2>
-      <p><strong>${escapeHtml(sale.saleNumber)}</strong></p>
+      <p><strong>${escapeHtml(sale.saleGroup)}</strong></p>
     </div>
     <div class="right">
       <p><span class="label">Date</span>${escapeHtml(new Date(sale.createdAt).toLocaleDateString('en-IN'))}</p>
@@ -122,13 +157,7 @@ function buildReceiptHtml(sale: SaleReceipt): string {
       </tr>
     </thead>
     <tbody>
-      <tr>
-        <td>${escapeHtml(sale.productName)}</td>
-        <td>${escapeHtml(sale.batchNumber || '-')}</td>
-        <td class="right">${escapeHtml(sale.quantity)}</td>
-        <td class="right">${escapeHtml(printMoney(sale.unitPrice))}</td>
-        <td class="right">${escapeHtml(printMoney(sale.totalAmount))}</td>
-      </tr>
+      ${rows}
     </tbody>
   </table>
   <section class="totals">
@@ -188,11 +217,8 @@ export default function PharmacySalesPage() {
   const [address, setAddress] = useState('')
 
   const [products, setProducts] = useState<Product[]>([])
-  const [productId, setProductId] = useState('')
-  const [batches, setBatches] = useState<Batch[]>([])
-  const [batchId, setBatchId] = useState('')
-  const [quantity, setQuantity] = useState('')
-  const [unitPrice, setUnitPrice] = useState('')
+  const [batchesMap, setBatchesMap] = useState<Record<string, Batch[]>>({})
+  const [items, setItems] = useState<SaleItem[]>([])
   const [paymentMethod, setPaymentMethod] = useState<string>('CASH')
   const [notes, setNotes] = useState('')
 
@@ -202,6 +228,22 @@ export default function PharmacySalesPage() {
 
   const searchAbortRef = useRef<AbortController | null>(null)
   const patientAbortRef = useRef<AbortController | null>(null)
+  const itemKeyRef = useRef(0)
+
+  const newItem = useCallback(
+    (): SaleItem => ({
+      key: `item-${++itemKeyRef.current}`,
+      productId: '',
+      batchId: '',
+      quantity: '',
+      unitPrice: '',
+    }),
+    []
+  )
+
+  useEffect(() => {
+    setItems([newItem()])
+  }, [newItem])
 
   const loadProducts = useCallback(async () => {
     try {
@@ -219,26 +261,22 @@ export default function PharmacySalesPage() {
     void loadProducts()
   }, [loadProducts])
 
-  const loadBatches = useCallback(async (pid: string) => {
-    if (!pid) {
-      setBatches([])
-      return
-    }
+  const loadBatchesForProduct = useCallback(async (pid: string) => {
+    if (!pid) return
     try {
       const res = await fetch(`/api/batches?productId=${encodeURIComponent(pid)}`)
       if (res.ok) {
         const data = await res.json()
-        setBatches(
-          (data.batches || [])
-            .map((b: any) => ({
-              id: b.id,
-              batchNumber: b.batchNumber,
-              quantity: Number(b.quantity),
-              sellingPrice: Number(b.sellingPrice),
-              expiryDate: b.expiryDate,
-            }))
-            .filter((b: Batch) => b.quantity > 0)
-        )
+        const list: Batch[] = (data.batches || [])
+          .map((b: any) => ({
+            id: b.id,
+            batchNumber: b.batchNumber,
+            quantity: Number(b.quantity),
+            sellingPrice: Number(b.sellingPrice),
+            expiryDate: b.expiryDate,
+          }))
+          .filter((b: Batch) => b.quantity > 0)
+        setBatchesMap((prev) => ({ ...prev, [pid]: list }))
       }
     } catch {
       // ignore
@@ -306,28 +344,66 @@ export default function PharmacySalesPage() {
     }
   }, [])
 
-  const handleProductChange = (value: string) => {
-    setProductId(value || '')
-    setBatchId('')
-    setUnitPrice('')
-    void loadBatches(value)
+  const updateItem = useCallback((key: string, field: keyof SaleItem, value: string) => {
+    setItems((prev) => prev.map((it) => (it.key === key ? { ...it, [field]: value } : it)))
+  }, [])
+
+  const handleItemProductChange = (key: string, value: string) => {
+    updateItem(key, 'productId', value || '')
+    updateItem(key, 'batchId', '')
+    updateItem(key, 'unitPrice', '')
+    void loadBatchesForProduct(value)
   }
 
-  const handleBatchChange = (value: string) => {
-    setBatchId(value || '')
-    const batch = batches.find((b) => b.id === value)
-    if (batch) {
-      const price = batch.sellingPrice > 0 ? batch.sellingPrice : productSellingPrice
-      setUnitPrice(price ? String(price) : '')
-    }
+  const handleItemBatchChange = (key: string, value: string) => {
+    const item = items.find((it) => it.key === key)
+    const productId = item?.productId || ''
+    const batch = (batchesMap[productId] || []).find((b) => b.id === value)
+    const product = products.find((p) => p.id === productId)
+    const price =
+      batch && batch.sellingPrice > 0 ? batch.sellingPrice : product?.sellingPrice || 0
+    setItems((prev) =>
+      prev.map((it) =>
+        it.key === key ? { ...it, batchId: value || '', unitPrice: price ? String(price) : '' } : it
+      )
+    )
   }
 
-  const productSellingPrice = products.find((p) => p.id === productId)?.sellingPrice || 0
-  const selectedBatch = batches.find((b) => b.id === batchId)
-  const qtyNum = Number(quantity) || 0
-  const stockError = selectedBatch && qtyNum > Number(selectedBatch.quantity)
-    ? `Only ${Number(selectedBatch.quantity)} in stock for this batch`
-    : ''
+  const addItem = () => setItems((prev) => [...prev, newItem()])
+
+  const removeItem = (key: string) => {
+    setItems((prev) => (prev.length === 1 ? prev : prev.filter((it) => it.key !== key)))
+  }
+
+  const itemViews = items.map((it) => {
+    const opts = batchesMap[it.productId] || []
+    const batch = opts.find((b) => b.id === it.batchId)
+    const qty = Number(it.quantity) || 0
+    const price = Number(it.unitPrice) || 0
+    const stockError =
+      batch && qty > Number(batch.quantity)
+        ? `Only ${Number(batch.quantity)} in stock`
+        : ''
+    const lineTotal = qty * price
+    return { it, opts, batch, qty, price, stockError, lineTotal }
+  })
+
+  const grandTotal = itemViews.reduce((sum, v) => sum + v.lineTotal, 0)
+
+  const resetForm = () => {
+    setMrNumber('')
+    setMrLinked(false)
+    setCustomerName('')
+    setCustomerPhone('')
+    setGender('')
+    setAge('')
+    setDateOfBirth('')
+    setBloodGroup('')
+    setAddress('')
+    setItems([newItem()])
+    setNotes('')
+    setPaymentMethod('CASH')
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -346,20 +422,16 @@ export default function PharmacySalesPage() {
       setError('Customer name is required')
       return
     }
-    if (!productId) {
-      setError('Please select a product')
+
+    const validItems = itemViews.filter(
+      (v) => v.it.productId && v.it.batchId && v.qty > 0 && !v.stockError
+    )
+    if (validItems.length === 0) {
+      setError('Please add at least one valid sale item (product, batch, and quantity)')
       return
     }
-    if (!batchId) {
-      setError('Please select a batch')
-      return
-    }
-    if (qtyNum <= 0) {
-      setError('Quantity must be greater than zero')
-      return
-    }
-    if (stockError) {
-      setError(stockError)
+    if (itemViews.some((v) => v.stockError)) {
+      setError('One or more items exceed available stock')
       return
     }
     if (!paymentMethod) {
@@ -381,12 +453,14 @@ export default function PharmacySalesPage() {
           dateOfBirth,
           bloodGroup,
           address,
-          productId,
-          batchId,
-          quantity: qtyNum,
-          unitPrice: unitPrice ? Number(unitPrice) : 0,
           paymentMethod,
           notes,
+          items: itemViews.map((v) => ({
+            productId: v.it.productId,
+            batchId: v.it.batchId,
+            quantity: v.qty,
+            unitPrice: v.price,
+          })),
         }),
       })
       const data = await res.json().catch(() => ({}))
@@ -394,36 +468,17 @@ export default function PharmacySalesPage() {
         setError(data.error || 'Failed to record sale')
         return
       }
-      const product = products.find((p) => p.id === productId)
       const sale: SaleReceipt = {
-        saleNumber: data.sale.saleNumber,
+        saleGroup: data.sale.saleGroup,
         customerName: data.sale.customerName,
         customerPhone: data.sale.customerPhone,
-        productName: product?.name || '-',
-        batchNumber: selectedBatch?.batchNumber || '-',
-        quantity: Number(data.sale.quantity),
-        unitPrice: Number(data.sale.unitPrice),
-        totalAmount: Number(data.sale.totalAmount),
         paymentMethod: data.sale.paymentMethod,
         createdAt: data.sale.createdAt,
+        lines: data.sale.items,
+        totalAmount: Number(data.sale.totalAmount),
       }
       setSuccessSale(sale)
-      // reset form
-      setMrNumber('')
-      setMrLinked(false)
-      setCustomerName('')
-      setCustomerPhone('')
-      setGender('')
-      setAge('')
-      setDateOfBirth('')
-      setBloodGroup('')
-      setAddress('')
-      setProductId('')
-      setBatchId('')
-      setBatches([])
-      setQuantity('')
-      setUnitPrice('')
-      setNotes('')
+      resetForm()
       void loadProducts()
     } catch {
       setError('Something went wrong. Please try again.')
@@ -451,10 +506,10 @@ export default function PharmacySalesPage() {
                 <CheckCircle2 className="size-6 text-green-600" />
                 <div>
                   <p className="text-sm font-medium text-green-900">
-                    Sale {successSale.saleNumber} recorded
+                    Sale {successSale.saleGroup} recorded
                   </p>
                   <p className="text-xs text-green-800">
-                    {successSale.productName} · {successSale.quantity} · {printMoney(successSale.totalAmount)}
+                    {successSale.lines.length} item(s) · {printMoney(successSale.totalAmount)}
                   </p>
                 </div>
               </div>
@@ -640,80 +695,115 @@ export default function PharmacySalesPage() {
               </div>
 
               <div className="border-t pt-4">
-                <p className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Sale details</p>
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="productId">Product</Label>
-                    <SearchableSelect
-                      value={productId || ''}
-                      onValueChange={handleProductChange}
-                      placeholder="Select product"
-                      renderValue={(id) => {
-                        const product = products.find((p) => p.id === id)
-                        return product ? `${product.name}${product.sku ? ` (${product.sku})` : ''}` : 'Select product'
-                      }}
-                    >
-                      {products.map((product) => (
-                        <SearchableSelectItem key={product.id} value={product.id}>
-                          {product.name}{product.sku ? ` (${product.sku})` : ''}
-                        </SearchableSelectItem>
+                <div className="mb-3 flex items-center justify-between">
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Sale details</p>
+                  <Button type="button" variant="outline" size="sm" onClick={addItem}>
+                    <Plus className="mr-1 size-3.5" />
+                    Add Item
+                  </Button>
+                </div>
+
+                <div className="rounded-lg border overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Product</TableHead>
+                        <TableHead>Batch</TableHead>
+                        <TableHead className="text-right">Qty</TableHead>
+                        <TableHead className="text-right">Unit Price (₹)</TableHead>
+                        <TableHead className="text-right">Amount</TableHead>
+                        <TableHead className="w-10" />
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {itemViews.map(({ it, opts, batch, qty, price, stockError, lineTotal }) => (
+                        <TableRow key={it.key}>
+                          <TableCell>
+                            <SearchableSelect
+                              value={it.productId || ''}
+                              onValueChange={(v) => handleItemProductChange(it.key, v)}
+                              placeholder="Select product"
+                              renderValue={(id) => {
+                                const product = products.find((p) => p.id === id)
+                                return product ? `${product.name}${product.sku ? ` (${product.sku})` : ''}` : 'Select product'
+                              }}
+                            >
+                              {products.map((product) => (
+                                <SearchableSelectItem key={product.id} value={product.id}>
+                                  {product.name}{product.sku ? ` (${product.sku})` : ''}
+                                </SearchableSelectItem>
+                              ))}
+                            </SearchableSelect>
+                          </TableCell>
+                          <TableCell>
+                            <Select value={it.batchId || undefined} onValueChange={(v) => handleItemBatchChange(it.key, v)}>
+                              <SelectTrigger>
+                                <SelectValue placeholder={it.productId ? 'Select batch' : 'Select product first'}>
+                                  {batch
+                                    ? `${batch.batchNumber} — ${Number(batch.quantity)} left`
+                                    : it.productId
+                                      ? 'Select batch'
+                                      : 'Select product first'}
+                                </SelectValue>
+                              </SelectTrigger>
+                              <SelectContent>
+                                {opts.map((b) => (
+                                  <SelectItem key={b.id} value={b.id}>
+                                    {b.batchNumber} — {Number(b.quantity)} left
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            {stockError && <p className="mt-1 text-sm text-destructive">{stockError}</p>}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              value={it.quantity}
+                              onChange={(e) => updateItem(it.key, 'quantity', e.target.value)}
+                              onWheel={(e) => e.currentTarget.blur()}
+                              className="w-24 text-right"
+                            />
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              value={it.unitPrice}
+                              onChange={(e) => updateItem(it.key, 'unitPrice', e.target.value)}
+                              placeholder="Auto"
+                              readOnly
+                              aria-readonly="true"
+                              className="w-24 bg-muted text-right"
+                              onWheel={(e) => e.currentTarget.blur()}
+                            />
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums">
+                            {printMoney(lineTotal)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon-sm"
+                              aria-label="Remove item"
+                              disabled={items.length === 1}
+                              onClick={() => removeItem(it.key)}
+                            >
+                              <Trash2 className="size-4 text-destructive" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
                       ))}
-                    </SearchableSelect>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="batchId">Batch</Label>
-                    <Select value={batchId || undefined} onValueChange={handleBatchChange}>
-                      <SelectTrigger id="batchId">
-                        <SelectValue placeholder={productId ? 'Select batch' : 'Select product first'}>
-                          {selectedBatch
-                            ? `${selectedBatch.batchNumber} — ${Number(selectedBatch.quantity)} left`
-                            : productId
-                              ? 'Select batch'
-                              : 'Select product first'}
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {batches.map((batch) => (
-                          <SelectItem key={batch.id} value={batch.id}>
-                            {batch.batchNumber} — {Number(batch.quantity)} left
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {batches.length === 0 && productId && (
-                      <p className="text-xs text-muted-foreground">No stock available for this product</p>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="quantity">Quantity</Label>
-                    <Input
-                      id="quantity"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={quantity}
-                      onChange={(e) => setQuantity(e.target.value)}
-                      onWheel={(e) => e.currentTarget.blur()}
-                    />
-                    {stockError && <p className="text-sm text-destructive">{stockError}</p>}
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="unitPrice">Unit Price (₹)</Label>
-                    <Input
-                      id="unitPrice"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={unitPrice}
-                      onChange={(e) => setUnitPrice(e.target.value)}
-                      placeholder="Auto-filled from batch"
-                      readOnly
-                      aria-readonly="true"
-                      className="bg-muted"
-                      onWheel={(e) => e.currentTarget.blur()}
-                    />
-                  </div>
-                  <div className="space-y-2">
+                    </TableBody>
+                  </Table>
+                </div>
+
+                <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+                  <div className="space-y-2 md:w-72">
                     <Label htmlFor="paymentMethod">Payment Method</Label>
                     <Select value={paymentMethod} onValueChange={setPaymentMethod}>
                       <SelectTrigger id="paymentMethod">
@@ -728,7 +818,7 @@ export default function PharmacySalesPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-2 md:col-span-2">
+                  <div className="space-y-2 md:w-72">
                     <Label htmlFor="notes">Notes</Label>
                     <Input
                       id="notes"
@@ -737,19 +827,15 @@ export default function PharmacySalesPage() {
                       placeholder="Optional notes"
                     />
                   </div>
-                </div>
-                {productId && batchId && qtyNum > 0 && (
-                  <div className="mt-4 flex justify-end">
-                    <div className="w-full max-w-xs space-y-1 text-sm">
-                      <div className="flex justify-between">
-                        <span>Total</span>
-                        <span className="tabular-nums">
-                          ₹{((Number(unitPrice) || 0) * qtyNum).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                        </span>
-                      </div>
+                  <div className="w-full max-w-xs space-y-1 text-sm md:text-right">
+                    <div className="flex justify-between md:justify-end md:gap-6">
+                      <span>Total</span>
+                      <span className="tabular-nums font-semibold">
+                        ₹{grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      </span>
                     </div>
                   </div>
-                )}
+                </div>
               </div>
 
               <div className="flex justify-end gap-2">

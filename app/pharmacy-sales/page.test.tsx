@@ -56,15 +56,12 @@ describe('PharmacySalesPage', () => {
     expect(screen.getByText('New Sale')).toBeTruthy()
     expect(screen.getByRole('button', { name: /Record Sale/i })).toBeTruthy()
 
-    // patient detail fields are read-only even before any MR lookup
     const nameInput = document.getElementById('customerName') as HTMLInputElement
     expect(nameInput).toBeTruthy()
     expect(nameInput.readOnly).toBe(true)
     expect(nameInput.placeholder).toMatch(/auto-filled/i)
 
-    // unit price is read-only (auto-filled from the batch)
-    const priceInput = document.getElementById('unitPrice') as HTMLInputElement
-    expect(priceInput.readOnly).toBe(true)
+    expect(screen.getByRole('button', { name: /Add Item/i })).toBeTruthy()
   })
 
   it('requires an MR number before saving', async () => {
@@ -96,12 +93,31 @@ describe('PharmacySalesPage', () => {
 
     const nameInput = (await screen.findByDisplayValue('Test Patient')) as HTMLInputElement
     expect(nameInput).toBeTruthy()
-    // locked: readOnly once a patient is linked
     await waitFor(() => expect(nameInput.readOnly).toBe(true))
-    // MR field shows the FULL selected MR, not just what was typed
     const mrInput = document.getElementById('mrNumber') as HTMLInputElement
     expect(mrInput.value).toBe('MR000001')
     expect(mrInput.readOnly).toBe(true)
     expect(screen.getByText(/Patient linked — details auto-filled and locked/i)).toBeTruthy()
+  })
+
+  it('lets the user add and remove sale item rows', async () => {
+    render(<PharmacySalesPage />)
+
+    // starts with a single row; its remove button is disabled
+    let removeButtons = screen.getAllByLabelText('Remove item')
+    expect(removeButtons).toHaveLength(1)
+    expect((removeButtons[0] as HTMLButtonElement).disabled).toBe(true)
+
+    fireEvent.click(screen.getByRole('button', { name: /Add Item/i }))
+
+    removeButtons = screen.getAllByLabelText('Remove item')
+    expect(removeButtons).toHaveLength(2)
+    expect((removeButtons[1] as HTMLButtonElement).disabled).toBe(false)
+
+    // removing one leaves a single row again (remove disabled)
+    fireEvent.click(removeButtons[1])
+    removeButtons = screen.getAllByLabelText('Remove item')
+    expect(removeButtons).toHaveLength(1)
+    expect((removeButtons[0] as HTMLButtonElement).disabled).toBe(true)
   })
 })

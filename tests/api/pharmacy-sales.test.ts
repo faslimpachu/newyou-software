@@ -26,7 +26,9 @@ afterAll(async () => {
 })
 
 async function seedStock(quantity = 10, sellingPrice = 25) {
-  const category = await prisma.productCategory.create({ data: { name: 'Medicines', active: true } })
+  const category = await prisma.productCategory.create({
+    data: { name: `Medicines-${Date.now()}-${Math.floor(Math.random() * 100000)}`, active: true },
+  })
   const supplier = await prisma.supplier.create({ data: { supplierName: 'Test Supplier', status: 'ACTIVE' } })
   const product = await prisma.product.create({
     data: {
@@ -67,11 +69,8 @@ describe('Pharmacy Sales API', () => {
       body: JSON.stringify({
         customerName: 'John Doe',
         customerPhone: '9845012345',
-        productId: product.id,
-        batchId: batch.id,
-        quantity: 3,
-        unitPrice: 25,
         paymentMethod: 'CASH',
+        items: [{ productId: product.id, batchId: batch.id, quantity: 3, unitPrice: 25 }],
       }),
     })
 
@@ -79,9 +78,10 @@ describe('Pharmacy Sales API', () => {
     expect(res.status).toBe(201)
     const data = await res.json()
     expect(data.sale).toBeDefined()
-    expect(data.sale.saleNumber).toContain('PSALE-')
-    expect(Number(data.sale.quantity)).toBe(3)
-    expect(Number(data.sale.unitPrice)).toBe(25)
+    expect(data.sale.saleGroup).toContain('PSALE-')
+    expect(data.sale.items).toHaveLength(1)
+    expect(Number(data.sale.items[0].quantity)).toBe(3)
+    expect(Number(data.sale.items[0].unitPrice)).toBe(25)
     expect(Number(data.sale.totalAmount)).toBe(75)
 
     const updatedBatch = await prisma.productBatch.findUnique({ where: { id: batch.id } })
@@ -98,7 +98,7 @@ describe('Pharmacy Sales API', () => {
     })
     expect(tx).toBeDefined()
     expect(Number(tx?.quantity)).toBe(-3)
-    expect(tx?.referenceId).toBe(data.sale.id)
+    expect(tx?.referenceId).toBe(data.sale.items[0].id)
   })
 
   it('POST falls back to batch sellingPrice when unitPrice is 0', async () => {
@@ -109,18 +109,15 @@ describe('Pharmacy Sales API', () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         customerName: 'Jane',
-        productId: product.id,
-        batchId: batch.id,
-        quantity: 2,
-        unitPrice: 0,
         paymentMethod: 'UPI',
+        items: [{ productId: product.id, batchId: batch.id, quantity: 2, unitPrice: 0 }],
       }),
     })
 
     const res = await POST(req)
     expect(res.status).toBe(201)
     const data = await res.json()
-    expect(Number(data.sale.unitPrice)).toBe(40)
+    expect(Number(data.sale.items[0].unitPrice)).toBe(40)
     expect(Number(data.sale.totalAmount)).toBe(80)
   })
 
@@ -132,11 +129,8 @@ describe('Pharmacy Sales API', () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         customerName: 'Overflow',
-        productId: product.id,
-        batchId: batch.id,
-        quantity: 5,
-        unitPrice: 25,
         paymentMethod: 'CASH',
+        items: [{ productId: product.id, batchId: batch.id, quantity: 5, unitPrice: 25 }],
       }),
     })
 
@@ -153,10 +147,74 @@ describe('Pharmacy Sales API', () => {
     const req = new Request('http://localhost/api/pharmacy-sales', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ customerName: '', productId: '', batchId: '', quantity: 1, unitPrice: 1, paymentMethod: 'BITCOIN' }),
+      body: JSON.stringify({ customerName: '', paymentMethod: 'BITCOIN', items: [] }),
     })
     const res = await POST(req)
     expect(res.status).toBe(400)
+  })
+
+  it('POST creates multiple sale lines grouped under one saleGroup', async () => {
+    const first = await seedStock(10, 20)
+    const second = await seedStock(5, 15)
+
+    const req = new Request('http://localhost/api/pharmacy-sales', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        customerName: 'Multi Buy',
+        paymentMethod: 'CASH',
+        items: [
+          { productId: first.product.id, batchId: first.batch.id, quantity: 2, unitPrice: 20 },
+          { productId: second.product.id, batchId: second.batch.id, quantity: 1, unitPrice: 15 },
+        ],
+      }),
+    })
+
+    const res = await POST(req)
+    expect(res.status).toBe(201)
+    const data = await res.json()
+    expect(data.sale.items).toHaveLength(2)
+    expect(data.sale.items[0].saleNumber).toBe(`${data.sale.saleGroup}-1`)
+    expect(data.sale.items[1].saleNumber).toBe(`${data.sale.saleGroup}-2`)
+    expect(Number(data.sale.totalAmount)).toBe(55)
+
+    const saleRows = await prisma.pharmacySale.findMany({ where: { saleGroup: data.sale.saleGroup } })
+    expect(saleRows).toHaveLength(2)
+    expect(saleRows.every((s: any) => s.saleGroup === data.sale.saleGroup)).toBe(true)
+
+    const firstBatch = await prisma.productBatch.findUnique({ where: { id: first.batch.id } })
+    expect(Number(firstBatch?.quantity)).toBe(8)
+    const secondBatch = await prisma.productBatch.findUnique({ where: { id: second.batch.id } })
+    expect(Number(secondBatch?.quantity)).toBe(4)
+
+    const txCount = await prisma.inventoryTransaction.count({ where: { type: 'SALE', referenceType: 'SALE_INVOICE' } })
+    expect(txCount).toBe(2)
+  })
+
+  it('POST single item uses saleGroup as saleNumber (no suffix) and stores saleGroup', async () => {
+    const { product, batch } = await seedStock(10, 25)
+
+    const req = new Request('http://localhost/api/pharmacy-sales', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        customerName: 'Solo',
+        paymentMethod: 'CASH',
+        items: [{ productId: product.id, batchId: batch.id, quantity: 1, unitPrice: 25 }],
+      }),
+    })
+
+    const res = await POST(req)
+    expect(res.status).toBe(201)
+    const data = await res.json()
+    // single line: saleNumber === saleGroup, no -1 suffix
+    expect(data.sale.items).toHaveLength(1)
+    expect(data.sale.items[0].saleNumber).toBe(data.sale.saleGroup)
+    expect(data.sale.saleGroup).not.toMatch(/-1$/)
+
+    const stored = await prisma.pharmacySale.findFirst({ where: { saleGroup: data.sale.saleGroup } })
+    expect(stored).toBeTruthy()
+    expect(stored?.saleGroup).toBe(data.sale.saleGroup)
   })
 
   it('PATCH updates batch sellingPrice', async () => {
