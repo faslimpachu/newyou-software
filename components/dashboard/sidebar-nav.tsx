@@ -70,6 +70,7 @@ const navGroups: { heading: string; items: NavItem[] }[] = [
       { label: 'Stock History', icon: History, href: '/inventory-transactions' },
       { label: 'Batches', icon: Package, href: '/batches' },
       { label: 'Pharmacy Sales', icon: Stethoscope, href: '/pharmacy-sales' },
+      { label: 'Pharmacy Sales History', icon: ReceiptText, href: '/pharmacy-sales-history' },
     ],
   },
   {

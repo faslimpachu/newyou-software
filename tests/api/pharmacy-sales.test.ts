@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest'
-import { POST } from '@/app/api/pharmacy-sales/route'
+import { GET, POST } from '@/app/api/pharmacy-sales/route'
 import { PATCH } from '@/app/api/batches/[id]/route'
 import { prisma } from '@/lib/prisma'
 
@@ -60,6 +60,139 @@ async function seedStock(quantity = 10, sellingPrice = 25) {
 }
 
 describe('Pharmacy Sales API', () => {
+  it('GET returns sales grouped by saleGroup with receipt line items', async () => {
+    const first = await seedStock(10, 20)
+    const second = await seedStock(10, 15)
+
+    await prisma.pharmacySale.createMany({
+      data: [
+        {
+          saleGroup: 'PSALE-20260830-0001',
+          saleNumber: 'PSALE-20260830-0001-1',
+          patientMr: 'MR000001',
+          customerName: 'Grouped Customer',
+          customerPhone: '9845012345',
+          productId: first.product.id,
+          batchId: first.batch.id,
+          quantity: 2,
+          unitPrice: 20,
+          totalAmount: 40,
+          paymentMethod: 'CASH',
+          createdAt: new Date('2026-08-30T10:00:00.000Z'),
+        },
+        {
+          saleGroup: 'PSALE-20260830-0001',
+          saleNumber: 'PSALE-20260830-0001-2',
+          patientMr: 'MR000001',
+          customerName: 'Grouped Customer',
+          customerPhone: '9845012345',
+          productId: second.product.id,
+          batchId: second.batch.id,
+          quantity: 1,
+          unitPrice: 15,
+          totalAmount: 15,
+          paymentMethod: 'CASH',
+          createdAt: new Date('2026-08-30T10:00:01.000Z'),
+        },
+      ],
+    })
+
+    const res = await GET(new Request('http://localhost/api/pharmacy-sales', { method: 'GET' }))
+    expect(res.status).toBe(200)
+    const data = await res.json()
+
+    expect(data.sales).toHaveLength(1)
+    expect(data.sales[0].saleGroup).toBe('PSALE-20260830-0001')
+    expect(data.sales[0].itemsCount).toBe(2)
+    expect(data.sales[0].totalAmount).toBe(55)
+    expect(data.sales[0].customerName).toBe('Grouped Customer')
+    expect(data.sales[0].items).toHaveLength(2)
+    expect(data.sales[0].items[0].productName).toBe(first.product.name)
+    expect(data.sales[0].items[0].batchNumber).toBe(first.batch.batchNumber)
+    expect(data.total).toBe(1)
+    expect(data.totalPages).toBe(1)
+  })
+
+  it('GET applies filters before paginating sale groups', async () => {
+    const { product, batch } = await seedStock(10, 25)
+
+    for (let i = 1; i <= 5; i++) {
+      await prisma.pharmacySale.create({
+        data: {
+          saleGroup: `PSALE-20260830-FILTER-${i}`,
+          saleNumber: `PSALE-20260830-FILTER-${i}`,
+          patientMr: i <= 4 ? 'MRFILTER' : 'MROTHER',
+          customerName: i <= 4 ? `Filter Customer ${i}` : 'Other Customer',
+          customerPhone: `984501234${i}`,
+          productId: product.id,
+          batchId: batch.id,
+          quantity: 1,
+          unitPrice: 25,
+          totalAmount: 25,
+          paymentMethod: i <= 4 ? 'UPI' : 'CASH',
+          createdAt: new Date(`2026-08-3${i <= 2 ? '0' : '1'}T0${i}:00:00.000Z`),
+        },
+      })
+    }
+
+    const req = new Request(
+      'http://localhost/api/pharmacy-sales?patientMr=MRFILTER&paymentMethod=UPI&startDate=2026-08-30&endDate=2026-08-31&page=1&pageSize=2',
+      { method: 'GET' }
+    )
+    const res = await GET(req)
+    expect(res.status).toBe(200)
+    const data = await res.json()
+
+    expect(data.sales).toHaveLength(2)
+    expect(data.page).toBe(1)
+    expect(data.pageSize).toBe(2)
+    expect(data.total).toBe(4)
+    expect(data.totalPages).toBe(2)
+    expect(data.sales.every((sale: any) => sale.patientMr === 'MRFILTER')).toBe(true)
+    expect(data.sales.every((sale: any) => sale.paymentMethod === 'UPI')).toBe(true)
+  })
+
+  it('GET searches by sale number, customer, phone, and MR', async () => {
+    const { product, batch } = await seedStock(10, 25)
+
+    await prisma.pharmacySale.createMany({
+      data: [
+        {
+          saleGroup: 'PSALE-20260830-SEARCH-1',
+          saleNumber: 'PSALE-20260830-SEARCH-1',
+          patientMr: 'MRSEARCH',
+          customerName: 'Searchable Patient',
+          customerPhone: '9000000001',
+          productId: product.id,
+          batchId: batch.id,
+          quantity: 1,
+          unitPrice: 25,
+          totalAmount: 25,
+          paymentMethod: 'CARD',
+        },
+        {
+          saleGroup: 'PSALE-20260830-SEARCH-2',
+          saleNumber: 'PSALE-20260830-SEARCH-2',
+          customerName: 'Unrelated Patient',
+          customerPhone: '9000000002',
+          productId: product.id,
+          batchId: batch.id,
+          quantity: 1,
+          unitPrice: 25,
+          totalAmount: 25,
+          paymentMethod: 'CASH',
+        },
+      ],
+    })
+
+    const res = await GET(new Request('http://localhost/api/pharmacy-sales?search=MRSEARCH', { method: 'GET' }))
+    expect(res.status).toBe(200)
+    const data = await res.json()
+
+    expect(data.sales).toHaveLength(1)
+    expect(data.sales[0].saleGroup).toBe('PSALE-20260830-SEARCH-1')
+  })
+
   it('POST creates a sale and reduces batch stock atomically', async () => {
     const { product, batch } = await seedStock(10, 25)
 

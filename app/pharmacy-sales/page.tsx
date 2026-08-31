@@ -633,7 +633,7 @@ export default function PharmacySalesPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="gender">Gender</Label>
-                  <Select value={gender || undefined} onValueChange={setGender} disabled>
+                  <Select value={gender || undefined} onValueChange={(value) => setGender(value || '')} disabled>
                     <SelectTrigger id="gender" className="bg-muted">
                       <SelectValue placeholder="Auto-filled" />
                     </SelectTrigger>
@@ -736,7 +736,7 @@ export default function PharmacySalesPage() {
                             </SearchableSelect>
                           </TableCell>
                           <TableCell>
-                            <Select value={it.batchId || undefined} onValueChange={(v) => handleItemBatchChange(it.key, v)}>
+                            <Select value={it.batchId || undefined} onValueChange={(v) => handleItemBatchChange(it.key, v || '')}>
                               <SelectTrigger>
                                 <SelectValue placeholder={it.productId ? 'Select batch' : 'Select product first'}>
                                   {batch
@@ -805,7 +805,7 @@ export default function PharmacySalesPage() {
                 <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
                   <div className="space-y-2 md:w-72">
                     <Label htmlFor="paymentMethod">Payment Method</Label>
-                    <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                    <Select value={paymentMethod} onValueChange={(value) => setPaymentMethod(value || '')}>
                       <SelectTrigger id="paymentMethod">
                         <SelectValue placeholder="Select method" />
                       </SelectTrigger>
