@@ -116,7 +116,7 @@ export default function InventoryAdjustmentsPage() {
 
   const loadSuppliers = async () => {
     try {
-      const res = await fetch('/api/suppliers?active=true')
+      const res = await fetch('/api/suppliers?active=true&pageSize=1000')
       if (res.ok) {
         const data = await res.json()
         setSuppliers(data.suppliers)
