@@ -612,6 +612,7 @@ describe('PatientProfile', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Prescriptions' }))
     const editButtons = screen.getAllByRole('button', { name: /Edit/ })
     fireEvent.click(editButtons[editButtons.length - 1])
+    expect(screen.queryByLabelText('Next visit')).toBeNull()
     fireEvent.change(screen.getByPlaceholderText('Clinical diagnosis'), { target: { value: 'Updated diagnosis' } })
     fireEvent.click(screen.getByRole('button', { name: /Save/ }))
 
@@ -698,7 +699,7 @@ describe('PatientProfile', () => {
         { id: 'NU000001', date: '01 Jan 2026', center: 'Ayurcare Center', doctor: 'Dr. A', reason: 'Checkup' },
       ],
       apiOPSheets: [],
-      apiPrescriptions: [{ id: 'RX-1', patientMr: 'MR000001', visitId: 'NU000001', opSheetId: 'OP-1', diagnosis: '', medicines: '[]', advice: '', followUp: '', createdAt: new Date().toISOString(), opSheet: { id: 'OP-1', visitId: 'NU000001', clinicalExamination: '', vitals: null, diagnosis: '', symptoms: '', status: null, createdAt: new Date().toISOString(), visit: undefined, prescription: null } }],
+      apiPrescriptions: [{ id: 'RX-1', patientMr: 'MR000001', visitId: 'NU000001', opSheetId: 'OP-1', diagnosis: '', medicines: '[]', advice: '', followUp: '2026-09-15', createdAt: new Date().toISOString(), opSheet: { id: 'OP-1', visitId: 'NU000001', clinicalExamination: '', vitals: null, diagnosis: '', symptoms: '', status: null, createdAt: new Date().toISOString(), visit: undefined, prescription: null } }],
     }
 
     render(<PatientProfile patient={patientWithVisit} center="Nutrition Center" />)
@@ -714,6 +715,9 @@ describe('PatientProfile', () => {
     expect(printCalls.some((call) => call.write.includes('@page{size:A4'))).toBe(false)
     expect(printCalls.some((call) => call.write.includes('Ayurcare Center'))).toBe(true)
     expect(printCalls.some((call) => call.write.includes('NEW YOU'))).toBe(false)
+    expect(printCalls.some((call) => call.write.includes('Follow-up'))).toBe(false)
+    expect(printCalls.some((call) => call.write.includes('Next visit'))).toBe(false)
+    expect(printCalls.some((call) => call.write.includes('2026-09-15'))).toBe(false)
   })
 
   it('falls back to patient default center for print when visit center is missing', async () => {

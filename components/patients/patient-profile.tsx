@@ -718,7 +718,8 @@ function buildPrescriptionPrintContent(record: PrescriptionRecord): PrintContent
     sections: [
       { label: 'Diagnosis', value: record.diagnosis },
       { label: 'Advice', value: record.advice },
-      { label: 'Follow-up', value: record.followUp ? `Next visit: ${record.followUp}` : '' },
+      // Follow-up is handled in the dedicated Follow-ups module, not on prescriptions.
+      // { label: 'Follow-up', value: record.followUp ? `Next visit: ${record.followUp}` : '' },
     ],
   }
 }
@@ -727,7 +728,7 @@ function PrescriptionEditor({ patient, center, record, readOnly, onCancel, onSav
   const [diagnosis, setDiagnosis] = useState(record.diagnosis)
   const [medicines, setMedicines] = useState<MedicineRow[]>(record.medicines)
   const [advice, setAdvice] = useState(record.advice)
-  const [followUp, setFollowUp] = useState(record.followUp)
+  const [followUp] = useState(record.followUp)
   const [status, setStatus] = useState(record.status)
 
   const updateRow = (id: string, key: keyof MedicineRow, value: string) =>
@@ -773,9 +774,10 @@ function PrescriptionEditor({ patient, center, record, readOnly, onCancel, onSav
         {!readOnly && <Button variant="outline" size="sm" className="mt-3" onClick={addRow}><Plus className="mr-2 size-4" />Add medicine</Button>}
       </Section>
     </div>
-    <div className="mt-5 grid gap-5 md:grid-cols-2">
+    <div className="mt-5">
       <Section title="Advice"><Textarea disabled={readOnly} className="min-h-24" value={advice} onChange={(e) => setAdvice(e.target.value)} /></Section>
-      <Section title="Follow-up"><Field label="Next visit" type="date" value={followUp} onChange={setFollowUp} /></Section>
+      {/* Follow-up is handled in the dedicated Follow-ups module, not on prescriptions. */}
+      {/* <Section title="Follow-up"><Field label="Next visit" type="date" value={followUp} onChange={setFollowUp} /></Section> */}
     </div>
     <div className="mt-16 grid grid-cols-2 gap-10 text-center text-sm">
       <div className="border-t pt-2">Doctor signature</div>
