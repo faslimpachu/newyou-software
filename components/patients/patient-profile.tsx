@@ -378,7 +378,7 @@ function OPSheet({ patient, center, onRefresh, onUpdateStatus }: { patient: Pati
         setMode('list')
         onRefresh?.()
         onUpdateStatus?.(record.visitId, 'Active')
-        return
+        return true
       }
     } else {
       const response = await fetch('/api/op-sheets', {
@@ -399,11 +399,10 @@ function OPSheet({ patient, center, onRefresh, onUpdateStatus }: { patient: Pati
         setRecords((current) => current.map((r) => (r.id === saved.id ? saved : r)))
         setMode('list')
         onRefresh?.()
-        return
+        return true
       }
     }
-    setRecords((current) => existing ? current.map((r) => (r.id === record.id ? record : r)) : [record, ...current])
-    setMode('list')
+    return false
   }
 
   const printRecord = (record: OPSheetRecord) => openA4Print('OP Registration Sheet', patient, getVisit(record.visitId)?.center || center, buildOPPrintContent(record))
@@ -466,7 +465,7 @@ function buildOPPrintContent(record: OPSheetRecord): PrintContent {
   }
 }
 
-function OPSheetEditor({ patient, center, record, readOnly, onCancel, onSave }: { patient: ExistingPatient; center: string; record: OPSheetRecord; readOnly: boolean; onCancel: () => void; onSave: (record: OPSheetRecord) => void }) {
+function OPSheetEditor({ patient, center, record, readOnly, onCancel, onSave }: { patient: ExistingPatient; center: string; record: OPSheetRecord; readOnly: boolean; onCancel: () => void; onSave: (record: OPSheetRecord) => Promise<boolean> }) {
   const [clinicalNotes, setClinicalNotes] = useState(record.clinicalNotes)
   const [investigations, setInvestigations] = useState(record.investigations)
   const [treatmentPlan, setTreatmentPlan] = useState(record.treatmentPlan)
@@ -483,7 +482,16 @@ function OPSheetEditor({ patient, center, record, readOnly, onCancel, onSave }: 
 
   const currentRecord = (): OPSheetRecord => ({ ...record, clinicalNotes, investigations, treatmentPlan, measurementValues, status })
   const doPrint = () => openA4Print('OP Registration Sheet', patient, patient.visits.find((v) => v.id === record.visitId)?.center || center, buildOPPrintContent(currentRecord()))
-  const handleSave = () => onSave({ ...currentRecord(), status: status === 'Draft' ? 'Completed' : status })
+  const doBlank = () => openBlankA4Print(patient.visits.find((v) => v.id === record.visitId)?.center || center, patient)
+  const savedRecord = () => ({ ...currentRecord(), status: status === 'Draft' ? 'Completed' : status })
+  const handleSave = () => onSave(savedRecord())
+  const handleSaveAndPrint = async () => {
+    const recordToSave = savedRecord()
+    const saved = await onSave(recordToSave)
+    if (saved) {
+      openA4Print('OP Registration Sheet', patient, patient.visits.find((v) => v.id === record.visitId)?.center || center, buildOPPrintContent(recordToSave))
+    }
+  }
 
   return <div className="print-sheet space-y-5">
     <div className="flex items-start justify-between border-b-2 border-primary pb-5">
@@ -493,7 +501,8 @@ function OPSheetEditor({ patient, center, record, readOnly, onCancel, onSave }: 
       </div>
       <div className="flex gap-2">
         <Button variant="outline" size="sm" onClick={onCancel}><ArrowLeft className="mr-2 size-4" />Back to list</Button>
-        <Button variant="outline" size="sm" onClick={doPrint}><Printer className="mr-2 size-4" />Print</Button>
+        <Button variant="outline" size="sm" onClick={readOnly ? doPrint : handleSaveAndPrint}><Printer className="mr-2 size-4" />{readOnly ? 'Print' : 'Save and Print'}</Button>
+        <Button variant="outline" size="sm" onClick={doBlank}><FileText className="mr-2 size-4" />Blank sheet</Button>
         {!readOnly && <Button size="sm" onClick={handleSave}><Check className="mr-2 size-4" />Save</Button>}
       </div>
     </div>

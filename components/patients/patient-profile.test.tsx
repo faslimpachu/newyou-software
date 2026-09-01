@@ -249,6 +249,129 @@ describe('PatientProfile', () => {
     })
   })
 
+  it('saves a new OP Sheet before printing from the editor', async () => {
+    const events: string[] = []
+    const printCalls: { write: string; print: boolean }[] = []
+    const originalCreateElement = document.createElement.bind(document)
+    const mockCreateElement = vi.fn((tagName: string) => {
+      const element = originalCreateElement(tagName)
+      if (tagName.toLowerCase() === 'iframe') {
+        const doc = { open: vi.fn(), write: vi.fn((html: string) => { printCalls.push({ write: html, print: false }) }), close: vi.fn() }
+        const win = { document: doc, focus: vi.fn(), print: vi.fn(() => { events.push('print'); printCalls[printCalls.length - 1].print = true }) }
+        Object.defineProperties(element, {
+          contentDocument: { get: () => doc },
+          contentWindow: { get: () => win },
+          onload: { writable: true, value: null },
+        })
+      }
+      return element
+    })
+    vi.spyOn(document, 'createElement').mockImplementation(mockCreateElement as any)
+
+    const patientWithVisit = {
+      ...existingPatients[0],
+      visits: [
+        { id: 'NU000001', date: '01 Jan 2026', center: 'Nutrition Center', doctor: 'Dr. A', reason: 'Checkup' },
+      ],
+      apiOPSheets: [],
+      apiPrescriptions: [],
+    }
+    const savedSheet = { id: 'OP-1', visitId: 'NU000001', clinicalExamination: 'Saved clinical notes', vitals: '{}', diagnosis: '', symptoms: '', status: 'Completed', createdAt: new Date().toISOString(), visit: undefined, prescription: null }
+    const mockFetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === 'string' ? input : input.toString()
+      if (url === '/api/op-sheets' && init?.method === 'POST') {
+        events.push('save')
+        return { ok: true, json: async () => ({ sheet: savedSheet }) } as Response
+      }
+      if (url === '/api/visits/NU000001' && init?.method === 'PATCH') {
+        return { ok: true, json: async () => ({ patient: { id: 'NU000001', status: 'Active' } }) } as Response
+      }
+      if (url === '/api/patients/MR000001') {
+        return {
+          ok: true,
+          json: async () => ({
+            patient: {
+              mr: patientWithVisit.mr,
+              consultationType: 'NUTRITION',
+              patientName: patientWithVisit.name,
+              parentName: patientWithVisit.parentName,
+              gender: patientWithVisit.gender,
+              mobileNumber: patientWithVisit.mobile,
+              address: '',
+              district: patientWithVisit.city,
+              state: '',
+              pinCode: '',
+              age: patientWithVisit.age,
+              bloodGroup: patientWithVisit.bloodGroup,
+              visits: patientWithVisit.visits.map((v) => ({ ...v, createdAt: new Date().toISOString() })),
+              opSheets: [savedSheet],
+              prescriptions: [],
+            },
+          }),
+        } as Response
+      }
+      return { ok: false, json: async () => ({ error: 'Unexpected request' }) } as Response
+    })
+
+    global.fetch = mockFetch
+
+    render(<PatientProfile patient={patientWithVisit} center="Nutrition Center" />)
+
+    fireEvent.click(screen.getByRole('tab', { name: 'OP Sheet' }))
+    fireEvent.click(screen.getByRole('button', { name: /Create OP Sheet/ }))
+    fireEvent.change(screen.getByPlaceholderText('Document clinical examination findings, assessment and observations...'), { target: { value: 'Saved clinical notes' } })
+    fireEvent.click(screen.getByRole('button', { name: /Save and Print/ }))
+
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledWith('/api/op-sheets', expect.objectContaining({
+        method: 'POST',
+        body: expect.stringContaining('"clinicalExamination":"Saved clinical notes"'),
+      }))
+      expect(printCalls.length).toBeGreaterThan(0)
+      expect(events).toEqual(['save', 'print'])
+    })
+  })
+
+  it('prints a blank OP Sheet from the editor without saving', async () => {
+    const printCalls: { write: string; print: boolean }[] = []
+    const originalCreateElement = document.createElement.bind(document)
+    const mockCreateElement = vi.fn((tagName: string) => {
+      const element = originalCreateElement(tagName)
+      if (tagName.toLowerCase() === 'iframe') {
+        const doc = { open: vi.fn(), write: vi.fn((html: string) => { printCalls.push({ write: html, print: false }) }), close: vi.fn() }
+        const win = { document: doc, focus: vi.fn(), print: vi.fn(() => { printCalls[printCalls.length - 1].print = true }) }
+        Object.defineProperties(element, {
+          contentDocument: { get: () => doc },
+          contentWindow: { get: () => win },
+          onload: { writable: true, value: null },
+        })
+      }
+      return element
+    })
+    vi.spyOn(document, 'createElement').mockImplementation(mockCreateElement as any)
+
+    const patientWithVisit = {
+      ...existingPatients[0],
+      visits: [
+        { id: 'NU000001', date: '01 Jan 2026', center: 'Nutrition Center', doctor: 'Dr. A', reason: 'Checkup' },
+      ],
+      apiOPSheets: [],
+      apiPrescriptions: [],
+    }
+    const mockFetch = vi.fn(async () => ({ ok: true, json: async () => ({}) }) as Response)
+    global.fetch = mockFetch
+
+    render(<PatientProfile patient={patientWithVisit} center="Nutrition Center" />)
+
+    fireEvent.click(screen.getByRole('tab', { name: 'OP Sheet' }))
+    fireEvent.click(screen.getByRole('button', { name: /Create OP Sheet/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Blank sheet/ }))
+
+    expect(printCalls.length).toBeGreaterThan(0)
+    expect(printCalls.some((call) => call.write.includes('OP Registration Sheet'))).toBe(true)
+    expect(mockFetch).not.toHaveBeenCalledWith('/api/op-sheets', expect.anything())
+  })
+
   it('updates an existing OP Sheet and refreshes the patient profile', async () => {
     const opSheet = {
       id: 'OP-1',
