@@ -79,6 +79,32 @@ function parseDateRange(startDate: string, endDate: string) {
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url)
+    const summary = url.searchParams.get('summary') === 'true'
+    const pharmacySale = (prisma as any).pharmacySale
+
+    if (summary) {
+      const todayStart = new Date()
+      todayStart.setHours(0, 0, 0, 0)
+      const todayEnd = new Date(todayStart)
+      todayEnd.setHours(23, 59, 59, 999)
+
+      const [totalSale, todaySale]: [PharmacySaleTotal, PharmacySaleTotal] =
+        await Promise.all([
+          pharmacySale.aggregate({
+            _sum: { totalAmount: true },
+          }),
+          pharmacySale.aggregate({
+            where: { createdAt: { gte: todayStart, lte: todayEnd } },
+            _sum: { totalAmount: true },
+          }),
+        ])
+
+      return NextResponse.json({
+        totalSaleAmount: toNumber(totalSale._sum.totalAmount),
+        todaySaleAmount: toNumber(todaySale._sum.totalAmount),
+      })
+    }
+
     const search = url.searchParams.get('search')?.trim() || ''
     const patientMr = url.searchParams.get('patientMr')?.trim() || ''
     const paymentMethod = url.searchParams.get('paymentMethod') || ''
@@ -91,7 +117,6 @@ export async function GET(request: Request) {
     )
     const skip = (page - 1) * pageSize
 
-    const pharmacySale = (prisma as any).pharmacySale
     const where: Record<string, unknown> = {}
     if (search) {
       where.OR = [

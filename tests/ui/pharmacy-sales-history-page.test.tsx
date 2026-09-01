@@ -34,17 +34,28 @@ const mockSales = [
 
 beforeEach(() => {
   vi.clearAllMocks()
-  global.fetch = vi.fn().mockResolvedValue({
-    ok: true,
-    json: async () => ({
-      sales: mockSales,
-      page: 1,
-      pageSize: 20,
-      total: 1,
-      totalPages: 1,
-      totalSaleAmount: 50,
-    }),
-  } as Response)
+  global.fetch = vi.fn().mockImplementation((url: string) => {
+    if (url.includes('summary=true')) {
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({
+          totalSaleAmount: 500,
+          todaySaleAmount: 75,
+        }),
+      } as Response)
+    }
+    return Promise.resolve({
+      ok: true,
+      json: async () => ({
+        sales: mockSales,
+        page: 1,
+        pageSize: 20,
+        total: 1,
+        totalPages: 1,
+        totalSaleAmount: 50,
+      }),
+    } as Response)
+  })
 })
 
 afterEach(() => {
@@ -59,8 +70,31 @@ describe('PharmacySalesHistoryPage', () => {
     expect(await screen.findByRole('heading', { name: 'Pharmacy Sales History' })).toBeTruthy()
     expect(await screen.findByText('PSALE-20260830-0001')).toBeTruthy()
     expect(screen.getByText(/MR000001/)).toBeTruthy()
-    expect(screen.getByText(/Total sale - Rs\. 50\.00/)).toBeTruthy()
+    expect(screen.getByText('Total Sale')).toBeTruthy()
+    expect(screen.getByText('Today Sale')).toBeTruthy()
+    expect(screen.getByText('Rs. 500.00')).toBeTruthy()
+    expect(screen.getByText('Rs. 75.00')).toBeTruthy()
     expect(screen.getByRole('button', { name: /Reprint/i })).toBeTruthy()
+  })
+
+  it('keeps summary card requests independent from table filters', async () => {
+    render(<PharmacySalesHistoryPage />)
+
+    await screen.findByText('PSALE-20260830-0001')
+
+    act(() => {
+      fireEvent.change(screen.getByLabelText('MR Number / Name'), { target: { value: 'Test Patient' } })
+      fireEvent.change(screen.getByLabelText('Start Date'), { target: { value: '2026-08-30' } })
+    })
+
+    await waitFor(() => {
+      const calls = (global.fetch as any).mock.calls.map((call: any[]) => String(call[0]))
+      const summaryCalls = calls.filter((url: string) => url.includes('summary=true'))
+      expect(summaryCalls.length).toBeGreaterThan(0)
+      expect(summaryCalls.every((url: string) => !url.includes('search=') && !url.includes('startDate='))).toBe(true)
+      expect(screen.getByText('Rs. 500.00')).toBeTruthy()
+      expect(screen.getByText('Rs. 75.00')).toBeTruthy()
+    })
   })
 
   it('expands sale rows to show receipt line items', async () => {
@@ -114,6 +148,7 @@ describe('PharmacySalesHistoryPage', () => {
           total: 25,
           totalPages: 2,
           totalSaleAmount: 1250,
+          todaySaleAmount: 75,
         }),
       } as Response)
     })
@@ -143,16 +178,26 @@ describe('PharmacySalesHistoryPage', () => {
     }, { timeout: 3500 })
 
     const calls = (global.fetch as any).mock.calls.map((call: any[]) => String(call[0]))
-    expect(calls.at(-1)).toContain('/api/pharmacy-sales')
-    expect(calls.at(-1)).toContain('page=1')
-    expect(calls.at(-1)).toContain('pageSize=20')
+    const listCalls = calls.filter((url: string) => url.includes('/api/pharmacy-sales') && !url.includes('summary=true'))
+    expect(listCalls.at(-1)).toContain('page=1')
+    expect(listCalls.at(-1)).toContain('pageSize=20')
   }, 5000)
 
   it('keeps current data when a background poll fails', async () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    global.fetch = vi
-      .fn()
-      .mockResolvedValueOnce({
+    let listCalls = 0
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      if (url.includes('summary=true')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ totalSaleAmount: 500, todaySaleAmount: 75 }),
+        } as Response)
+      }
+      listCalls += 1
+      if (listCalls > 2) {
+        return Promise.reject(new TypeError('Failed to fetch'))
+      }
+      return Promise.resolve({
         ok: true,
         json: async () => ({
           sales: mockSales,
@@ -163,28 +208,17 @@ describe('PharmacySalesHistoryPage', () => {
           totalSaleAmount: 50,
         }),
       } as Response)
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          sales: mockSales,
-          page: 1,
-          pageSize: 20,
-          total: 1,
-          totalPages: 1,
-          totalSaleAmount: 50,
-        }),
-      } as Response)
-      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+    })
 
     render(<PharmacySalesHistoryPage />)
 
     expect(await screen.findByText('PSALE-20260830-0001')).toBeTruthy()
-    expect(screen.getByText(/Total sale - Rs\. 50\.00/)).toBeTruthy()
+    expect(screen.getByText('Rs. 500.00')).toBeTruthy()
 
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledTimes(3)
+      expect(listCalls).toBeGreaterThan(2)
     }, { timeout: 3500 })
-    expect(screen.getByText(/Total sale - Rs\. 50\.00/)).toBeTruthy()
+    expect(screen.getByText('Rs. 500.00')).toBeTruthy()
     expect(consoleSpy).not.toHaveBeenCalled()
     consoleSpy.mockRestore()
   }, 5000)

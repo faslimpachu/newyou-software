@@ -185,6 +185,59 @@ describe('Pharmacy Sales API', () => {
     expect(emptyPageData.totalSaleAmount).toBe(100)
   })
 
+  it('GET summary returns unfiltered total and today sale amounts', async () => {
+    const { product, batch } = await seedStock(10, 25)
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000)
+
+    await prisma.pharmacySale.createMany({
+      data: [
+        {
+          saleGroup: 'PSALE-SUMMARY-OLD',
+          saleNumber: 'PSALE-SUMMARY-OLD',
+          customerName: 'Old Customer',
+          productId: product.id,
+          batchId: batch.id,
+          quantity: 1,
+          unitPrice: 25,
+          totalAmount: 25,
+          paymentMethod: 'CASH',
+          createdAt: yesterday,
+        },
+        {
+          saleGroup: 'PSALE-SUMMARY-TODAY-1',
+          saleNumber: 'PSALE-SUMMARY-TODAY-1',
+          customerName: 'Today Customer',
+          productId: product.id,
+          batchId: batch.id,
+          quantity: 2,
+          unitPrice: 25,
+          totalAmount: 50,
+          paymentMethod: 'UPI',
+        },
+        {
+          saleGroup: 'PSALE-SUMMARY-TODAY-2',
+          saleNumber: 'PSALE-SUMMARY-TODAY-2',
+          customerName: 'Today Customer Two',
+          productId: product.id,
+          batchId: batch.id,
+          quantity: 1,
+          unitPrice: 10,
+          totalAmount: 10,
+          paymentMethod: 'CARD',
+        },
+      ],
+    })
+
+    const res = await GET(
+      new Request('http://localhost/api/pharmacy-sales?summary=true&paymentMethod=CASH', { method: 'GET' }),
+    )
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.totalSaleAmount).toBe(85)
+    expect(data.todaySaleAmount).toBe(60)
+    expect(data.sales).toBeUndefined()
+  })
+
   it('GET searches by sale number, customer, phone, and MR', async () => {
     const { product, batch } = await seedStock(10, 25)
 

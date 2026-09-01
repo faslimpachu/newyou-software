@@ -61,9 +61,17 @@ const salesResponse = {
   totalSaleAmount: 50,
 }
 
+const summaryResponse = {
+  totalSaleAmount: 500,
+  todaySaleAmount: 75,
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
   global.fetch = vi.fn().mockImplementation((url: string) => {
+    if (url.includes('/api/pharmacy-sales?summary=true')) {
+      return Promise.resolve({ ok: true, json: async () => summaryResponse })
+    }
     if (url.includes('/api/pharmacy-sales')) {
       return Promise.resolve({ ok: true, json: async () => salesResponse })
     }
@@ -83,6 +91,18 @@ describe('PharmacySalesHistoryPage', () => {
     expect(screen.getByText(/Alice \(MR000111\)/)).toBeTruthy()
     expect(screen.getByText('CASH')).toBeTruthy()
     expect(screen.getByText('Rs. 50.00')).toBeTruthy()
+  })
+
+  it('renders unfiltered total and today sale cards above filters', async () => {
+    render(<PharmacySalesHistoryPage />)
+
+    expect(await screen.findByText('Total Sale')).toBeTruthy()
+    expect(screen.getByText('Today Sale')).toBeTruthy()
+    expect(screen.getByText('Rs. 500.00')).toBeTruthy()
+    expect(screen.getByText('Rs. 75.00')).toBeTruthy()
+
+    const calls = (global.fetch as any).mock.calls.map((call: any[]) => String(call[0]))
+    expect(calls).toContain('/api/pharmacy-sales?summary=true')
   })
 
   it('expands a sale to show line items', async () => {

@@ -58,6 +58,11 @@ interface PharmacySaleSummary {
   items: SaleItem[]
 }
 
+interface SalesTotals {
+  totalSaleAmount: number
+  todaySaleAmount: number
+}
+
 function money(value: number) {
   return `Rs. ${Number(value || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
 }
@@ -75,10 +80,27 @@ export default function PharmacySalesHistoryPage() {
   const [pageSize] = useState(20)
   const [totalPages, setTotalPages] = useState(1)
   const [total, setTotal] = useState(0)
-  const [totalSaleAmount, setTotalSaleAmount] = useState(0)
+  const [salesTotals, setSalesTotals] = useState<SalesTotals>({
+    totalSaleAmount: 0,
+    todaySaleAmount: 0,
+  })
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const requestIdRef = useRef(0)
   const inFlightRef = useRef(false)
+
+  const loadTotals = useCallback(async () => {
+    try {
+      const res = await fetch('/api/pharmacy-sales?summary=true')
+      if (!res.ok) throw new Error('Failed to load sales totals')
+      const data = await res.json()
+      setSalesTotals({
+        totalSaleAmount: Number(data.totalSaleAmount || 0),
+        todaySaleAmount: Number(data.todaySaleAmount || 0),
+      })
+    } catch (e) {
+      console.error(e)
+    }
+  }, [])
 
   const loadSales = useCallback(
     async (pageNum = 1, showLoading = true) => {
@@ -104,13 +126,11 @@ export default function PharmacySalesHistoryPage() {
         setSales(data.sales || [])
         setTotalPages(data.totalPages || 1)
         setTotal(data.total || 0)
-        setTotalSaleAmount(Number(data.totalSaleAmount || 0))
         setPage(data.page || pageNum)
       } catch (e) {
         if (requestId !== requestIdRef.current) return
         if (showLoading) {
           console.error(e)
-          setTotalSaleAmount(0)
         }
       } finally {
         if (requestId === requestIdRef.current) {
@@ -127,12 +147,17 @@ export default function PharmacySalesHistoryPage() {
   }, [loadSales])
 
   useEffect(() => {
+    void loadTotals()
+  }, [loadTotals])
+
+  useEffect(() => {
     const interval = window.setInterval(() => {
       void loadSales(page, false)
+      void loadTotals()
     }, 3000)
 
     return () => window.clearInterval(interval)
-  }, [loadSales, page])
+  }, [loadSales, loadTotals, page])
 
   const handlePrevPage = () => {
     if (page > 1) loadSales(page - 1)
@@ -194,6 +219,25 @@ export default function PharmacySalesHistoryPage() {
             Browse pharmacy sales grouped by sale, reprint receipts, and filter
             by date, MR, or payment
           </p>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardDescription>Total Sale</CardDescription>
+              <CardTitle className="text-2xl tabular-nums">
+                {money(salesTotals.totalSaleAmount)}
+              </CardTitle>
+            </CardHeader>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardDescription>Today Sale</CardDescription>
+              <CardTitle className="text-2xl tabular-nums">
+                {money(salesTotals.todaySaleAmount)}
+              </CardTitle>
+            </CardHeader>
+          </Card>
         </div>
 
         <Card>
@@ -274,8 +318,8 @@ export default function PharmacySalesHistoryPage() {
             <CardTitle className="text-base">Sales</CardTitle>
             <CardDescription>
               {total > 0
-                ? `Page ${page} of ${totalPages} (${total} total)  Total sale - ${money(totalSaleAmount)}`
-                : `${sales.length} sale(s) found  Total sale - ${money(totalSaleAmount)}`}
+                ? `Page ${page} of ${totalPages} (${total} total)`
+                : `${sales.length} sale(s) found`}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -417,8 +461,7 @@ export default function PharmacySalesHistoryPage() {
         {!loading && totalPages > 1 && (
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
-              Page {page} of {totalPages} ({total} total) Total sale -{' '}
-              {money(totalSaleAmount)}
+              Page {page} of {totalPages} ({total} total)
             </p>
             <div className="flex gap-2">
               <Button
