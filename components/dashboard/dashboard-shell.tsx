@@ -47,14 +47,14 @@ export function DashboardShell({ children }: DashboardShellProps) {
           collapsed ? 'w-[76px]' : 'w-64',
         )}
       >
-        <SidebarNav collapsed={collapsed} />
+        <SidebarNav collapsed={collapsed} role={user?.role} />
       </aside>
 
       {/* Mobile sidebar */}
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
         <SheetContent side="left" className="w-64 p-0" showCloseButton={false}>
           <SheetTitle className="sr-only">Navigation</SheetTitle>
-          <SidebarNav onNavigate={() => setMobileOpen(false)} />
+          <SidebarNav onNavigate={() => setMobileOpen(false)} role={user?.role} />
         </SheetContent>
       </Sheet>
 

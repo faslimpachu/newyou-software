@@ -4,7 +4,7 @@ import { requireRole } from '@/lib/session'
 
 export async function GET(request: Request) {
   try {
-    await requireRole(request, ['superadmin', 'admin', 'receptionist'])
+    await requireRole(request, ['superadmin', 'admin', 'receptionist', 'doctor'])
     const where: Record<string, unknown> = {}
 
     const doctorParam = new URL(request.url).searchParams.get('doctor')

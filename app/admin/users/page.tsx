@@ -23,6 +23,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { DashboardShell } from '@/components/dashboard/dashboard-shell'
 import { Plus, Trash2 } from 'lucide-react'
+import { ROLE_LABELS, USER_ROLES } from '@/lib/role-permissions'
 
 interface User {
   id: string
@@ -222,9 +223,11 @@ export default function UsersPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="superadmin">Super Admin</SelectItem>
-                    <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="receptionist">Receptionist</SelectItem>
+                    {USER_ROLES.map((role) => (
+                      <SelectItem key={role} value={role}>
+                        {ROLE_LABELS[role]}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

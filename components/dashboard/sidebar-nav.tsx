@@ -23,8 +23,10 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { canViewNavItem, type NavPermissionId } from '@/lib/role-permissions'
 
 interface NavItem {
+  id: NavPermissionId
   label: string
   icon: LucideIcon
   href: string
@@ -34,55 +36,62 @@ interface NavItem {
 interface SidebarNavProps {
   collapsed?: boolean
   onNavigate?: () => void
+  role?: string
 }
 
 const navGroups: { heading: string; items: NavItem[] }[] = [
   {
     heading: 'Overview',
     items: [
-      { label: 'Dashboard', icon: LayoutDashboard, href: '/' },
-      { label: 'Registrations', icon: UserPlus, href: '/register' },
-      { label: 'Billing', icon: Receipt, href: '/billing' },
+      { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, href: '/' },
+      { id: 'registrations', label: 'Registrations', icon: UserPlus, href: '/register' },
+      { id: 'billing', label: 'Billing', icon: Receipt, href: '/billing' },
     ],
   },
   {
     heading: 'Clinical',
     items: [
-      { label: 'Patients', icon: Users, href: '/patients' },
-      { label: 'Visits', icon: Activity, href: '/visits' },
+      { id: 'patients', label: 'Patients', icon: Users, href: '/patients' },
+      { id: 'visits', label: 'Visits', icon: Activity, href: '/visits' },
     ],
   },
   {
     heading: 'Operations',
     items: [
-      { label: 'Follow-ups', icon: CalendarClock, href: '/follow-ups' },
+      { id: 'followUps', label: 'Follow-ups', icon: CalendarClock, href: '/follow-ups' },
     ],
   },
   {
     heading: 'Purchase & Inventory',
     items: [
-      { label: 'Suppliers', icon: Truck, href: '/suppliers' },
-      { label: 'Categories', icon: FolderOpen, href: '/product-categories' },
-      { label: 'Products', icon: Package, href: '/products' },
-      { label: 'Purchase Invoices', icon: ReceiptText, href: '/purchase-invoices' },
-      { label: 'Supplier Payments', icon: Wallet, href: '/supplier-payments' },
-      { label: 'Inventory Adjustment', icon: SlidersHorizontal, href: '/inventory-adjustments' },
-      { label: 'Stock History', icon: History, href: '/inventory-transactions' },
-      { label: 'Batches', icon: Package, href: '/batches' },
-      { label: 'Pharmacy Sales', icon: Stethoscope, href: '/pharmacy-sales' },
-      { label: 'Pharmacy Sales History', icon: ReceiptText, href: '/pharmacy-sales-history' },
+      { id: 'suppliers', label: 'Suppliers', icon: Truck, href: '/suppliers' },
+      { id: 'categories', label: 'Categories', icon: FolderOpen, href: '/product-categories' },
+      { id: 'products', label: 'Products', icon: Package, href: '/products' },
+      { id: 'purchaseInvoices', label: 'Purchase Invoices', icon: ReceiptText, href: '/purchase-invoices' },
+      { id: 'supplierPayments', label: 'Supplier Payments', icon: Wallet, href: '/supplier-payments' },
+      { id: 'inventoryAdjustment', label: 'Inventory Adjustment', icon: SlidersHorizontal, href: '/inventory-adjustments' },
+      { id: 'stockHistory', label: 'Stock History', icon: History, href: '/inventory-transactions' },
+      { id: 'batches', label: 'Batches', icon: Package, href: '/batches' },
+      { id: 'pharmacySales', label: 'Pharmacy Sales', icon: Stethoscope, href: '/pharmacy-sales' },
+      { id: 'pharmacySalesHistory', label: 'Pharmacy Sales History', icon: ReceiptText, href: '/pharmacy-sales-history' },
     ],
   },
   {
     heading: 'Reports',
     items: [
-      { label: 'Consultations', icon: BarChart3, href: '/reports/consultation' },
+      { id: 'consultations', label: 'Consultations', icon: BarChart3, href: '/reports/consultation' },
     ],
   },
 ]
 
-export function SidebarNav({ collapsed = false, onNavigate }: SidebarNavProps) {
+export function SidebarNav({ collapsed = false, onNavigate, role }: SidebarNavProps) {
   const pathname = usePathname()
+  const visibleNavGroups = navGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => canViewNavItem(role, item.id)),
+    }))
+    .filter((group) => group.items.length > 0)
 
   return (
     <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground" suppressHydrationWarning>
@@ -108,7 +117,7 @@ export function SidebarNav({ collapsed = false, onNavigate }: SidebarNavProps) {
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto px-3 py-4">
-        {navGroups.map((group) => (
+        {visibleNavGroups.map((group) => (
           <div key={group.heading} className="mb-5">
             {!collapsed && (
               <p className="px-2 pb-2 text-[0.7rem] font-medium uppercase tracking-wider text-muted-foreground">

@@ -77,6 +77,21 @@ describe('Admin Users Page UI', () => {
     expect(screen.getByLabelText('Name')).toBeDefined()
   })
 
+  it('includes Doctor in the role picker', async () => {
+    await waitFor(() => {
+      expect(screen.getByText('User Management')).toBeDefined()
+    })
+
+    const roleCombobox = screen.getAllByRole('combobox')[0]
+    act(() => {
+      fireEvent.click(roleCombobox)
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('Doctor')).toBeDefined()
+    })
+  })
+
   it('shows confirm dialog when delete is clicked', async () => {
     await waitFor(() => {
       expect(screen.getByText('Admin User')).toBeDefined()
