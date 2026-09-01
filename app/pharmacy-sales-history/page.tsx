@@ -52,6 +52,7 @@ interface PharmacySaleSummary {
   customerPhone: string | null
   patientMr: string | null
   paymentMethod: string
+  paymentReference: string | null
   createdAt: string
   itemsCount: number
   totalAmount: number
@@ -334,6 +335,7 @@ export default function PharmacySalesHistoryPage() {
                     <TableHead>Date</TableHead>
                     <TableHead>Customer / MR</TableHead>
                     <TableHead>Payment</TableHead>
+                    <TableHead>Payment Reference</TableHead>
                     <TableHead className="text-right">Items</TableHead>
                     <TableHead className="text-right">Total</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
@@ -373,6 +375,7 @@ export default function PharmacySalesHistoryPage() {
                               {sale.paymentMethod}
                             </Badge>
                           </TableCell>
+                          <TableCell>{sale.paymentReference || '-'}</TableCell>
                           <TableCell className="text-right tabular-nums">
                             {sale.itemsCount}
                           </TableCell>
@@ -395,7 +398,7 @@ export default function PharmacySalesHistoryPage() {
                             key={`${sale.saleGroup}-items`}
                             className="bg-muted/40"
                           >
-                            <TableCell colSpan={8} className="p-0">
+                            <TableCell colSpan={9} className="p-0">
                               <div className="px-4 py-4">
                                 <Table>
                                   <TableHeader>
@@ -445,7 +448,7 @@ export default function PharmacySalesHistoryPage() {
                   {sales.length === 0 && (
                     <TableRow>
                       <TableCell
-                        colSpan={8}
+                        colSpan={9}
                         className="text-center text-muted-foreground"
                       >
                         No sales found

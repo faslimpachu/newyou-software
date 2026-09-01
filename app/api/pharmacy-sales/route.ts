@@ -23,6 +23,7 @@ type PharmacySaleLine = {
   unitPrice: unknown
   totalAmount: unknown
   paymentMethod: string
+  notes: string | null
   createdAt: Date
 }
 
@@ -235,6 +236,7 @@ export async function GET(request: Request) {
         customerPhone: first?.customerPhone || null,
         patientMr: first?.patientMr || null,
         paymentMethod: first?.paymentMethod || '',
+        paymentReference: first?.notes || null,
         createdAt: group._min.createdAt || first?.createdAt || null,
         itemsCount: group._count.id,
         totalAmount: toNumber(group._sum.totalAmount),

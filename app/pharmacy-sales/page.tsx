@@ -845,12 +845,12 @@ export default function PharmacySalesPage() {
                     </Select>
                   </div>
                   <div className="space-y-2 md:w-72">
-                    <Label htmlFor="notes">Notes</Label>
+                    <Label htmlFor="notes">Payment Reference</Label>
                     <Input
                       id="notes"
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
-                      placeholder="Optional notes"
+                      placeholder="Cheque/UTR number"
                     />
                   </div>
                   <div className="w-full max-w-xs space-y-1 text-sm md:text-right">

@@ -51,22 +51,42 @@ export async function GET(request: Request) {
     const purchaseInvoiceIds = transactions
       .filter((t) => t.referenceType === 'PURCHASE_INVOICE' && t.referenceId)
       .map((t) => t.referenceId as string)
+    const pharmacySaleIds = transactions
+      .filter((t) => t.referenceType === 'SALE_INVOICE' && t.referenceId)
+      .map((t) => t.referenceId as string)
 
-    const invoices = purchaseInvoiceIds.length
-      ? await prisma.purchaseInvoice.findMany({
-          where: { id: { in: purchaseInvoiceIds } },
-          select: { id: true, invoiceNumber: true },
-        })
-      : []
+    const [invoices, pharmacySales] = await Promise.all([
+      purchaseInvoiceIds.length
+        ? prisma.purchaseInvoice.findMany({
+            where: { id: { in: purchaseInvoiceIds } },
+            select: { id: true, invoiceNumber: true },
+          })
+        : Promise.resolve([]),
+      pharmacySaleIds.length
+        ? (prisma as any).pharmacySale.findMany({
+            where: { id: { in: pharmacySaleIds } },
+            select: { id: true, saleNumber: true, saleGroup: true },
+          })
+        : Promise.resolve([]),
+    ])
 
     const invoiceMap = new Map(invoices.map((inv) => [inv.id, inv.invoiceNumber]))
+    const pharmacySaleMap = new Map(
+      pharmacySales.map((sale: { id: string; saleNumber: string; saleGroup: string }) => [
+        sale.id,
+        sale.saleGroup || sale.saleNumber,
+      ]),
+    )
 
     return NextResponse.json({
       transactions: transactions.map((t) => {
-        const reference =
-          t.referenceType === 'PURCHASE_INVOICE' && t.referenceId
-            ? invoiceMap.get(t.referenceId) || t.referenceId
-            : t.referenceId || null
+        let reference = t.referenceId || null
+        if (t.referenceType === 'PURCHASE_INVOICE' && t.referenceId) {
+          reference = invoiceMap.get(t.referenceId) || t.referenceId
+        }
+        if (t.referenceType === 'SALE_INVOICE' && t.referenceId) {
+          reference = pharmacySaleMap.get(t.referenceId) || t.referenceId
+        }
 
         return {
           ...t,

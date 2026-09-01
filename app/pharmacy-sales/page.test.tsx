@@ -66,6 +66,9 @@ describe('PharmacySalesPage', () => {
     expect(nameInput.placeholder).toMatch(/auto-filled/i)
 
     expect(screen.getByRole('button', { name: /Add Item/i })).toBeTruthy()
+    expect(screen.getByLabelText('Payment Reference')).toBeTruthy()
+    expect(screen.getByPlaceholderText('Cheque/UTR number')).toBeTruthy()
+    expect(screen.queryByLabelText('Notes')).toBeNull()
   })
 
   it('requires an MR number before saving', async () => {

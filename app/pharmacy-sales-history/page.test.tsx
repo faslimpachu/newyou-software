@@ -25,6 +25,7 @@ const salesResponse = {
       customerPhone: '919845012345',
       patientMr: 'MR000111',
       paymentMethod: 'CASH',
+      paymentReference: 'UTR-12345',
       createdAt: '2026-01-01T10:00:00.000Z',
       itemsCount: 2,
       totalAmount: 50,
@@ -90,6 +91,7 @@ describe('PharmacySalesHistoryPage', () => {
     )
     expect(screen.getByText(/Alice \(MR000111\)/)).toBeTruthy()
     expect(screen.getByText('CASH')).toBeTruthy()
+    expect(screen.getByText('UTR-12345')).toBeTruthy()
     expect(screen.getByText('Rs. 50.00')).toBeTruthy()
   })
 

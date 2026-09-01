@@ -88,6 +88,7 @@ describe('Pharmacy Sales API', () => {
           unitPrice: 20,
           totalAmount: 40,
           paymentMethod: 'CASH',
+          notes: 'UTR-GROUP-001',
           createdAt: new Date('2026-08-30T10:00:00.000Z'),
         },
         {
@@ -118,6 +119,7 @@ describe('Pharmacy Sales API', () => {
     expect(data.sales[0].itemsCount).toBe(2)
     expect(data.sales[0].totalAmount).toBe(55)
     expect(data.sales[0].customerName).toBe('Grouped Customer')
+    expect(data.sales[0].paymentReference).toBe('UTR-GROUP-001')
     expect(data.sales[0].items).toHaveLength(2)
     expect(data.sales[0].items[0].productName).toBe(first.product.name)
     expect(data.sales[0].items[0].batchNumber).toBe(first.batch.batchNumber)

@@ -8,6 +8,7 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await prisma.inventoryTransaction.deleteMany()
+  await (prisma as any).pharmacySale.deleteMany()
   await prisma.supplierPayment.deleteMany()
   await prisma.purchaseInvoiceItem.deleteMany()
   await prisma.purchaseInvoice.deleteMany()
@@ -142,5 +143,55 @@ describe('Inventory Transactions API', () => {
     const data = await res.json()
     expect(data.transactions).toHaveLength(1)
     expect(data.transactions[0].productId).toBe(product1.id)
+  })
+
+  it('GET shows pharmacy sale number instead of sale row UUID reference', async () => {
+    const category = await prisma.productCategory.create({
+      data: { name: 'Medicines', active: true },
+    })
+    const product = await prisma.product.create({
+      data: {
+        name: 'Sale Product',
+        code: 'PRD-20260802-0004',
+        categoryId: category.id,
+        unit: 'pcs',
+        purchasePrice: 10,
+        sellingPrice: 15,
+        currentStock: 50,
+        minimumStock: 10,
+        maximumStock: 200,
+      },
+    })
+    const sale = await (prisma as any).pharmacySale.create({
+      data: {
+        saleNumber: 'PSALE-20260901-0001',
+        saleGroup: 'PSALE-20260901-0001',
+        customerName: 'Test Patient',
+        productId: product.id,
+        batchId: 'batch-1',
+        quantity: 1,
+        unitPrice: 15,
+        totalAmount: 15,
+        paymentMethod: 'CASH',
+      },
+    })
+    await prisma.inventoryTransaction.create({
+      data: {
+        productId: product.id,
+        type: 'SALE',
+        quantity: -1,
+        referenceType: 'SALE_INVOICE',
+        referenceId: sale.id,
+        notes: 'Pharmacy sale PSALE-20260901-0001',
+      },
+    })
+
+    const req = new Request('http://localhost/api/inventory-transactions', { method: 'GET' })
+    const res = await GET(req)
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.transactions).toHaveLength(1)
+    expect(data.transactions[0].reference).toBe('PSALE-20260901-0001')
+    expect(data.transactions[0].reference).not.toBe(sale.id)
   })
 })
