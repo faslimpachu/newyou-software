@@ -88,11 +88,13 @@ describe('Inventory Transactions Page UI', () => {
       })
     })
 
-    it('shows reference value', async () => {
+    it('hides the reference column and value from the table', async () => {
       render(<InventoryTransactionsPage />)
       await waitFor(() => {
-        expect(screen.getByText('PINV-001')).toBeDefined()
+        expect(screen.getByText('Purchase stock')).toBeDefined()
       })
+      expect(screen.queryByText('Reference')).toBeNull()
+      expect(screen.queryByText('PINV-001')).toBeNull()
     })
 
     it('product select shows product name after selection, not UUID', async () => {

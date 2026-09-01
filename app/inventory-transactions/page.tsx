@@ -306,7 +306,8 @@ export default function InventoryTransactionsPage() {
                     <TableHead>Product</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead className="text-right">Quantity</TableHead>
-                    <TableHead>Reference</TableHead>
+                    {/* Reference hidden from Inventory Transactions table UI. Data/API stays unchanged. */}
+                    {/* <TableHead>Reference</TableHead> */}
                     <TableHead>Notes</TableHead>
                     <TableHead>Date</TableHead>
                   </TableRow>
@@ -326,11 +327,12 @@ export default function InventoryTransactionsPage() {
                         <TableCell className="text-right tabular-nums">
                           {transaction.quantity > 0 ? '+' : ''}{transaction.quantity}
                         </TableCell>
-                        <TableCell>
+                        {/* Reference hidden from Inventory Transactions table UI. Data/API stays unchanged. */}
+                        {/* <TableCell>
                           <span className="text-sm">
                             {transaction.reference || '-'}
                           </span>
-                        </TableCell>
+                        </TableCell> */}
                         <TableCell className="max-w-[200px] truncate">{transaction.notes || '-'}</TableCell>
                         <TableCell>{new Date(transaction.createdAt).toLocaleString('en-IN')}</TableCell>
                       </TableRow>
@@ -338,7 +340,7 @@ export default function InventoryTransactionsPage() {
                   })}
                   {transactions.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center text-muted-foreground">
+                      <TableCell colSpan={5} className="text-center text-muted-foreground">
                         No transactions found
                       </TableCell>
                     </TableRow>
