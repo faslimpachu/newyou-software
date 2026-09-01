@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
-import { GET, POST } from '@/app/api/op-sheets/route';
+import { GET, PATCH, POST } from '@/app/api/op-sheets/route';
 import { prisma } from '@/lib/prisma';
 
 beforeAll(async () => {
@@ -85,6 +85,65 @@ describe('OP Sheets API', () => {
     });
     const res = await POST(req);
     expect(res.status).toBe(400);
+  });
+
+  it('PATCH updates an existing OP sheet', async () => {
+    const patient = await prisma.patient.create({
+      data: {
+        mr: 'MR000011', consultationType: 'NUTRITION', patientName: 'Edit OP', parentName: 'P',
+        gender: 'Male', mobileNumber: '5555555555', address: 'Addr', district: 'D', state: 'S', pinCode: '123456',
+      },
+    });
+
+    const visit = await prisma.visit.create({
+      data: { id: 'NU000011', patientMr: patient.mr, status: 'Waiting' },
+    });
+
+    const sheet = await prisma.oPSheet.create({
+      data: {
+        patientMr: patient.mr,
+        visitId: visit.id,
+        clinicalExamination: 'Old clinical notes',
+        vitals: '{}',
+        diagnosis: 'Old treatment plan',
+        symptoms: 'Old investigations',
+      },
+    });
+
+    const vitals = JSON.stringify({ Weight: ['70', '68', '', '', '-2'] });
+    const req = new Request('http://localhost/api/op-sheets', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        id: sheet.id,
+        clinicalExamination: 'Updated clinical notes',
+        vitals,
+        diagnosis: 'Updated treatment plan',
+        symptoms: 'Updated investigations',
+        status: 'Completed',
+      }),
+    });
+
+    const res = await PATCH(req);
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.sheet.id).toBe(sheet.id);
+    expect(data.sheet.clinicalExamination).toBe('Updated clinical notes');
+    expect(data.sheet.vitals).toBe(vitals);
+    expect(data.sheet.diagnosis).toBe('Updated treatment plan');
+    expect(data.sheet.symptoms).toBe('Updated investigations');
+    expect(data.sheet.status).toBe('Completed');
+
+    const saved = await prisma.oPSheet.findUniqueOrThrow({ where: { id: sheet.id } });
+    expect(saved.clinicalExamination).toBe('Updated clinical notes');
+  });
+
+  it('PATCH returns 404 for missing OP sheet', async () => {
+    const req = new Request('http://localhost/api/op-sheets', {
+      method: 'PATCH',
+      body: JSON.stringify({ id: 'missing-op', clinicalExamination: 'Nope' }),
+    });
+    const res = await PATCH(req);
+    expect(res.status).toBe(404);
   });
 
   it('GET returns empty list when no sheets', async () => {

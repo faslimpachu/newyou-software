@@ -60,3 +60,37 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
+
+export async function PATCH(request: Request) {
+  try {
+    const body = await request.json();
+    const { id, clinicalExamination, vitals, diagnosis, symptoms, status } = body;
+
+    if (!id) {
+      return NextResponse.json({ error: 'id is required' }, { status: 400 });
+    }
+
+    const existing = await prisma.oPSheet.findUnique({ where: { id } });
+    if (!existing) {
+      return NextResponse.json({ error: 'OP sheet not found' }, { status: 404 });
+    }
+
+    const data: Record<string, unknown> = {};
+    if (clinicalExamination !== undefined) data.clinicalExamination = clinicalExamination;
+    if (vitals !== undefined) data.vitals = vitals;
+    if (diagnosis !== undefined) data.diagnosis = diagnosis;
+    if (symptoms !== undefined) data.symptoms = symptoms;
+    if (status !== undefined) data.status = status;
+
+    const sheet = await prisma.oPSheet.update({
+      where: { id },
+      data,
+      include: { patient: true, visit: true },
+    });
+
+    return NextResponse.json({ sheet });
+  } catch (e) {
+    console.error('OP Sheets PATCH error', e);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}

@@ -380,6 +380,27 @@ function OPSheet({ patient, center, onRefresh, onUpdateStatus }: { patient: Pati
         onUpdateStatus?.(record.visitId, 'Active')
         return
       }
+    } else {
+      const response = await fetch('/api/op-sheets', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: existing.id,
+          clinicalExamination: record.clinicalNotes,
+          vitals: JSON.stringify(record.measurementValues),
+          diagnosis: record.treatmentPlan,
+          symptoms: record.investigations,
+          status: record.status,
+        }),
+      })
+      if (response.ok) {
+        const body = await response.json() as { sheet: ApiOPSheet }
+        const saved = mapOPSheetRecord(body.sheet, center)
+        setRecords((current) => current.map((r) => (r.id === saved.id ? saved : r)))
+        setMode('list')
+        onRefresh?.()
+        return
+      }
     }
     setRecords((current) => existing ? current.map((r) => (r.id === record.id ? record : r)) : [record, ...current])
     setMode('list')

@@ -249,6 +249,83 @@ describe('PatientProfile', () => {
     })
   })
 
+  it('updates an existing OP Sheet and refreshes the patient profile', async () => {
+    const opSheet = {
+      id: 'OP-1',
+      visitId: 'NU000001',
+      clinicalExamination: 'Old clinical notes',
+      vitals: '{}',
+      diagnosis: 'Old treatment plan',
+      symptoms: 'Old investigations',
+      status: 'Completed',
+      createdAt: new Date().toISOString(),
+      visit: undefined,
+      prescription: null,
+    }
+    const patientWithOP = {
+      ...existingPatients[0],
+      visits: [
+        { id: 'NU000001', date: '01 Jan 2026', center: 'Nutrition Center', doctor: 'Dr. A', reason: 'Checkup' },
+      ],
+      apiOPSheets: [opSheet],
+      apiPrescriptions: [],
+    }
+    const updatedSheet = { ...opSheet, clinicalExamination: 'Updated clinical notes' }
+    const mockFetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === 'string' ? input : input.toString()
+      if (url === '/api/op-sheets' && init?.method === 'PATCH') {
+        return { ok: true, json: async () => ({ sheet: updatedSheet }) } as Response
+      }
+      if (url === '/api/patients/MR000001') {
+        return {
+          ok: true,
+          json: async () => ({
+            patient: {
+              mr: patientWithOP.mr,
+              consultationType: 'NUTRITION',
+              patientName: patientWithOP.name,
+              parentName: patientWithOP.parentName,
+              gender: patientWithOP.gender,
+              mobileNumber: patientWithOP.mobile,
+              address: '',
+              district: patientWithOP.city,
+              state: '',
+              pinCode: '',
+              age: patientWithOP.age,
+              bloodGroup: patientWithOP.bloodGroup,
+              status: patientWithOP.tags?.[0],
+              dob: patientWithOP.dob,
+              visits: patientWithOP.visits.map((v) => ({ ...v, createdAt: new Date().toISOString() })),
+              opSheets: [updatedSheet],
+              prescriptions: [],
+            },
+          }),
+        } as Response
+      }
+      return { ok: false, json: async () => ({ error: 'Unexpected request' }) } as Response
+    })
+
+    global.fetch = mockFetch
+
+    render(<PatientProfile patient={patientWithOP} center="Nutrition Center" />)
+
+    fireEvent.click(screen.getByRole('tab', { name: 'OP Sheet' }))
+    const editButtons = screen.getAllByRole('button', { name: /Edit/ })
+    fireEvent.click(editButtons[editButtons.length - 1])
+    fireEvent.change(screen.getByPlaceholderText('Document clinical examination findings, assessment and observations...'), { target: { value: 'Updated clinical notes' } })
+    fireEvent.click(screen.getByRole('button', { name: /Save/ }))
+
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledWith('/api/op-sheets', expect.objectContaining({
+        method: 'PATCH',
+        body: expect.stringContaining('"id":"OP-1"'),
+      }))
+    })
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledWith('/api/patients/MR000001')
+    })
+  })
+
   it('sets visit status to Active automatically when first OP Sheet is created', async () => {
     const patientWithOP = {
       ...existingPatients[0],
