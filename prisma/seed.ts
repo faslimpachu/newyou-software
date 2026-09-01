@@ -525,14 +525,17 @@ async function main() {
   ]
 
   const productMap = new Map<string, string>()
+  const productSellingPrice = new Map<string, number>()
   for (const product of products) {
     const created = await prisma.product.create({
       data: {
         ...product,
+        sellingPrice: 0,
         code: `PRD-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${String(productMap.size + 1).padStart(4, '0')}`,
       },
     })
     productMap.set(product.sku, created.id)
+    productSellingPrice.set(created.id, product.sellingPrice)
   }
 
   // ------------------------------------------------------------------
@@ -674,6 +677,7 @@ async function main() {
           batchNumber: item.batchNumber,
           expiryDate: item.expiryDate ? new Date(item.expiryDate) : null,
           quantity: item.quantity,
+          sellingPrice: productSellingPrice.get(item.productId) || 0,
         },
       })
       batchId = batch.id
@@ -908,6 +912,7 @@ async function main() {
           batchNumber: item.batchNumber,
           expiryDate: new Date(item.expiryDate),
           quantity: item.quantity,
+          sellingPrice: productSellingPrice.get(item.productId) || 0,
         },
       })
       batchId = batch.id
@@ -959,6 +964,7 @@ async function main() {
       batchNumber: 'PCM-EXPIRED',
       expiryDate: new Date('2026-07-01'),
       quantity: 40,
+      sellingPrice: productSellingPrice.get(productMap.get('MED001')!) || 0,
     },
   })
 
@@ -997,6 +1003,7 @@ async function main() {
       batchNumber: 'AMX-SOON',
       expiryDate: new Date(dateStr(15)),
       quantity: 25,
+      sellingPrice: productSellingPrice.get(productMap.get('MED002')!) || 0,
     },
   })
 
@@ -1455,7 +1462,7 @@ async function main() {
         gstPercent: 5,
         minimumStock: 20,
         maximumStock: 500,
-        currentStock: 300,
+        currentStock: 0,
         active: true,
       },
     })
@@ -1595,6 +1602,28 @@ async function main() {
     where: { id: 'AYURCARE' },
     data: { lastNumber: ayurcareVisitCounter },
   })
+
+  // ------------------------------------------------------------------
+  // 15. Reconcile stock
+  //     Batches are the single source of truth for stock. Force every
+  //     product's currentStock to equal the sum of its batch quantities
+  //     so the product list and batch lists never disagree.
+  // ------------------------------------------------------------------
+  const reconciliationProducts = await prisma.product.findMany({
+    select: { id: true },
+  })
+
+  for (const product of reconciliationProducts) {
+    const agg = await prisma.productBatch.aggregate({
+      where: { productId: product.id },
+      _sum: { quantity: true },
+    })
+    const totalBatchQty = Number(agg._sum.quantity || 0)
+    await prisma.product.update({
+      where: { id: product.id },
+      data: { currentStock: totalBatchQty },
+    })
+  }
 
   console.log('Seed completed with PMS data: categories, suppliers, products, batches, invoices, payments, adjustments, transactions, and 100 patients/visits/follow-ups')
 }
