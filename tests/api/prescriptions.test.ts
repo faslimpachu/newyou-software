@@ -46,6 +46,41 @@ describe('Prescriptions API', () => {
     expect(data.prescription.diagnosis).toBe('Flu');
   });
 
+  it('POST accepts long clinical text and medicine JSON', async () => {
+    const patient = await prisma.patient.create({
+      data: {
+        mr: 'MR000010', consultationType: 'NUTRITION', patientName: 'Long Text', parentName: 'P',
+        gender: 'Female', mobileNumber: '6666666666', address: 'Addr', district: 'D', state: 'S', pinCode: '123456',
+      },
+    });
+
+    const visit = await prisma.visit.create({
+      data: { id: 'NU000010', patientMr: patient.mr, status: 'Waiting' },
+    });
+
+    const longDiagnosis = 'Diagnosis note '.repeat(30);
+    const medicines = JSON.stringify([
+      { medicine: 'Long medicine name one', dosage: '1 tablet', frequency: 'Morning and night', duration: '30 days', instructions: 'After food with warm water' },
+      { medicine: 'Long medicine name two', dosage: '2 tablets', frequency: 'Afternoon', duration: '15 days', instructions: 'Avoid taking on empty stomach' },
+    ]);
+    const advice = 'Advice note '.repeat(30);
+
+    expect(longDiagnosis.length).toBeGreaterThan(191);
+    expect(medicines.length).toBeGreaterThan(191);
+    expect(advice.length).toBeGreaterThan(191);
+
+    const req = new Request('http://localhost/api/prescriptions', {
+      method: 'POST',
+      body: JSON.stringify({ patientMr: patient.mr, visitId: visit.id, diagnosis: longDiagnosis, medicines, advice }),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(201);
+    const data = await res.json();
+    expect(data.prescription.diagnosis).toBe(longDiagnosis);
+    expect(data.prescription.medicines).toBe(medicines);
+    expect(data.prescription.advice).toBe(advice);
+  });
+
   it('POST returns 404 for missing patient', async () => {
     const req = new Request('http://localhost/api/prescriptions', {
       method: 'POST',

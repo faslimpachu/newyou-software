@@ -69,10 +69,10 @@ model OPSheet {
   id                  String   @id @default(uuid())
   patientMr           String
   visitId             String   @unique
-  clinicalExamination String?
-  vitals              String?
-  diagnosis           String?
-  symptoms            String?
+  clinicalExamination String?  @db.Text
+  vitals              String?  @db.Text
+  diagnosis           String?  @db.Text
+  symptoms            String?  @db.Text
   status              String?
   createdAt           DateTime @default(now())
 
@@ -88,9 +88,9 @@ model Prescription {
   patientMr      String
   visitId        String
   opSheetId      String?  @unique
-  diagnosis      String?
-  medicines      String?
-  advice         String?
+  diagnosis      String?  @db.Text
+  medicines      String?  @db.Text
+  advice         String?  @db.Text
   followUp       String?
   doctorSignature String?
   createdAt      DateTime @default(now())
