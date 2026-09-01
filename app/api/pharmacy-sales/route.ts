@@ -47,12 +47,29 @@ async function generateSaleNumber(
   tx: Prisma.TransactionClient,
 ): Promise<string> {
   const date = new Date().toISOString().slice(0, 10).replace(/-/g, '')
-  const seq = await tx.sequence.upsert({
-    where: { id: 'PHARMACY_SALE' },
-    update: { lastNumber: { increment: 1 } },
-    create: { id: 'PHARMACY_SALE', name: 'Pharmacy Sale', lastNumber: 1 },
-  })
-  return `PSALE-${date}-${String(seq.lastNumber).padStart(4, '0')}`
+
+  for (let attempt = 0; attempt < 100; attempt++) {
+    const seq = await tx.sequence.upsert({
+      where: { id: 'PHARMACY_SALE' },
+      update: { lastNumber: { increment: 1 } },
+      create: { id: 'PHARMACY_SALE', name: 'Pharmacy Sale', lastNumber: 1 },
+    })
+    const candidate = `PSALE-${date}-${String(seq.lastNumber).padStart(4, '0')}`
+    const existing = await (tx as any).pharmacySale.findFirst({
+      where: {
+        OR: [
+          { saleGroup: candidate },
+          { saleNumber: candidate },
+          { saleNumber: { startsWith: `${candidate}-` } },
+        ],
+      },
+      select: { id: true },
+    })
+
+    if (!existing) return candidate
+  }
+
+  throw new ValidationError('Unable to generate a unique pharmacy sale number')
 }
 
 function parseDateRange(startDate: string, endDate: string) {

@@ -537,6 +537,52 @@ describe('Pharmacy Sales API', () => {
     expect(stored?.saleGroup).toBe(data.sale.saleGroup)
   })
 
+  it('POST skips existing sale numbers when the pharmacy sale sequence is behind', async () => {
+    const { product, batch } = await seedStock(10, 25)
+    const today = new Date().toISOString().slice(0, 10).replace(/-/g, '')
+    const existingNumber = `PSALE-${today}-0001`
+
+    await prisma.sequence.create({
+      data: { id: 'PHARMACY_SALE', name: 'Pharmacy Sale', lastNumber: 0 },
+    })
+    await prisma.pharmacySale.create({
+      data: {
+        saleGroup: existingNumber,
+        saleNumber: existingNumber,
+        customerName: 'Existing Sale',
+        productId: product.id,
+        batchId: batch.id,
+        quantity: 1,
+        unitPrice: 25,
+        totalAmount: 25,
+        paymentMethod: 'CASH',
+      },
+    })
+
+    const req = new Request('http://localhost/api/pharmacy-sales', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        customerName: 'Next Sale',
+        paymentMethod: 'CASH',
+        items: [
+          {
+            productId: product.id,
+            batchId: batch.id,
+            quantity: 1,
+            unitPrice: 25,
+          },
+        ],
+      }),
+    })
+
+    const res = await POST(req)
+    expect(res.status).toBe(201)
+    const data = await res.json()
+    expect(data.sale.saleGroup).toBe(`PSALE-${today}-0002`)
+    expect(data.sale.items[0].saleNumber).toBe(`PSALE-${today}-0002`)
+  })
+
   it('PATCH updates batch sellingPrice', async () => {
     const { batch } = await seedStock(10, 0)
 

@@ -26,6 +26,12 @@ describe('pharmacy receipt print template', () => {
     const html = buildReceiptHtml(sale)
 
     expect(html).toContain('@page { size: A5 portrait; margin: 10mm; }')
+    expect(html).toContain('New You')
+    expect(html).toContain('Lose Weight. Choose Health.')
+    expect(html).toContain('Center for Professional Weight Management')
+    expect(html).toContain('Jubilee Bazar, Onden Road, Kannur - 670001, Kerala, India')
+    expect(html).toContain('Ph: 8111999581, 8111999582')
+    expect(html).toContain('"Times New Roman", Times, Georgia, serif')
     expect(html).not.toContain(
       'This is a computer-generated pharmacy sale receipt.',
     )

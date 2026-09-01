@@ -32,6 +32,15 @@ export const escapeHtml = (value: string | number | null | undefined) =>
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;')
 
+const PRINT_FONT = '"Times New Roman", Times, Georgia, serif'
+const PHARMACY_LETTERHEAD = {
+  name: 'New You',
+  subheading: 'Lose Weight. Choose Health.',
+  tagline: 'Center for Professional Weight Management',
+  address: 'Jubilee Bazar, Onden Road, Kannur - 670001, Kerala, India',
+  phones: 'Ph: 8111999581, 8111999582',
+}
+
 export function buildReceiptHtml(sale: SaleReceipt): string {
   const rows = sale.lines
     .map(
@@ -52,10 +61,12 @@ export function buildReceiptHtml(sale: SaleReceipt): string {
   <style>
     @page { size: A5 portrait; margin: 10mm; }
     * { box-sizing: border-box; }
-    body { margin: 0; color: #111827; font-family: Arial, sans-serif; font-size: 11px; }
-    .letterhead { border-bottom: 2px solid #111827; padding-bottom: 8px; text-align: center; }
-    .letterhead h1 { font-size: 20px; margin: 0; }
-    .letterhead p { color: #4b5563; line-height: 1.4; margin: 3px 0 0; }
+    body { margin: 0; color: #111827; font-family: ${PRINT_FONT}; font-size: 12px; }
+    .letterhead { border-bottom: 2px solid #111827; padding-bottom: 12px; text-align: center; }
+    .letterhead h1 { font-size: 30px; font-weight: 700; letter-spacing: 0; margin: 0; }
+    .letterhead .subheading { color: #404040; font-size: 14px; font-style: italic; margin: 2px 0 0; }
+    .letterhead .tagline { color: #525252; font-size: 11px; margin: 2px 0 0; text-transform: uppercase; }
+    .letterhead .details { color: #404040; font-size: 11px; line-height: 1.4; margin: 8px 0 0; }
     .title { display: flex; justify-content: space-between; margin: 12px 0; }
     .title h2 { font-size: 14px; margin: 0; text-transform: uppercase; }
     .box { border: 1px solid #d1d5db; display: grid; gap: 6px 18px; grid-template-columns: 1fr 1fr; padding: 10px; }
@@ -71,9 +82,10 @@ export function buildReceiptHtml(sale: SaleReceipt): string {
 </head>
 <body>
   <header class="letterhead">
-    <h1>NEW YOU</h1>
-    <p>Center for Weight Management</p>
-    <p>Onden Road, Kannur - 670001, Kerala<br>PH: 8111999581 / 8111999582</p>
+    <h1>${escapeHtml(PHARMACY_LETTERHEAD.name)}</h1>
+    <p class="subheading">${escapeHtml(PHARMACY_LETTERHEAD.subheading)}</p>
+    <p class="tagline">${escapeHtml(PHARMACY_LETTERHEAD.tagline)}</p>
+    <p class="details">${escapeHtml(PHARMACY_LETTERHEAD.address)}<br>${escapeHtml(PHARMACY_LETTERHEAD.phones)}</p>
   </header>
   <section class="title">
     <div>
