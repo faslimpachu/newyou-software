@@ -239,7 +239,7 @@ describe('PatientProfile', () => {
 
     fireEvent.click(screen.getByRole('tab', { name: 'OP Sheet' }))
     fireEvent.click(screen.getByRole('button', { name: /Create OP Sheet/ }))
-    fireEvent.click(screen.getByRole('button', { name: /Save/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Save$/ }))
 
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith('/api/op-sheets', expect.objectContaining({
@@ -313,7 +313,7 @@ describe('PatientProfile', () => {
     const editButtons = screen.getAllByRole('button', { name: /Edit/ })
     fireEvent.click(editButtons[editButtons.length - 1])
     fireEvent.change(screen.getByPlaceholderText('Document clinical examination findings, assessment and observations...'), { target: { value: 'Updated clinical notes' } })
-    fireEvent.click(screen.getByRole('button', { name: /Save/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Save$/ }))
 
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith('/api/op-sheets', expect.objectContaining({
@@ -395,7 +395,7 @@ describe('PatientProfile', () => {
 
     fireEvent.click(screen.getByRole('tab', { name: 'OP Sheet' }))
     fireEvent.click(screen.getByRole('button', { name: /Create OP Sheet/ }))
-    fireEvent.click(screen.getByRole('button', { name: /Save/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Save$/ }))
 
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith('/api/visits/NU000001', expect.objectContaining({
@@ -527,7 +527,7 @@ describe('PatientProfile', () => {
 
     fireEvent.click(screen.getByRole('tab', { name: 'Prescriptions' }))
     fireEvent.click(screen.getByRole('button', { name: /Create Prescription/ }))
-    fireEvent.click(screen.getByRole('button', { name: /Save/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Save$/ }))
 
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith('/api/prescriptions', expect.objectContaining({
@@ -542,6 +542,90 @@ describe('PatientProfile', () => {
 
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: 'Prescriptions' })).toBeDefined()
+    })
+  })
+
+  it('saves a new prescription before printing from the editor', async () => {
+    const events: string[] = []
+    const printCalls: { write: string; print: boolean }[] = []
+    const originalCreateElement = document.createElement.bind(document)
+    const mockCreateElement = vi.fn((tagName: string) => {
+      const element = originalCreateElement(tagName)
+      if (tagName.toLowerCase() === 'iframe') {
+        const doc = { open: vi.fn(), write: vi.fn((html: string) => { printCalls.push({ write: html, print: false }) }), close: vi.fn() }
+        const win = { document: doc, focus: vi.fn(), print: vi.fn(() => { events.push('print'); printCalls[printCalls.length - 1].print = true }) }
+        Object.defineProperties(element, {
+          contentDocument: { get: () => doc },
+          contentWindow: { get: () => win },
+          onload: { writable: true, value: null },
+        })
+      }
+      return element
+    })
+    vi.spyOn(document, 'createElement').mockImplementation(mockCreateElement as any)
+
+    const opSheet = { id: 'OP-1', visitId: 'NU000001', clinicalExamination: '', vitals: null, diagnosis: '', symptoms: '', status: null, createdAt: new Date().toISOString(), visit: undefined, prescription: null }
+    const patientWithOP = {
+      ...existingPatients[0],
+      visits: [
+        { id: 'NU000001', date: '01 Jan 2026', center: 'Nutrition Center', doctor: 'Dr. A', reason: 'Checkup' },
+      ],
+      apiOPSheets: [opSheet],
+      apiPrescriptions: [],
+    }
+    const savedPrescription = { id: 'RX-1', patientMr: 'MR000001', visitId: 'NU000001', opSheetId: 'OP-1', diagnosis: 'Saved diagnosis', medicines: '[]', advice: '', followUp: '', createdAt: new Date().toISOString(), opSheet }
+    const mockFetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === 'string' ? input : input.toString()
+      if (url.includes('/api/products')) {
+        return { ok: true, json: async () => ({ products: [] }) } as Response
+      }
+      if (url === '/api/prescriptions' && init?.method === 'POST') {
+        events.push('save')
+        return { ok: true, json: async () => ({ prescription: savedPrescription }) } as Response
+      }
+      if (url === '/api/patients/MR000001') {
+        return {
+          ok: true,
+          json: async () => ({
+            patient: {
+              mr: patientWithOP.mr,
+              consultationType: 'NUTRITION',
+              patientName: patientWithOP.name,
+              parentName: patientWithOP.parentName,
+              gender: patientWithOP.gender,
+              mobileNumber: patientWithOP.mobile,
+              address: '',
+              district: patientWithOP.city,
+              state: '',
+              pinCode: '',
+              age: patientWithOP.age,
+              bloodGroup: patientWithOP.bloodGroup,
+              visits: patientWithOP.visits.map((v) => ({ ...v, createdAt: new Date().toISOString() })),
+              opSheets: patientWithOP.apiOPSheets,
+              prescriptions: [savedPrescription],
+            },
+          }),
+        } as Response
+      }
+      return { ok: false, json: async () => ({ error: 'Unexpected request' }) } as Response
+    })
+
+    global.fetch = mockFetch
+
+    render(<PatientProfile patient={patientWithOP} center="Nutrition Center" />)
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Prescriptions' }))
+    fireEvent.click(screen.getByRole('button', { name: /Create Prescription/ }))
+    fireEvent.change(screen.getByPlaceholderText('Clinical diagnosis'), { target: { value: 'Saved diagnosis' } })
+    fireEvent.click(screen.getByRole('button', { name: /Save and Print/ }))
+
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledWith('/api/prescriptions', expect.objectContaining({
+        method: 'POST',
+        body: expect.stringContaining('"diagnosis":"Saved diagnosis"'),
+      }))
+      expect(printCalls.length).toBeGreaterThan(0)
+      expect(events).toEqual(['save', 'print'])
     })
   })
 
@@ -614,7 +698,7 @@ describe('PatientProfile', () => {
     fireEvent.click(editButtons[editButtons.length - 1])
     expect(screen.queryByLabelText('Next visit')).toBeNull()
     fireEvent.change(screen.getByPlaceholderText('Clinical diagnosis'), { target: { value: 'Updated diagnosis' } })
-    fireEvent.click(screen.getByRole('button', { name: /Save/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Save$/ }))
 
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith('/api/prescriptions', expect.objectContaining({

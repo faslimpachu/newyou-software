@@ -637,7 +637,7 @@ function Prescription({ patient, center, onRefresh }: { patient: PatientRecord; 
         setRecords((current) => [mapPrescriptionRecord(body.prescription, center), ...current])
         setMode('list')
         onRefresh?.()
-        return
+        return true
       }
     } else {
       const response = await fetch('/api/prescriptions', {
@@ -657,12 +657,10 @@ function Prescription({ patient, center, onRefresh }: { patient: PatientRecord; 
         setRecords((current) => current.map((r) => (r.id === saved.id ? saved : r)))
         setMode('list')
         onRefresh?.()
-        return
+        return true
       }
     }
-    setRecords((current) => existing ? current.map((r) => (r.id === record.id ? record : r)) : [record, ...current])
-    setMode('list')
-    onRefresh?.()
+    return false
   }
 
   const printRecord = (record: PrescriptionRecord) => openA4Print('Prescription', patient, getVisit(record.visitId)?.center || center, buildPrescriptionPrintContent(record))
@@ -724,7 +722,7 @@ function buildPrescriptionPrintContent(record: PrescriptionRecord): PrintContent
   }
 }
 
-function PrescriptionEditor({ patient, center, record, readOnly, onCancel, onSave }: { patient: ExistingPatient; center: string; record: PrescriptionRecord; readOnly: boolean; onCancel: () => void; onSave: (record: PrescriptionRecord) => void }) {
+function PrescriptionEditor({ patient, center, record, readOnly, onCancel, onSave }: { patient: ExistingPatient; center: string; record: PrescriptionRecord; readOnly: boolean; onCancel: () => void; onSave: (record: PrescriptionRecord) => Promise<boolean> }) {
   const [diagnosis, setDiagnosis] = useState(record.diagnosis)
   const [medicines, setMedicines] = useState<MedicineRow[]>(record.medicines)
   const [advice, setAdvice] = useState(record.advice)
@@ -739,14 +737,22 @@ function PrescriptionEditor({ patient, center, record, readOnly, onCancel, onSav
   const currentRecord = (): PrescriptionRecord => ({ ...record, diagnosis, medicines, advice, followUp, status })
   const doPrint = () => openA4Print('Prescription', patient, patient.visits.find((v) => v.id === record.visitId)?.center || center, buildPrescriptionPrintContent(currentRecord()))
   const doBlank = () => openA4Print('Prescription', patient, patient.visits.find((v) => v.id === record.visitId)?.center || center)
-  const handleSave = () => onSave({ ...currentRecord(), status: status === 'Draft' ? 'Completed' : status })
+  const savedRecord = () => ({ ...currentRecord(), status: status === 'Draft' ? 'Completed' : status })
+  const handleSave = () => onSave(savedRecord())
+  const handleSaveAndPrint = async () => {
+    const recordToSave = savedRecord()
+    const saved = await onSave(recordToSave)
+    if (saved) {
+      openA4Print('Prescription', patient, patient.visits.find((v) => v.id === record.visitId)?.center || center, buildPrescriptionPrintContent(recordToSave))
+    }
+  }
 
   return <div className="print-sheet">
     <div className="flex items-start justify-between border-b-2 border-primary pb-5">
       <ClinicHeader center={patient.visits.find((v) => v.id === record.visitId)?.center || center} />
       <div className="flex gap-2">
         <Button variant="outline" size="sm" onClick={onCancel}><ArrowLeft className="mr-2 size-4" />Back to list</Button>
-        <Button variant="outline" size="sm" onClick={doPrint}><Printer className="mr-2 size-4" />Print</Button>
+        <Button variant="outline" size="sm" onClick={readOnly ? doPrint : handleSaveAndPrint}><Printer className="mr-2 size-4" />{readOnly ? 'Print' : 'Save and Print'}</Button>
         <Button variant="outline" size="sm" onClick={doBlank}><FileText className="mr-2 size-4" />Blank sheet</Button>
         {!readOnly && <Button size="sm" onClick={handleSave}><Check className="mr-2 size-4" />Save</Button>}
       </div>
