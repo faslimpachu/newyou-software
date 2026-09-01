@@ -59,3 +59,37 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
+
+export async function PATCH(request: Request) {
+  try {
+    const body = await request.json();
+    const { id, diagnosis, medicines, advice, followUp, doctorSignature } = body;
+
+    if (!id) {
+      return NextResponse.json({ error: 'id is required' }, { status: 400 });
+    }
+
+    const existing = await prisma.prescription.findUnique({ where: { id } });
+    if (!existing) {
+      return NextResponse.json({ error: 'Prescription not found' }, { status: 404 });
+    }
+
+    const data: Record<string, unknown> = {};
+    if (diagnosis !== undefined) data.diagnosis = diagnosis;
+    if (medicines !== undefined) data.medicines = medicines;
+    if (advice !== undefined) data.advice = advice;
+    if (followUp !== undefined) data.followUp = followUp;
+    if (doctorSignature !== undefined) data.doctorSignature = doctorSignature;
+
+    const prescription = await prisma.prescription.update({
+      where: { id },
+      data,
+      include: { opSheet: { include: { visit: true } } },
+    });
+
+    return NextResponse.json({ prescription });
+  } catch (e) {
+    console.error('Prescriptions PATCH error', e);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}

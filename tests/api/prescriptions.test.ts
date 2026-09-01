@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
-import { GET, POST } from '@/app/api/prescriptions/route';
+import { GET, PATCH, POST } from '@/app/api/prescriptions/route';
 import { prisma } from '@/lib/prisma';
 
 beforeAll(async () => {
@@ -87,6 +87,62 @@ describe('Prescriptions API', () => {
       body: JSON.stringify({ patientMr: 'MR999999', visitId: 'NU999999', opSheetId: 'missing' }),
     });
     const res = await POST(req);
+    expect(res.status).toBe(404);
+  });
+
+  it('PATCH updates an existing prescription', async () => {
+    const patient = await prisma.patient.create({
+      data: {
+        mr: 'MR000011', consultationType: 'NUTRITION', patientName: 'Edit Test', parentName: 'P',
+        gender: 'Female', mobileNumber: '5555555555', address: 'Addr', district: 'D', state: 'S', pinCode: '123456',
+      },
+    });
+
+    const visit = await prisma.visit.create({
+      data: { id: 'NU000011', patientMr: patient.mr, status: 'Waiting' },
+    });
+
+    const prescription = await prisma.prescription.create({
+      data: {
+        patientMr: patient.mr,
+        visitId: visit.id,
+        diagnosis: 'Old diagnosis',
+        medicines: '[]',
+        advice: 'Old advice',
+      },
+    });
+
+    const medicines = JSON.stringify([{ id: 'm-1', medicine: 'Updated medicine', dosage: '1', frequency: 'Night', duration: '5 days', instructions: 'After food' }]);
+    const req = new Request('http://localhost/api/prescriptions', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        id: prescription.id,
+        diagnosis: 'Updated diagnosis',
+        medicines,
+        advice: 'Updated advice',
+        followUp: '2026-09-15',
+      }),
+    });
+
+    const res = await PATCH(req);
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.prescription.id).toBe(prescription.id);
+    expect(data.prescription.diagnosis).toBe('Updated diagnosis');
+    expect(data.prescription.medicines).toBe(medicines);
+    expect(data.prescription.advice).toBe('Updated advice');
+    expect(data.prescription.followUp).toBe('2026-09-15');
+
+    const saved = await prisma.prescription.findUniqueOrThrow({ where: { id: prescription.id } });
+    expect(saved.diagnosis).toBe('Updated diagnosis');
+  });
+
+  it('PATCH returns 404 for missing prescription', async () => {
+    const req = new Request('http://localhost/api/prescriptions', {
+      method: 'PATCH',
+      body: JSON.stringify({ id: 'missing-rx', diagnosis: 'Nope' }),
+    });
+    const res = await PATCH(req);
     expect(res.status).toBe(404);
   });
 

@@ -468,6 +468,87 @@ describe('PatientProfile', () => {
     })
   })
 
+  it('updates an existing prescription and refreshes the patient profile', async () => {
+    const opSheet = { id: 'OP-1', visitId: 'NU000001', clinicalExamination: '', vitals: null, diagnosis: '', symptoms: '', status: null, createdAt: new Date().toISOString(), visit: undefined, prescription: null }
+    const prescription = {
+      id: 'RX-1',
+      patientMr: 'MR000001',
+      visitId: 'NU000001',
+      opSheetId: 'OP-1',
+      diagnosis: 'Old diagnosis',
+      medicines: JSON.stringify([{ id: 'm-1', medicine: 'Old medicine', dosage: '', frequency: '', duration: '', instructions: '' }]),
+      advice: 'Old advice',
+      followUp: '',
+      createdAt: new Date().toISOString(),
+      opSheet,
+    }
+    const patientWithPrescription = {
+      ...existingPatients[0],
+      visits: [
+        { id: 'NU000001', date: '01 Jan 2026', center: 'Nutrition Center', doctor: 'Dr. A', reason: 'Checkup' },
+      ],
+      apiOPSheets: [opSheet],
+      apiPrescriptions: [prescription],
+    }
+    const updatedPrescription = { ...prescription, diagnosis: 'Updated diagnosis' }
+    const mockFetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === 'string' ? input : input.toString()
+      if (url.includes('/api/products')) {
+        return { ok: true, json: async () => ({ products: [] }) } as Response
+      }
+      if (url === '/api/prescriptions' && init?.method === 'PATCH') {
+        return { ok: true, json: async () => ({ prescription: updatedPrescription }) } as Response
+      }
+      if (url === '/api/patients/MR000001') {
+        return {
+          ok: true,
+          json: async () => ({
+            patient: {
+              mr: patientWithPrescription.mr,
+              consultationType: 'NUTRITION',
+              patientName: patientWithPrescription.name,
+              parentName: patientWithPrescription.parentName,
+              gender: patientWithPrescription.gender,
+              mobileNumber: patientWithPrescription.mobile,
+              address: '',
+              district: patientWithPrescription.city,
+              state: '',
+              pinCode: '',
+              age: patientWithPrescription.age,
+              bloodGroup: patientWithPrescription.bloodGroup,
+              status: patientWithPrescription.tags?.[0],
+              dob: patientWithPrescription.dob,
+              visits: patientWithPrescription.visits.map((v) => ({ ...v, createdAt: new Date().toISOString() })),
+              opSheets: patientWithPrescription.apiOPSheets,
+              prescriptions: [updatedPrescription],
+            },
+          }),
+        } as Response
+      }
+      return { ok: false, json: async () => ({ error: 'Unexpected request' }) } as Response
+    })
+
+    global.fetch = mockFetch
+
+    render(<PatientProfile patient={patientWithPrescription} center="Nutrition Center" />)
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Prescriptions' }))
+    const editButtons = screen.getAllByRole('button', { name: /Edit/ })
+    fireEvent.click(editButtons[editButtons.length - 1])
+    fireEvent.change(screen.getByPlaceholderText('Clinical diagnosis'), { target: { value: 'Updated diagnosis' } })
+    fireEvent.click(screen.getByRole('button', { name: /Save/ }))
+
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledWith('/api/prescriptions', expect.objectContaining({
+        method: 'PATCH',
+        body: expect.stringContaining('"id":"RX-1"'),
+      }))
+    })
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledWith('/api/patients/MR000001')
+    })
+  })
+
   it('prints OP sheet with visit center header instead of patient default', async () => {
     const printCalls: { write: string; print: boolean }[] = []
     const originalCreateElement = document.createElement.bind(document)

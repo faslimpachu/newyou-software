@@ -618,6 +618,26 @@ function Prescription({ patient, center, onRefresh }: { patient: PatientRecord; 
         onRefresh?.()
         return
       }
+    } else {
+      const response = await fetch('/api/prescriptions', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: existing.id,
+          diagnosis: record.diagnosis,
+          medicines: JSON.stringify(record.medicines),
+          advice: record.advice,
+          followUp: record.followUp,
+        }),
+      })
+      if (response.ok) {
+        const body = await response.json() as { prescription: ApiPrescription }
+        const saved = mapPrescriptionRecord(body.prescription, center)
+        setRecords((current) => current.map((r) => (r.id === saved.id ? saved : r)))
+        setMode('list')
+        onRefresh?.()
+        return
+      }
     }
     setRecords((current) => existing ? current.map((r) => (r.id === record.id ? record : r)) : [record, ...current])
     setMode('list')
