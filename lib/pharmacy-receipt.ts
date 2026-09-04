@@ -34,9 +34,9 @@ export const escapeHtml = (value: string | number | null | undefined) =>
 
 const PRINT_FONT = '"Times New Roman", Times, Georgia, serif'
 const PHARMACY_LETTERHEAD = {
-  name: 'New You',
-  subheading: 'Lose Weight. Choose Health.',
-  tagline: 'Center for Professional Weight Management',
+  name: 'Ayurcare',
+  subheading: '',
+  tagline: '',
   address: 'Jubilee Bazar, Onden Road, Kannur - 670001, Kerala, India',
   phones: 'Ph: 8111999581, 8111999582',
 }
