@@ -113,7 +113,19 @@ const escapePrintHtml = (value: string | number | null | undefined) => String(va
   .replace(/"/g, '&quot;')
   .replace(/'/g, '&#039;')
 
+function getInvoiceDisplayTotals(invoice: PurchaseInvoice) {
+  const grossSubtotal = invoice.items.reduce((sum, item) => sum + (item.amount || 0), 0)
+  const discountTotal = invoice.items.reduce((sum, item) => sum + (item.discountAmount || 0), 0)
+
+  return {
+    grossSubtotal,
+    discountTotal,
+    taxableSubtotal: invoice.subtotal,
+  }
+}
+
 function buildPurchaseInvoicePrintHtml(invoice: PurchaseInvoice): string {
+  const { grossSubtotal, discountTotal, taxableSubtotal } = getInvoiceDisplayTotals(invoice)
   const rows = invoice.items.map((item, index) => `
     <tr>
       <td>${index + 1}</td>
@@ -206,7 +218,9 @@ function buildPurchaseInvoicePrintHtml(invoice: PurchaseInvoice): string {
     <tbody>${rows}</tbody>
   </table>
   <section class="totals">
-    <div><span>Subtotal</span><span>${escapePrintHtml(printMoney(invoice.subtotal))}</span></div>
+    <div><span>Gross Subtotal</span><span>${escapePrintHtml(printMoney(grossSubtotal))}</span></div>
+    <div><span>Discount</span><span>-${escapePrintHtml(printMoney(discountTotal))}</span></div>
+    <div><span>Taxable Subtotal</span><span>${escapePrintHtml(printMoney(taxableSubtotal))}</span></div>
     <div><span>Tax</span><span>${escapePrintHtml(printMoney(invoice.tax))}</span></div>
     <div class="grand"><span>Grand Total</span><span>${escapePrintHtml(printMoney(invoice.grandTotal))}</span></div>
     <div><span>Paid</span><span>${escapePrintHtml(printMoney(invoice.paid))}</span></div>
@@ -400,10 +414,12 @@ export default function PurchaseInvoicesPage() {
   }
 
   const calculateTotals = () => {
-    const subtotal = form.items.reduce((sum, item) => sum + Math.max((item.amount || 0) - (item.discountAmount || 0), 0), 0)
+    const grossSubtotal = form.items.reduce((sum, item) => sum + (item.amount || 0), 0)
+    const discountTotal = form.items.reduce((sum, item) => sum + (item.discountAmount || 0), 0)
+    const taxableSubtotal = Math.max(grossSubtotal - discountTotal, 0)
     const tax = form.items.reduce((sum, item) => sum + Math.max((item.amount || 0) - (item.discountAmount || 0), 0) * (item.gstPercent || 0) / 100, 0)
-    const grandTotal = subtotal + tax
-    return { subtotal, tax, grandTotal }
+    const grandTotal = taxableSubtotal + tax
+    return { grossSubtotal, discountTotal, taxableSubtotal, tax, grandTotal }
   }
 
   const validate = (): boolean => {
@@ -458,8 +474,6 @@ export default function PurchaseInvoicesPage() {
     setSaving(true)
 
     try {
-      const { subtotal, tax, grandTotal } = calculateTotals()
-
       const body = {
         invoiceDate: form.invoiceDate,
         supplierId: form.supplierId,
@@ -519,7 +533,7 @@ export default function PurchaseInvoicesPage() {
     }
   }
 
-  const { subtotal, tax, grandTotal } = calculateTotals()
+  const { grossSubtotal, discountTotal, taxableSubtotal, tax, grandTotal } = calculateTotals()
 
   return (
     <DashboardShell>
@@ -809,13 +823,21 @@ export default function PurchaseInvoicesPage() {
                 <div className="flex justify-end">
                   <div className="w-full max-w-sm space-y-2">
                     <div className="flex justify-between text-sm">
-                    <span>Subtotal</span>
-                    <span className="tabular-nums">₹{subtotal.toLocaleString('en-IN')}</span>
-                  </div>
-                     <div className="flex justify-between text-sm">
-                       <span>{subtotal > 0 ? `Tax (${(tax / subtotal * 100).toFixed(1)}%)` : 'Tax'}</span>
-                       <span className="tabular-nums">₹{tax.toLocaleString('en-IN')}</span>
-                     </div>
+                      <span>Gross Subtotal</span>
+                      <span className="tabular-nums">₹{grossSubtotal.toLocaleString('en-IN')}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span>Discount</span>
+                      <span className="tabular-nums">-₹{discountTotal.toLocaleString('en-IN')}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span>Taxable Subtotal</span>
+                      <span className="tabular-nums">₹{taxableSubtotal.toLocaleString('en-IN')}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span>{taxableSubtotal > 0 ? `Tax (${(tax / taxableSubtotal * 100).toFixed(1)}%)` : 'Tax'}</span>
+                      <span className="tabular-nums">₹{tax.toLocaleString('en-IN')}</span>
+                    </div>
                     <div className="flex justify-between font-semibold">
                       <span>Grand Total</span>
                       <span className="tabular-nums">₹{grandTotal.toLocaleString('en-IN')}</span>
@@ -974,6 +996,9 @@ export default function PurchaseInvoicesPage() {
         )}
 
         {viewingInvoice && (
+          (() => {
+            const { grossSubtotal, discountTotal, taxableSubtotal } = getInvoiceDisplayTotals(viewingInvoice)
+            return (
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -1048,8 +1073,16 @@ export default function PurchaseInvoicesPage() {
               <div className="flex justify-end mt-4">
                 <div className="w-full max-w-sm space-y-2">
                   <div className="flex justify-between text-sm">
-                    <span>Subtotal</span>
-                    <span className="tabular-nums">₹{viewingInvoice.subtotal.toLocaleString('en-IN')}</span>
+                    <span>Gross Subtotal</span>
+                    <span className="tabular-nums">₹{grossSubtotal.toLocaleString('en-IN')}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span>Discount</span>
+                    <span className="tabular-nums">-₹{discountTotal.toLocaleString('en-IN')}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span>Taxable Subtotal</span>
+                    <span className="tabular-nums">₹{taxableSubtotal.toLocaleString('en-IN')}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span>Tax</span>
@@ -1071,6 +1104,8 @@ export default function PurchaseInvoicesPage() {
               </div>
             </CardContent>
           </Card>
+            )
+          })()
         )}
       </div>
     </DashboardShell>

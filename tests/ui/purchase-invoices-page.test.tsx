@@ -394,6 +394,37 @@ describe('Purchase Invoices Page UI', () => {
     })
   })
 
+  it('shows gross subtotal, discount, taxable subtotal, and grand total separately', async () => {
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /New Purchase Invoice/i })).toBeDefined()
+    })
+    const button = screen.getByRole('button', { name: /New Purchase Invoice/i })
+    act(() => {
+      fireEvent.click(button)
+    })
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Add Item/i })).toBeDefined()
+    })
+
+    const numberInputs = screen.getAllByRole('spinbutton')
+    act(() => {
+      fireEvent.change(numberInputs[0], { target: { value: '5' } })
+      fireEvent.change(numberInputs[2], { target: { value: '100' } })
+      fireEvent.change(numberInputs[3], { target: { value: '100' } })
+    })
+
+    await waitFor(() => {
+      const visibleText = document.body.textContent || ''
+      expect(visibleText).toContain('Gross Subtotal')
+      expect(visibleText).toContain('Discount')
+      expect(visibleText).toContain('Taxable Subtotal')
+      expect(visibleText).toContain('Grand Total')
+      expect(visibleText).toContain('500')
+      expect(visibleText).toContain('100')
+      expect(visibleText).toContain('400')
+    })
+  })
+
   it('disables submit button when form has no valid items', async () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /New Purchase Invoice/i })).toBeDefined()
@@ -673,7 +704,7 @@ describe('Purchase Invoices Page UI', () => {
       expect(amountElements.length).toBeGreaterThan(0)
     })
 
-    const taxLabel = screen.getByText(/^Tax/)
+    const taxLabel = screen.getByText(/^Tax \(/)
     expect(taxLabel).toBeDefined()
     expect(taxLabel.textContent).toContain('0.0%')
   })
