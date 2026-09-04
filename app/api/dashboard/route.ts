@@ -50,7 +50,7 @@ export async function GET() {
       prisma.patient.count({ where: { consultationType: 'AYURCARE' } }),
       prisma.patient.count({ where: { createdAt: { gte: todayStart } } }),
       prisma.visit.count({ where: { createdAt: { gte: todayStart } } }),
-      prisma.invoice.aggregate({ _sum: { grandTotal: true, balance: true } }),
+      prisma.invoice.aggregate({ _sum: { grandTotal: true, balance: true }, where: { status: { not: 'VOID' } } }),
       prisma.followUp.count({
         where: {
           OR: [
@@ -102,7 +102,10 @@ export async function GET() {
 
     const allInvoices = await prisma.invoice.findMany({
       select: { createdAt: true, grandTotal: true },
-      where: { createdAt: { gte: new Date(now.getFullYear(), now.getMonth() - 11, 1) } },
+      where: {
+        status: { not: 'VOID' },
+        createdAt: { gte: new Date(now.getFullYear(), now.getMonth() - 11, 1) },
+      },
     })
 
     const allExpenses = await prisma.expense.findMany({
@@ -164,6 +167,7 @@ export async function GET() {
       prisma.invoice.findMany({
         orderBy: { createdAt: 'desc' },
         take: 10,
+        where: { status: { not: 'VOID' } },
         select: {
           id: true,
           invoiceNumber: true,

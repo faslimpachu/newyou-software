@@ -21,15 +21,19 @@ export async function GET(request: Request) {
     const pageSize = Math.min(100, Math.max(1, Number(url.searchParams.get('pageSize')) || 20));
     const skip = (page - 1) * pageSize;
 
-    const where: Record<string, unknown> = {};
-    if (patientMr) where.patientMrNumber = patientMr;
+    const where: Record<string, unknown> = {}
+    const showVoided = url.searchParams.get('showVoided') === 'true'
+    if (!showVoided) {
+      where.status = { not: 'VOID' }
+    }
+    if (patientMr) where.patientMrNumber = patientMr
     if (search) {
       where.OR = [
         { invoiceNumber: { contains: search } },
         { patientName: { contains: search } },
         { patientMrNumber: { contains: search } },
         { billType: { contains: search } },
-      ];
+      ]
     }
 
     const [invoices, total] = await Promise.all([

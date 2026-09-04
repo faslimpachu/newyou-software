@@ -15,6 +15,7 @@ import {
   TrendingUp,
   TrendingDown,
   Wallet,
+  Ban,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -69,6 +70,10 @@ type Invoice = {
   tax: number
   paid: number
   paymentMethod: string
+  status?: string
+  voidedAt?: string | null
+  voidedBy?: string | null
+  voidReason?: string | null
 }
 
 type Expense = {
@@ -340,6 +345,10 @@ function mapDbInvoiceToFrontend(invoice: any): Invoice {
     tax: invoice.tax ?? 0,
     paid: invoice.paid ?? 0,
     paymentMethod: invoice.paymentMethod || 'Cash',
+    status: invoice.status ?? undefined,
+    voidedAt: invoice.voidedAt ?? null,
+    voidedBy: invoice.voidedBy ?? null,
+    voidReason: invoice.voidReason ?? null,
   }
 }
 
@@ -428,6 +437,10 @@ export function BillingWorkspace() {
   const [errorExpenses, setErrorExpenses] = useState('')
   const [errorSummary, setErrorSummary] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<Expense | null>(null)
+  const [voidTarget, setVoidTarget] = useState<Invoice | null>(null)
+  const [voidReason, setVoidReason] = useState('')
+  const [voiding, setVoiding] = useState(false)
+  const [showVoided, setShowVoided] = useState(false)
 
   /* ---------------- dashboard summary ---------------- */
 
@@ -441,6 +454,7 @@ export function BillingWorkspace() {
     try {
       const params = new URLSearchParams({ page: String(invoicePagination.page), pageSize: String(PAGE_SIZE), sortOrder: invoiceSortOrder })
       if (invoiceSearch.trim()) params.set('search', invoiceSearch.trim())
+      if (showVoided) params.set('showVoided', 'true')
       const res = await fetch(`/api/billing?${params}`, { signal })
       if (!res.ok) throw new Error('Failed to load invoices')
       const data = await res.json()
@@ -454,7 +468,7 @@ export function BillingWorkspace() {
       if (signal?.aborted || requestId !== invoiceRequestId.current) return
       setErrorInvoices(err.message || 'Failed to load invoices')
     }
-  }, [invoicePagination.page, invoiceSearch, invoiceSortOrder, invoiceRefresh])
+  }, [invoicePagination.page, invoiceSearch, invoiceSortOrder, showVoided, invoiceRefresh])
 
   const fetchExpenses = useCallback(async (signal?: AbortSignal) => {
     const requestId = ++expenseRequestId.current
@@ -676,6 +690,37 @@ export function BillingWorkspace() {
     }
   }
 
+  const handleVoidClick = (invoice: Invoice) => {
+    setVoidTarget(invoice)
+    setVoidReason('')
+  }
+
+  const handleVoidConfirm = async () => {
+    if (!voidTarget || !voidReason.trim()) return
+    setVoiding(true)
+    try {
+      const res = await fetch(`/api/billing/${encodeURIComponent(voidTarget.id)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'VOID', voidReason: voidReason.trim() }),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        setErrorInvoices(err.error || 'Failed to void invoice')
+        return
+      }
+      setVoidTarget(null)
+      setVoidReason('')
+      setInvoiceRefresh((current) => current + 1)
+      setSummaryRefresh((current) => current + 1)
+      if (viewInvoice?.id === voidTarget.id) setViewInvoice(null)
+    } catch {
+      setErrorInvoices('Failed to void invoice')
+    } finally {
+      setVoiding(false)
+    }
+  }
+
   const handleAddCategory = (category: string) => {
     setExpenseCategories((current) => (current.includes(category) ? current : [...current, category]))
   }
@@ -750,7 +795,13 @@ export function BillingWorkspace() {
             <CardTitle>Invoices</CardTitle>
             <CardDescription>Click any row to view, print, or export the bill. {openCount} invoice{openCount === 1 ? '' : 's'} currently open.</CardDescription>
             <div className="mt-3 flex flex-wrap justify-between gap-2">
-              <Input className="max-w-sm" placeholder="Search invoice, patient, MR, or bill type" value={invoiceSearch} onChange={(e) => { setInvoiceSearch(e.target.value); setInvoicePagination((current) => ({ ...current, page: 1 })) }} />
+              <div className="flex flex-wrap items-center gap-2">
+                <Input className="max-w-sm" placeholder="Search invoice, patient, MR, or bill type" value={invoiceSearch} onChange={(e) => { setInvoiceSearch(e.target.value); setInvoicePagination((current) => ({ ...current, page: 1 })) }} />
+                <label className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <input type="checkbox" checked={showVoided} onChange={(e) => setShowVoided(e.target.checked)} />
+                  Show voided
+                </label>
+              </div>
               <select className="h-9 rounded-lg border border-input bg-background px-2 text-sm" value={invoiceSortOrder} onChange={(e) => { setInvoiceSortOrder(e.target.value as SortOrder); setInvoicePagination((current) => ({ ...current, page: 1 })) }}>
                 <option value="latest">Sort: Latest first</option>
                 <option value="oldest">Sort: Oldest first</option>
@@ -770,25 +821,35 @@ export function BillingWorkspace() {
                     <th className="px-5 py-3 text-right">Total</th>
                     <th className="px-5 py-3 text-right">Paid</th>
                     <th className="px-5 py-3 text-right">Balance</th>
+                    <th className="px-5 py-3 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                     {loadingInvoices ? (
-                      <tr><td colSpan={8} className="p-8 text-center text-sm text-muted-foreground">Loading invoices...</td></tr>
+                      <tr><td colSpan={9} className="p-8 text-center text-sm text-muted-foreground">Loading invoices...</td></tr>
                     ) : errorInvoices ? (
-                      <tr><td colSpan={8} className="p-8 text-center text-sm text-destructive">{errorInvoices}</td></tr>
+                      <tr><td colSpan={9} className="p-8 text-center text-sm text-destructive">{errorInvoices}</td></tr>
                     ) : invoices.length === 0 ? (
-                      <tr><td colSpan={8} className="p-8 text-center text-sm text-muted-foreground">No invoices found.</td></tr>
-                  ) : (
+                      <tr><td colSpan={9} className="p-8 text-center text-sm text-muted-foreground">No invoices found.</td></tr>
+                    ) : (
                     invoices.map((invoice) => {
                       const totals = computeTotals(invoice.items ?? [], invoice.discount, invoice.tax, invoice.paid)
                       return (
                         <tr
                           key={invoice.id}
                           onClick={() => setViewInvoice(invoice)}
-                          className="cursor-pointer border-b hover:bg-muted/50"
+                          className={`cursor-pointer border-b hover:bg-muted/50 ${
+                            invoice.status === 'VOID' ? 'bg-muted/30 opacity-60' : ''
+                          }`}
                         >
-                          <td className="px-5 py-4 font-medium text-primary">{invoice.id}</td>
+                          <td className="px-5 py-4">
+                            <div className="flex items-center gap-2">
+                              {invoice.status === 'VOID' && <span className="rounded bg-destructive/10 px-1.5 py-0.5 text-xs font-semibold text-destructive">VOID</span>}
+                              <span className={`${invoice.status === 'VOID' ? 'line-through text-muted-foreground' : 'font-medium text-primary'}`}>
+                                {invoice.id}
+                              </span>
+                            </div>
+                          </td>
                           <td className="px-5 py-4 text-muted-foreground">{getCenterName(invoice.center)}</td>
                           <td className="px-5 py-4">
                             <p className="font-medium">{invoice.patient?.name || '-'}</p>
@@ -800,6 +861,20 @@ export function BillingWorkspace() {
                           <td className="px-5 py-4 text-right">{money(invoice.paid)}</td>
                           <td className="px-5 py-4 text-right">
                             <span className={totals.balance ? 'text-destructive' : 'text-primary'}>{money(totals.balance)}</span>
+                          </td>
+                          <td className="px-5 py-4 text-right">
+                            {invoice.status === 'VOID' ? (
+                              <span className="text-xs font-semibold text-destructive">VOIDED</span>
+                            ) : (
+                              <Button
+                                size="icon-sm"
+                                variant="ghost"
+                                onClick={(e) => { e.stopPropagation(); handleVoidClick(invoice) }}
+                                title="Void invoice"
+                              >
+                                <Ban className="size-4" />
+                              </Button>
+                            )}
                           </td>
                         </tr>
                       )
@@ -872,6 +947,35 @@ export function BillingWorkspace() {
           onCancel={() => setDeleteTarget(null)}
           onConfirm={() => handleDeleteExpense(deleteTarget)}
         />
+      )}
+
+      {voidTarget && (
+        <ModalShell onClose={() => { setVoidTarget(null); setVoidReason('') }}>
+          <div className="p-6">
+            <h2 className="font-display text-lg font-semibold">Void this invoice?</h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              This will mark invoice <strong>{voidTarget.id}</strong> as VOID. This cannot be undone.
+            </p>
+            <div className="mt-4 space-y-2">
+              <Label htmlFor="voidReason">Reason for voiding *</Label>
+              <Input
+                id="voidReason"
+                value={voidReason}
+                onChange={(e) => setVoidReason(e.target.value)}
+                placeholder="e.g. Duplicate invoice"
+                disabled={voiding}
+              />
+            </div>
+            <div className="mt-6 flex justify-end gap-2">
+              <Button variant="outline" onClick={() => { setVoidTarget(null); setVoidReason('') }} disabled={voiding}>
+                Cancel
+              </Button>
+              <Button variant="destructive" onClick={handleVoidConfirm} disabled={voiding || !voidReason.trim()}>
+                {voiding ? 'Voiding...' : 'Void invoice'}
+              </Button>
+            </div>
+          </div>
+        </ModalShell>
       )}
     </div>
   )
@@ -1299,6 +1403,15 @@ function InvoiceModal({ invoice, onClose }: { invoice: Invoice; onClose: () => v
               <p><span className="text-neutral-500">Date: </span>{invoice.date}</p>
             </div>
           </div>
+
+          {invoice.status === 'VOID' && (
+            <div className="mt-3 rounded border border-destructive/30 bg-destructive/5 p-3 text-sm">
+              <p className="font-semibold text-destructive">VOIDED</p>
+              <p>By: {invoice.voidedBy || 'Unknown'}</p>
+              <p>On: {formatDateDisplay(invoice.voidedAt || '')}</p>
+              {invoice.voidReason && <p>Reason: {invoice.voidReason}</p>}
+            </div>
+          )}
 
           {/* Patient details */}
           <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-1 rounded border border-neutral-300 p-4 text-sm">

@@ -54,7 +54,7 @@ describe('Billing API', () => {
     });
 
     await prisma.invoice.create({
-      data: { patientMrNumber: patient.mr, invoiceNumber: 'INV-001', center: 'NUTRITION', billType: 'Consultation', patientName: 'Test', invoiceDate: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }), subtotal: 100, tax: 10, grandTotal: 110, paid: 110, balance: 0 },
+      data: { patientMrNumber: patient.mr, invoiceNumber: 'INV-001', center: 'NUTRITION', billType: 'Consultation', patientName: 'Test', invoiceDate: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }), subtotal: 100, tax: 10, grandTotal: 110, paid: 110, balance: 0, status: 'Paid' },
     });
 
     const req = new Request('http://localhost/api/billing?patientMr=' + patient.mr, { method: 'GET' });

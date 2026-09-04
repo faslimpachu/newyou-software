@@ -200,6 +200,9 @@ model Invoice {
   grandTotal      Float?
   balance         Float?
   status          String?
+  voidedAt        DateTime?
+  voidedBy        String?
+  voidReason      String?
   createdAt       DateTime @default(now())
 
   items           InvoiceItem[]

@@ -583,4 +583,68 @@ describe('BillingWorkspace', () => {
       expect(paidInput).toHaveAttribute('readonly')
     })
   })
+
+  it('shows VOIDED badge and hides Ban button for voided invoices', async () => {
+    const voidedInvoices = [
+      {
+        ...mockInvoices[0],
+        invoiceNumber: 'INV-VOID',
+        status: 'VOID',
+        voidedAt: new Date('2026-09-04T10:00:00Z').toISOString(),
+        voidedBy: 'Admin',
+        voidReason: 'Duplicate invoice',
+      },
+    ]
+    mockFetchInvoicesAndExpenses(voidedInvoices, [])
+    render(<BillingWorkspace />)
+
+    await waitFor(() => expect(screen.getByText('INV-VOID')).toBeDefined())
+    expect(screen.getByText('VOID')).toBeDefined()
+    expect(screen.getByText('VOIDED')).toBeDefined()
+    expect(screen.queryByTitle('Void invoice')).toBeNull()
+  })
+
+  it('shows Ban button for non-voided invoices', async () => {
+    mockFetchInvoicesAndExpenses()
+    render(<BillingWorkspace />)
+
+    await waitFor(() => expect(screen.getByText('INV-90112')).toBeDefined())
+    expect(screen.getByTitle('Void invoice')).toBeDefined()
+  })
+
+  it('opens void confirmation dialog when clicking Ban button', async () => {
+    mockFetchInvoicesAndExpenses()
+    render(<BillingWorkspace />)
+
+    await waitFor(() => expect(screen.getByText('INV-90112')).toBeDefined())
+    fireEvent.click(screen.getByTitle('Void invoice'))
+
+    await waitFor(() => expect(screen.getByText('Void this invoice?')).toBeDefined())
+    expect(screen.getByPlaceholderText('e.g. Duplicate invoice')).toBeDefined()
+    expect(screen.getByText('Void invoice')).toBeDisabled()
+  })
+
+  it('shows void details in invoice preview for voided invoices', async () => {
+    const voidedInvoices = [
+      {
+        ...mockInvoices[0],
+        invoiceNumber: 'INV-VOID-PREVIEW',
+        status: 'VOID',
+        voidedAt: new Date('2026-09-04T10:00:00Z').toISOString(),
+        voidedBy: 'Admin',
+        voidReason: 'Duplicate invoice',
+      },
+    ]
+    mockFetchInvoicesAndExpenses(voidedInvoices, [])
+    render(<BillingWorkspace />)
+
+    await waitFor(() => expect(screen.getByText('INV-VOID-PREVIEW')).toBeDefined())
+    const row = screen.getByText('INV-VOID-PREVIEW').closest('tr')
+    if (row) fireEvent.click(row)
+
+    await waitFor(() => expect(screen.getByText('Invoice preview')).toBeDefined())
+    expect(screen.getAllByText('VOIDED').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByText('By: Admin')).toBeDefined()
+    expect(screen.getByText('Reason: Duplicate invoice')).toBeDefined()
+  })
 })

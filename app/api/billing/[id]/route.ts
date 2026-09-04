@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { NextRequest, NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
+import { getCurrentUser } from '@/lib/session'
 
 function computeTotals(items: { name: string; quantity: number; rate: number }[], discount: number, tax: number, paid: number) {
   const subtotal = items.reduce((sum, item) => sum + item.quantity * item.rate, 0)
@@ -33,6 +34,9 @@ function mapInvoiceToFrontend(invoice: {
   grandTotal?: number | null
   balance?: number | null
   status?: string | null
+  voidedAt?: Date | null
+  voidedBy?: string | null
+  voidReason?: string | null
   items: { id: string; name: string; quantity: number; rate: number }[]
 }) {
   const totals = computeTotals(invoice.items, invoice.discount, invoice.tax, invoice.paid)
@@ -61,6 +65,10 @@ function mapInvoiceToFrontend(invoice: {
     tax: invoice.tax,
     paid: invoice.paid,
     paymentMethod: invoice.paymentMethod || 'Cash',
+    status: invoice.status ?? undefined,
+    voidedAt: invoice.voidedAt ? invoice.voidedAt.toISOString() : null,
+    voidedBy: invoice.voidedBy ?? null,
+    voidReason: invoice.voidReason ?? null,
   }
 }
 
@@ -88,8 +96,13 @@ export async function GET(
 
 export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
-    const { id } = await context.params;
-    const body = await request.json();
+    const user = await getCurrentUser(request)
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { id } = await context.params
+    const body = await request.json()
     const invoiceNumber = decodeURIComponent(id)
     const existing = await prisma.invoice.findUnique({
       where: { invoiceNumber },
@@ -100,16 +113,40 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       return NextResponse.json({ error: 'Invoice not found' }, { status: 404 })
     }
 
+    if (existing.status === 'VOID') {
+      return NextResponse.json({ error: 'Invoice is already voided' }, { status: 403 })
+    }
+
+    if (body.status === 'VOID') {
+      const voidReason = typeof body.voidReason === 'string' ? body.voidReason.trim() : ''
+      if (!voidReason) {
+        return NextResponse.json({ error: 'voidReason is required' }, { status: 400 })
+      }
+
+      const invoice = await prisma.invoice.update({
+        where: { invoiceNumber },
+        data: {
+          status: 'VOID',
+          voidedAt: new Date(),
+          voidedBy: user.name,
+          voidReason,
+        },
+        include: { items: true },
+      })
+
+      return NextResponse.json({ invoice: mapInvoiceToFrontend(invoice) })
+    }
+
     const allowedFields = [
       'center', 'billType', 'patientName', 'patientMrNumber', 'patientAge',
       'patientDob', 'patientGender', 'patientBloodGroup', 'patientAddress',
       'patientContact', 'discount', 'tax', 'paid', 'paymentMethod', 'status',
     ];
 
-    const updateData: Record<string, unknown> = {};
+    const updateData: Record<string, unknown> = {}
     for (const key of allowedFields) {
       if (body[key] !== undefined) {
-        updateData[key] = body[key] === '' ? null : body[key];
+        updateData[key] = body[key] === '' ? null : body[key]
       }
     }
 
@@ -124,9 +161,6 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       if (body.patient.contact !== undefined) updateData.patientContact = body.patient.contact
     }
 
-    // The dashboard aggregates these persisted values. Keep them in sync when
-    // an invoice's financial inputs are edited instead of relying on a page of
-    // invoice rows to recalculate them.
     const discount = body.discount === undefined ? existing.discount : Number(body.discount)
     const tax = body.tax === undefined ? existing.tax : Number(body.tax)
     const paid = body.paid === undefined ? existing.paid : Number(body.paid)
@@ -140,11 +174,11 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       where: { invoiceNumber },
       data: updateData,
       include: { items: true },
-    });
+    })
 
-    return NextResponse.json({ invoice: mapInvoiceToFrontend(invoice) });
+    return NextResponse.json({ invoice: mapInvoiceToFrontend(invoice) })
   } catch (e) {
-    console.error('Invoice PATCH error', e);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error('Invoice PATCH error', e)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

@@ -14,6 +14,9 @@ export async function GET() {
           grandTotal: true,
           balance: true,
         },
+        where: {
+          status: { not: 'VOID' },
+        },
       }),
       prisma.expense.aggregate({
         _sum: {
@@ -35,6 +38,7 @@ export async function GET() {
           paid: true,
         },
         where: {
+          status: { not: 'VOID' },
           createdAt: {
             gte: startOfToday,
             lt: startOfTomorrow,
