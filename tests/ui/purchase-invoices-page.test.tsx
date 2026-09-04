@@ -383,7 +383,7 @@ describe('Purchase Invoices Page UI', () => {
     })
 
     const rateInputs = screen.getAllByRole('spinbutton')
-    const rateInput = rateInputs[1]
+    const rateInput = rateInputs[2]
     act(() => {
       fireEvent.change(rateInput, { target: { value: '100' } })
     })
@@ -638,7 +638,7 @@ describe('Purchase Invoices Page UI', () => {
     })
     const rateInputs = screen.getAllByRole('spinbutton')
     act(() => {
-      fireEvent.change(rateInputs[1], { target: { value: '100' } })
+      fireEvent.change(rateInputs[2], { target: { value: '100' } })
     })
 
     await waitFor(() => {
@@ -665,7 +665,7 @@ describe('Purchase Invoices Page UI', () => {
     })
     const rateInputs = screen.getAllByRole('spinbutton')
     act(() => {
-      fireEvent.change(rateInputs[1], { target: { value: '100' } })
+      fireEvent.change(rateInputs[2], { target: { value: '100' } })
     })
 
     await waitFor(() => {
@@ -710,7 +710,7 @@ describe('Purchase Invoices Page UI', () => {
     })
     const rateInputs = screen.getAllByRole('spinbutton')
     act(() => {
-      fireEvent.change(rateInputs[1], { target: { value: '100' } })
+      fireEvent.change(rateInputs[2], { target: { value: '100' } })
     })
 
     const batchInput = screen.getByPlaceholderText('Batch No.')
@@ -774,7 +774,7 @@ describe('Purchase Invoices Page UI', () => {
     })
     const rateInputs = screen.getAllByRole('spinbutton')
     act(() => {
-      fireEvent.change(rateInputs[1], { target: { value: '100' } })
+      fireEvent.change(rateInputs[2], { target: { value: '100' } })
     })
 
     const batchInput = screen.getByPlaceholderText('Batch No.')
@@ -838,7 +838,7 @@ describe('Purchase Invoices Page UI', () => {
     })
     const rateInputs = screen.getAllByRole('spinbutton')
     act(() => {
-      fireEvent.change(rateInputs[1], { target: { value: '100' } })
+      fireEvent.change(rateInputs[2], { target: { value: '100' } })
     })
 
     const batchInput = screen.getByPlaceholderText('Batch No.')
@@ -902,7 +902,7 @@ describe('Purchase Invoices Page UI', () => {
     })
     const rateInputs = screen.getAllByRole('spinbutton')
     act(() => {
-      fireEvent.change(rateInputs[1], { target: { value: '0' } })
+      fireEvent.change(rateInputs[2], { target: { value: '0' } })
     })
 
     const batchInput = screen.getByPlaceholderText('Batch No.')
@@ -1028,7 +1028,7 @@ describe('Purchase Invoices Page UI', () => {
 
     const rateInputs = screen.getAllByRole('spinbutton')
     act(() => {
-      fireEvent.change(rateInputs[1], { target: { value: '100' } })
+      fireEvent.change(rateInputs[2], { target: { value: '100' } })
     })
 
     const batchInput = screen.getByPlaceholderText('Batch No.')

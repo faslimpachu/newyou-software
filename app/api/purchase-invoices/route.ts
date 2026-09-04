@@ -9,6 +9,10 @@ function toNumber(value: unknown): number {
   return Number(value || 0)
 }
 
+function toDecimal(value: unknown): Prisma.Decimal {
+  return new Prisma.Decimal(Number(value || 0))
+}
+
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
@@ -43,6 +47,7 @@ export async function GET(request: Request) {
           supplier: { select: { id: true, supplierName: true, contactPerson: true } },
           items: {
             include: {
+              adjustment: true,
               product: { select: { id: true, name: true, sku: true, unit: true } },
             },
           },
@@ -64,6 +69,13 @@ export async function GET(request: Request) {
           quantity: toNumber(item.quantity),
           purchaseRate: toNumber(item.purchaseRate),
           amount: toNumber(item.amount),
+          freeQuantity: toNumber(item.adjustment?.freeQuantity),
+          discountAmount: toNumber(item.adjustment?.discountAmount),
+          adjustment: item.adjustment ? {
+            ...item.adjustment,
+            freeQuantity: toNumber(item.adjustment.freeQuantity),
+            discountAmount: toNumber(item.adjustment.discountAmount),
+          } : null,
         })),
       })),
       page,
@@ -142,12 +154,14 @@ export async function POST(request: Request) {
     }
 
     const totals = items.reduce(
-      (acc: { subtotal: Prisma.Decimal; tax: Prisma.Decimal }, item: { productId: string; quantity: number; purchaseRate: number }) => {
-        const lineAmount = new Prisma.Decimal(item.quantity).times(item.purchaseRate)
+      (acc: { subtotal: Prisma.Decimal; tax: Prisma.Decimal }, item: { productId: string; quantity: number; purchaseRate: number; discountAmount?: number }) => {
+        const lineAmount = toDecimal(item.quantity).times(toDecimal(item.purchaseRate))
+        const discountAmount = toDecimal(item.discountAmount)
+        const taxableAmount = lineAmount.minus(discountAmount)
         const gst = productMap.get(item.productId) ?? new Prisma.Decimal(0)
         return {
-          subtotal: acc.subtotal.plus(lineAmount),
-          tax: acc.tax.plus(lineAmount.times(gst).div(100)),
+          subtotal: acc.subtotal.plus(taxableAmount),
+          tax: acc.tax.plus(taxableAmount.times(gst).div(100)),
         }
       },
       { subtotal: new Prisma.Decimal(0), tax: new Prisma.Decimal(0) },
@@ -179,11 +193,16 @@ export async function POST(request: Request) {
       })
 
       for (const item of items) {
-        const quantity = new Prisma.Decimal(item.quantity)
-        const purchaseRate = new Prisma.Decimal(item.purchaseRate)
+        const quantity = toDecimal(item.quantity)
+        const freeQuantity = toDecimal(item.freeQuantity)
+        const purchaseRate = toDecimal(item.purchaseRate)
+        const discountAmount = toDecimal(item.discountAmount)
 
         if (quantity.lessThanOrEqualTo(0)) {
           throw new ValidationError('Quantity must be greater than zero')
+        }
+        if (freeQuantity.lessThan(0)) {
+          throw new ValidationError('Free quantity cannot be negative')
         }
         if (purchaseRate.lessThanOrEqualTo(0)) {
           throw new ValidationError('Purchase rate must be greater than zero')
@@ -195,8 +214,16 @@ export async function POST(request: Request) {
         }
 
         const amount = quantity.times(purchaseRate)
+        if (discountAmount.lessThan(0)) {
+          throw new ValidationError('Discount amount cannot be negative')
+        }
+        if (discountAmount.greaterThan(amount)) {
+          throw new ValidationError('Discount amount cannot exceed line amount')
+        }
+        const stockQuantity = quantity.plus(freeQuantity)
+        const effectivePurchaseRate = amount.minus(discountAmount).div(stockQuantity)
 
-        await tx.purchaseInvoiceItem.create({
+        const createdItem = await tx.purchaseInvoiceItem.create({
           data: {
             invoiceId: createdInvoice.id,
             productId: item.productId,
@@ -208,14 +235,24 @@ export async function POST(request: Request) {
           },
         })
 
+        if (freeQuantity.greaterThan(0) || discountAmount.greaterThan(0)) {
+          await tx.purchaseInvoiceItemAdjustment.create({
+            data: {
+              invoiceItemId: createdItem.id,
+              freeQuantity: freeQuantity.toNumber(),
+              discountAmount: discountAmount.toNumber(),
+            },
+          })
+        }
+
         await receiveStock({
           productId: item.productId,
-          quantity: quantity.toNumber(),
+          quantity: stockQuantity.toNumber(),
           batchNumber: item.batchNumber?.trim() || `BATCH-${Date.now()}`,
           supplierId,
           purchaseInvoiceId: createdInvoice.id,
           expiryDate: item.expiryDate ? new Date(item.expiryDate) : null,
-          purchaseRate: purchaseRate.toNumber(),
+          purchaseRate: effectivePurchaseRate.toNumber(),
           notes: `Purchase invoice ${invoiceNumber}`,
         }, tx)
       }
@@ -229,6 +266,7 @@ export async function POST(request: Request) {
         supplier: { select: { id: true, supplierName: true } },
         items: {
           include: {
+            adjustment: true,
             product: { select: { id: true, name: true, sku: true, unit: true } },
           },
         },
@@ -248,6 +286,13 @@ export async function POST(request: Request) {
           quantity: toNumber(item.quantity),
           purchaseRate: toNumber(item.purchaseRate),
           amount: toNumber(item.amount),
+          freeQuantity: toNumber(item.adjustment?.freeQuantity),
+          discountAmount: toNumber(item.adjustment?.discountAmount),
+          adjustment: item.adjustment ? {
+            ...item.adjustment,
+            freeQuantity: toNumber(item.adjustment.freeQuantity),
+            discountAmount: toNumber(item.adjustment.discountAmount),
+          } : null,
         })),
       } : null,
     }, { status: 201 })

@@ -14,6 +14,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         supplier: { select: { id: true, supplierName: true, contactPerson: true, phone: true, email: true } },
         items: {
           include: {
+            adjustment: true,
             product: { select: { id: true, name: true, sku: true, unit: true, purchasePrice: true, sellingPrice: true } },
           },
         },
@@ -40,6 +41,13 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
           quantity: toNumber(item.quantity),
           purchaseRate: toNumber(item.purchaseRate),
           amount: toNumber(item.amount),
+          freeQuantity: toNumber(item.adjustment?.freeQuantity),
+          discountAmount: toNumber(item.adjustment?.discountAmount),
+          adjustment: item.adjustment ? {
+            ...item.adjustment,
+            freeQuantity: toNumber(item.adjustment.freeQuantity),
+            discountAmount: toNumber(item.adjustment.discountAmount),
+          } : null,
           product: {
             ...item.product,
             purchasePrice: toNumber(item.product.purchasePrice),

@@ -81,6 +81,165 @@ describe('Purchase Invoices API', () => {
     expect(Number(transactions[0].quantity)).toBe(50)
   })
 
+  it('POST keeps existing invoice behavior when no free quantity or discount is sent', async () => {
+    const supplier = await prisma.supplier.create({
+      data: { supplierName: 'Legacy Supplier', status: 'ACTIVE' },
+    })
+    const category = await prisma.productCategory.create({
+      data: { name: 'Medicines', active: true },
+    })
+    const product = await prisma.product.create({
+      data: {
+        name: 'Legacy Product',
+        code: 'PRD-LEGACY-001',
+        categoryId: category.id,
+        unit: 'pcs',
+        purchasePrice: 10,
+        sellingPrice: 15,
+        currentStock: 0,
+        minimumStock: 10,
+        maximumStock: 200,
+        gstPercent: 5,
+      },
+    })
+
+    const req = new Request('http://localhost/api/purchase-invoices', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        invoiceDate: '2026-08-02',
+        supplierId: supplier.id,
+        items: [{ productId: product.id, quantity: 10, purchaseRate: 100, batchNumber: 'BATCH-LEGACY' }],
+      }),
+    })
+
+    const res = await POST(req)
+    expect(res.status).toBe(201)
+    const data = await res.json()
+    expect(data.invoice.subtotal).toBe(1000)
+    expect(data.invoice.tax).toBe(50)
+    expect(data.invoice.grandTotal).toBe(1050)
+    expect(data.invoice.balance).toBe(1050)
+    expect(data.invoice.items[0].freeQuantity).toBe(0)
+    expect(data.invoice.items[0].discountAmount).toBe(0)
+
+    const updatedProduct = await prisma.product.findUnique({ where: { id: product.id } })
+    expect(Number(updatedProduct?.currentStock)).toBe(10)
+
+    const adjustmentCount = await prisma.purchaseInvoiceItemAdjustment.count()
+    expect(adjustmentCount).toBe(0)
+  })
+
+  it('POST adds free quantity to stock without charging supplier for it', async () => {
+    const supplier = await prisma.supplier.create({
+      data: { supplierName: 'Free Qty Supplier', status: 'ACTIVE' },
+    })
+    const category = await prisma.productCategory.create({
+      data: { name: 'Medicines', active: true },
+    })
+    const product = await prisma.product.create({
+      data: {
+        name: 'Free Qty Product',
+        code: 'PRD-FREE-001',
+        categoryId: category.id,
+        unit: 'pcs',
+        purchasePrice: 10,
+        sellingPrice: 15,
+        currentStock: 0,
+        minimumStock: 10,
+        maximumStock: 200,
+      },
+    })
+
+    const req = new Request('http://localhost/api/purchase-invoices', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        invoiceDate: '2026-08-02',
+        supplierId: supplier.id,
+        items: [{ productId: product.id, quantity: 10, freeQuantity: 2, purchaseRate: 100, batchNumber: 'BATCH-FREE' }],
+      }),
+    })
+
+    const res = await POST(req)
+    expect(res.status).toBe(201)
+    const data = await res.json()
+    expect(data.invoice.subtotal).toBe(1000)
+    expect(data.invoice.grandTotal).toBe(1000)
+    expect(data.invoice.balance).toBe(1000)
+    expect(data.invoice.items[0].quantity).toBe(10)
+    expect(data.invoice.items[0].freeQuantity).toBe(2)
+    expect(data.invoice.items[0].amount).toBe(1000)
+
+    const updatedProduct = await prisma.product.findUnique({ where: { id: product.id } })
+    expect(Number(updatedProduct?.currentStock)).toBe(12)
+
+    const batch = await prisma.productBatch.findFirst({ where: { productId: product.id, batchNumber: 'BATCH-FREE' } })
+    expect(Number(batch?.quantity)).toBe(12)
+
+    const receipt = await prisma.batchReceipt.findFirst({ where: { batchId: batch?.id } })
+    expect(Number(receipt?.quantity)).toBe(12)
+    expect(Number(receipt?.purchaseRate)).toBeCloseTo(1000 / 12)
+
+    const transaction = await prisma.inventoryTransaction.findFirst({ where: { productId: product.id, type: 'PURCHASE' } })
+    expect(Number(transaction?.quantity)).toBe(12)
+  })
+
+  it('POST subtracts discount from invoice totals and keeps free stock received', async () => {
+    const supplier = await prisma.supplier.create({
+      data: { supplierName: 'Discount Supplier', status: 'ACTIVE' },
+    })
+    const category = await prisma.productCategory.create({
+      data: { name: 'Medicines', active: true },
+    })
+    const product = await prisma.product.create({
+      data: {
+        name: 'Discount Product',
+        code: 'PRD-DISC-001',
+        categoryId: category.id,
+        unit: 'pcs',
+        purchasePrice: 10,
+        sellingPrice: 15,
+        currentStock: 0,
+        minimumStock: 10,
+        maximumStock: 200,
+        gstPercent: 5,
+      },
+    })
+
+    const req = new Request('http://localhost/api/purchase-invoices', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        invoiceDate: '2026-08-02',
+        supplierId: supplier.id,
+        items: [{ productId: product.id, quantity: 10, freeQuantity: 2, purchaseRate: 100, discountAmount: 100, batchNumber: 'BATCH-DISC' }],
+      }),
+    })
+
+    const res = await POST(req)
+    expect(res.status).toBe(201)
+    const data = await res.json()
+    expect(data.invoice.subtotal).toBe(900)
+    expect(data.invoice.tax).toBe(45)
+    expect(data.invoice.grandTotal).toBe(945)
+    expect(data.invoice.balance).toBe(945)
+    expect(data.invoice.items[0].quantity).toBe(10)
+    expect(data.invoice.items[0].freeQuantity).toBe(2)
+    expect(data.invoice.items[0].discountAmount).toBe(100)
+    expect(data.invoice.items[0].amount).toBe(1000)
+
+    const updatedProduct = await prisma.product.findUnique({ where: { id: product.id } })
+    expect(Number(updatedProduct?.currentStock)).toBe(12)
+
+    const batch = await prisma.productBatch.findFirst({ where: { productId: product.id, batchNumber: 'BATCH-DISC' } })
+    expect(Number(batch?.quantity)).toBe(12)
+
+    const receipt = await prisma.batchReceipt.findFirst({ where: { batchId: batch?.id } })
+    expect(Number(receipt?.quantity)).toBe(12)
+    expect(Number(receipt?.purchaseRate)).toBe(75)
+  })
+
   it('POST creates invoice with batch number and expiry date', async () => {
     const supplier = await prisma.supplier.create({
       data: { supplierName: 'Test Supplier', status: 'ACTIVE' },

@@ -41,7 +41,9 @@ interface Product {
 interface InvoiceItem {
   productId: string
   quantity: number
+  freeQuantity: number
   purchaseRate: number
+  discountAmount: number
   amount: number
   batchNumber: string
   expiryDate: string
@@ -53,7 +55,9 @@ type FormFieldError = {
   items?: {
     productId?: string
     quantity?: string
+    freeQuantity?: string
     purchaseRate?: string
+    discountAmount?: string
     batchNumber?: string
   }[]
 }
@@ -78,7 +82,9 @@ interface PurchaseInvoice {
     id: string
     productId: string
     quantity: number
+    freeQuantity?: number
     purchaseRate: number
+    discountAmount?: number
     amount: number
     batchNumber: string | null
     expiryDate: string | null
@@ -89,7 +95,9 @@ interface PurchaseInvoice {
 const emptyItem: InvoiceItem = {
   productId: '',
   quantity: 0,
+  freeQuantity: 0,
   purchaseRate: 0,
+  discountAmount: 0,
   amount: 0,
   batchNumber: '',
   expiryDate: '',
@@ -114,7 +122,9 @@ function buildPurchaseInvoicePrintHtml(invoice: PurchaseInvoice): string {
         ${item.product.sku ? `<br><span>${escapePrintHtml(item.product.sku)}</span>` : ''}
       </td>
       <td class="right">${escapePrintHtml(item.quantity)} ${escapePrintHtml(item.product.unit)}</td>
+      <td class="right">${escapePrintHtml(item.freeQuantity || 0)} ${escapePrintHtml(item.product.unit)}</td>
       <td class="right">${escapePrintHtml(printMoney(item.purchaseRate))}</td>
+      <td class="right">${escapePrintHtml(printMoney(item.discountAmount || 0))}</td>
       <td>${escapePrintHtml(item.batchNumber || '-')}</td>
       <td>${escapePrintHtml(printDate(item.expiryDate))}</td>
       <td class="right">${escapePrintHtml(printMoney(item.amount))}</td>
@@ -141,12 +151,14 @@ function buildPurchaseInvoicePrintHtml(invoice: PurchaseInvoice): string {
     th { border-bottom: 2px solid #111827; font-size: 10px; padding: 7px 5px; text-align: left; text-transform: uppercase; }
     td { border-bottom: 1px solid #e5e7eb; padding: 7px 5px; vertical-align: top; word-break: break-word; }
     th:nth-child(1), td:nth-child(1) { width: 8%; }
-    th:nth-child(2), td:nth-child(2) { width: 26%; }
-    th:nth-child(3), td:nth-child(3) { width: 12%; }
-    th:nth-child(4), td:nth-child(4) { width: 14%; }
-    th:nth-child(5), td:nth-child(5) { width: 15%; }
-    th:nth-child(6), td:nth-child(6) { width: 13%; }
+    th:nth-child(2), td:nth-child(2) { width: 22%; }
+    th:nth-child(3), td:nth-child(3) { width: 10%; }
+    th:nth-child(4), td:nth-child(4) { width: 10%; }
+    th:nth-child(5), td:nth-child(5) { width: 12%; }
+    th:nth-child(6), td:nth-child(6) { width: 12%; }
     th:nth-child(7), td:nth-child(7) { width: 12%; }
+    th:nth-child(8), td:nth-child(8) { width: 12%; }
+    th:nth-child(9), td:nth-child(9) { width: 10%; }
     .right { text-align: right; }
     .totals { margin-left: auto; margin-top: 12px; width: 210px; }
     .totals div { display: flex; justify-content: space-between; padding: 3px 0; }
@@ -183,7 +195,9 @@ function buildPurchaseInvoicePrintHtml(invoice: PurchaseInvoice): string {
         <th>#</th>
         <th>Product</th>
         <th class="right">Qty</th>
+        <th class="right">Free</th>
         <th class="right">Rate</th>
+        <th class="right">Discount</th>
         <th>Batch</th>
         <th>Expiry</th>
         <th class="right">Amount</th>
@@ -356,7 +370,7 @@ export default function PurchaseInvoicesPage() {
 
     setForm({ ...form, items: newItems })
 
-    const clearableFields: (keyof InvoiceItem)[] = ['productId', 'batchNumber', 'quantity', 'purchaseRate']
+    const clearableFields: (keyof InvoiceItem)[] = ['productId', 'batchNumber', 'quantity', 'freeQuantity', 'purchaseRate', 'discountAmount']
     if (clearableFields.includes(field)) {
       setFieldErrors((prev) => {
         const updated = { ...prev }
@@ -366,7 +380,9 @@ export default function PurchaseInvoicesPage() {
           delete itemErr.productId
           delete itemErr.batchNumber
           if (field === 'quantity') delete itemErr.quantity
+          if (field === 'freeQuantity') delete itemErr.freeQuantity
           if (field === 'purchaseRate') delete itemErr.purchaseRate
+          if (field === 'discountAmount') delete itemErr.discountAmount
           updated.items[index] = itemErr
         }
         return updated
@@ -384,8 +400,8 @@ export default function PurchaseInvoicesPage() {
   }
 
   const calculateTotals = () => {
-    const subtotal = form.items.reduce((sum, item) => sum + (item.amount || 0), 0)
-    const tax = form.items.reduce((sum, item) => sum + (item.amount || 0) * (item.gstPercent || 0) / 100, 0)
+    const subtotal = form.items.reduce((sum, item) => sum + Math.max((item.amount || 0) - (item.discountAmount || 0), 0), 0)
+    const tax = form.items.reduce((sum, item) => sum + Math.max((item.amount || 0) - (item.discountAmount || 0), 0) * (item.gstPercent || 0) / 100, 0)
     const grandTotal = subtotal + tax
     return { subtotal, tax, grandTotal }
   }
@@ -398,15 +414,24 @@ export default function PurchaseInvoicesPage() {
     }
 
     const itemErrors = form.items.map((item) => {
-      const itemError: { productId?: string; quantity?: string; purchaseRate?: string; batchNumber?: string } = {}
+      const itemError: { productId?: string; quantity?: string; freeQuantity?: string; purchaseRate?: string; discountAmount?: string; batchNumber?: string } = {}
       if (!item.productId) {
         itemError.productId = 'Product is required'
       }
       if (!item.quantity || item.quantity <= 0) {
         itemError.quantity = 'Quantity must be greater than zero'
       }
+      if ((item.freeQuantity || 0) < 0) {
+        itemError.freeQuantity = 'Free quantity cannot be negative'
+      }
       if (!item.purchaseRate || item.purchaseRate <= 0) {
         itemError.purchaseRate = 'Purchase rate must be greater than zero'
+      }
+      if ((item.discountAmount || 0) < 0) {
+        itemError.discountAmount = 'Discount cannot be negative'
+      }
+      if ((item.discountAmount || 0) > (item.amount || 0)) {
+        itemError.discountAmount = 'Discount cannot exceed amount'
       }
       if (!item.batchNumber || !item.batchNumber.trim()) {
         itemError.batchNumber = 'Batch number is required'
@@ -444,7 +469,9 @@ export default function PurchaseInvoicesPage() {
         items: form.items.map((item) => ({
           productId: item.productId,
           quantity: item.quantity,
+          freeQuantity: item.freeQuantity || 0,
           purchaseRate: item.purchaseRate,
+          discountAmount: item.discountAmount || 0,
           batchNumber: item.batchNumber?.trim() || null,
           expiryDate: item.expiryDate || null,
           gstPercent: item.gstPercent,
@@ -658,7 +685,9 @@ export default function PurchaseInvoicesPage() {
                       <TableRow>
                         <TableHead className="w-[300px]">Product</TableHead>
                         <TableHead>Quantity</TableHead>
+                        <TableHead>Free Qty</TableHead>
                         <TableHead>Purchase Rate</TableHead>
+                        <TableHead>Discount</TableHead>
                         <TableHead>Batch Number</TableHead>
                         <TableHead>Expiry Date</TableHead>
                         <TableHead className="text-right">Amount</TableHead>
@@ -704,12 +733,38 @@ export default function PurchaseInvoicesPage() {
                              <Input
                                type="number"
                                step="0.01"
+                               min="0"
+                               value={item.freeQuantity || ''}
+                               onChange={(e) => handleItemChange(index, 'freeQuantity', parseFloat(e.target.value) || 0)}
+                               className="w-24"
+                             />
+                             {fieldErrors.items?.[index]?.freeQuantity && (
+                               <p className="text-sm text-destructive mt-1">{fieldErrors.items[index]!.freeQuantity}</p>
+                             )}
+                           </TableCell>
+                           <TableCell>
+                             <Input
+                               type="number"
+                               step="0.01"
                                value={item.purchaseRate || ''}
                                onChange={(e) => handleItemChange(index, 'purchaseRate', parseFloat(e.target.value) || 0)}
                                className="w-32"
                              />
                              {fieldErrors.items?.[index]?.purchaseRate && (
                                <p className="text-sm text-destructive mt-1">{fieldErrors.items[index]!.purchaseRate}</p>
+                             )}
+                           </TableCell>
+                           <TableCell>
+                             <Input
+                               type="number"
+                               step="0.01"
+                               min="0"
+                               value={item.discountAmount || ''}
+                               onChange={(e) => handleItemChange(index, 'discountAmount', parseFloat(e.target.value) || 0)}
+                               className="w-28"
+                             />
+                             {fieldErrors.items?.[index]?.discountAmount && (
+                               <p className="text-sm text-destructive mt-1">{fieldErrors.items[index]!.discountAmount}</p>
                              )}
                            </TableCell>
                            <TableCell>
@@ -754,9 +809,9 @@ export default function PurchaseInvoicesPage() {
                 <div className="flex justify-end">
                   <div className="w-full max-w-sm space-y-2">
                     <div className="flex justify-between text-sm">
-                      <span>Subtotal</span>
-                      <span className="tabular-nums">₹{subtotal.toLocaleString('en-IN')}</span>
-                    </div>
+                    <span>Subtotal</span>
+                    <span className="tabular-nums">₹{subtotal.toLocaleString('en-IN')}</span>
+                  </div>
                      <div className="flex justify-between text-sm">
                        <span>{subtotal > 0 ? `Tax (${(tax / subtotal * 100).toFixed(1)}%)` : 'Tax'}</span>
                        <span className="tabular-nums">₹{tax.toLocaleString('en-IN')}</span>
@@ -966,7 +1021,9 @@ export default function PurchaseInvoicesPage() {
                   <TableRow>
                     <TableHead>Product</TableHead>
                     <TableHead>Quantity</TableHead>
+                    <TableHead>Free Qty</TableHead>
                     <TableHead>Purchase Rate</TableHead>
+                    <TableHead>Discount</TableHead>
                     <TableHead>Batch Number</TableHead>
                     <TableHead>Expiry Date</TableHead>
                     <TableHead className="text-right">Amount</TableHead>
@@ -977,7 +1034,9 @@ export default function PurchaseInvoicesPage() {
                     <TableRow key={item.id}>
                       <TableCell className="font-medium">{item.product.name}</TableCell>
                       <TableCell>{item.quantity} {item.product.unit}</TableCell>
+                      <TableCell>{item.freeQuantity || 0} {item.product.unit}</TableCell>
                       <TableCell>₹{item.purchaseRate.toLocaleString('en-IN')}</TableCell>
+                      <TableCell>₹{(item.discountAmount || 0).toLocaleString('en-IN')}</TableCell>
                       <TableCell>{item.batchNumber || '-'}</TableCell>
                       <TableCell>{item.expiryDate ? new Date(item.expiryDate).toLocaleDateString('en-IN') : '-'}</TableCell>
                       <TableCell className="text-right tabular-nums">₹{item.amount.toLocaleString('en-IN')}</TableCell>
