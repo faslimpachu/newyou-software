@@ -202,6 +202,8 @@ export default function ProductsPage() {
 
     if (!form.unit.trim()) {
       errors.unit = 'Unit is required'
+    } else if (/\d/.test(form.unit)) {
+      errors.unit = 'Unit cannot contain numbers'
     }
 
     // purchasePrice validation removed from UI — actual cost tracked at BatchReceipt level
@@ -568,7 +570,11 @@ export default function ProductsPage() {
                   <Input
                     id="unit"
                     value={form.unit}
-                    onChange={(e) => setForm({ ...form, unit: e.target.value })}
+                    onChange={(e) => {
+                      const target = e.target as HTMLInputElement
+                      const cleaned = target.value.replace(/[0-9]/g, '')
+                      setForm({ ...form, unit: cleaned })
+                    }}
                     placeholder="e.g., pcs, strip, bottle"
                     className={fieldErrors.unit ? 'border-destructive' : ''}
                   />

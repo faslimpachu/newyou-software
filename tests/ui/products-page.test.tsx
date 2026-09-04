@@ -712,4 +712,25 @@ describe('Products Page UI', () => {
 
     expect(screen.getByText('Overstock')).toBeDefined()
   })
+
+  it('strips numbers from unit field when typing', async () => {
+    await waitFor(() => {
+      expect(screen.getByText('Create Product')).toBeDefined()
+    })
+    const createButtons = screen.getAllByText('Create Product')
+    act(() => {
+      fireEvent.click(createButtons[0])
+    })
+
+    const unitInput = screen.getByPlaceholderText('e.g., pcs, strip, bottle')
+    act(() => {
+      fireEvent.change(unitInput, { target: { value: 'pcs123' } })
+    })
+    expect((unitInput as HTMLInputElement).value).toBe('pcs')
+
+    act(() => {
+      fireEvent.change(unitInput, { target: { value: 'box45test' } })
+    })
+    expect((unitInput as HTMLInputElement).value).toBe('boxtest')
+  })
 })
