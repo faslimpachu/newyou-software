@@ -1676,8 +1676,8 @@ function NewExpenseModal({
   const [paymentMethod, setPaymentMethod] = useState(initial?.paymentMethod ?? EXPENSE_PAYMENT_METHODS[0])
   const [paidTo, setPaidTo] = useState(initial?.paidTo ?? '')
   const [remarks, setRemarks] = useState(initial?.remarks ?? '')
-  const [receiptName, setReceiptName] = useState(initial?.receiptName)
-  const [receiptDataUrl, setReceiptDataUrl] = useState(initial?.receiptDataUrl)
+  // const [receiptName, setReceiptName] = useState(initial?.receiptName)
+  // const [receiptDataUrl, setReceiptDataUrl] = useState(initial?.receiptDataUrl)
   const [addedBy, setAddedBy] = useState(initial?.addedBy ?? '')
   const [touched, setTouched] = useState(false)
 
@@ -1692,19 +1692,19 @@ function NewExpenseModal({
     setAmount(Number.isNaN(num) ? 0 : Math.max(0, num))
   }
 
-  const handleFileChange = (file: File | null) => {
-    if (!file) {
-      setReceiptName(undefined)
-      setReceiptDataUrl(undefined)
-      return
-    }
-    const reader = new FileReader()
-    reader.onload = () => {
-      setReceiptName(file.name)
-      setReceiptDataUrl(reader.result as string)
-    }
-    reader.readAsDataURL(file)
-  }
+  // const handleFileChange = (file: File | null) => {
+  //   if (!file) {
+  //     setReceiptName(undefined)
+  //     setReceiptDataUrl(undefined)
+  //     return
+  //   }
+  //   const reader = new FileReader()
+  //   reader.onload = () => {
+  //     setReceiptName(file.name)
+  //     setReceiptDataUrl(reader.result as string)
+  //   }
+  //   reader.readAsDataURL(file)
+  // }
 
   const confirmNewCategory = () => {
     const trimmed = newCategoryName.trim()
@@ -1728,8 +1728,8 @@ function NewExpenseModal({
       paymentMethod,
       paidTo: paidTo.trim(),
       remarks: remarks.trim(),
-      receiptName,
-      receiptDataUrl,
+      // receiptName,
+      // receiptDataUrl,
       addedBy: addedBy.trim() || 'Front Office',
       createdDate: initial?.createdDate ?? new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
     }
@@ -1810,7 +1810,7 @@ function NewExpenseModal({
 
         <FormField label="Remarks (optional)"><Input value={remarks} onChange={(e) => setRemarks(e.target.value)} /></FormField>
 
-        <FormField label="Bill / receipt upload (optional)">
+        {/* <FormField label="Bill / receipt upload (optional)">
           <div className="flex items-center gap-2">
             <label className="flex h-9 cursor-pointer items-center gap-2 rounded-lg border border-dashed border-input px-3 text-sm text-muted-foreground hover:bg-muted/50">
               <Paperclip className="size-3.5" />
@@ -1826,7 +1826,7 @@ function NewExpenseModal({
               </span>
             )}
           </div>
-        </FormField>
+        </FormField> */}
 
         {isEdit && (
           <p className="text-xs text-muted-foreground">Created: {initial!.createdDate} · Expense ID: {initial!.id}</p>
@@ -1922,7 +1922,7 @@ function ExpenseDetailModal({
             <p><span className="text-neutral-500">Created: </span>{expense.createdDate}</p>
           </div>
 
-          {expense.receiptDataUrl && (
+          {/* {expense.receiptDataUrl && (
             <div>
               <p className="mb-2 text-xs uppercase tracking-wide text-neutral-500">Attached receipt</p>
               {expense.receiptDataUrl.startsWith('data:image') ? (
@@ -1933,7 +1933,7 @@ function ExpenseDetailModal({
                 </a>
               )}
             </div>
-          )}
+          )} */}
 
           <div className="mt-16 flex items-end justify-between text-xs text-neutral-600">
             <div className="text-center">
